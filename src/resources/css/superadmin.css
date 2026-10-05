@@ -734,11 +734,11 @@ form.superadmin-actions .sa-button, .sa-filters .sa-button { height: 36px; }
 .sa-modal-title { margin: 1px 0 0; color: var(--sa-text); font-size: 17px; font-weight: 700; letter-spacing: -.01em; line-height: 1.35; }
 .sa-modal-desc { margin: 4px 0 0; color: var(--sa-text-2); font-size: 13.5px; line-height: 1.55; }
 .sa-modal-close { margin: -4px -6px 0 0; }
-.sa-modal-body { overflow-y: auto; padding: 18px 22px 20px; }
+.sa-modal-body { display: flex; flex-direction: column; gap: 16px; overflow-y: auto; padding: 18px 22px 20px; }
 .sa-modal-body > form { display: flex; flex-direction: column; gap: 16px; }
+.sa-modal-body > :not(.sa-modal-footer) { flex-shrink: 0; }
 .sa-modal-body > form > * { margin-top: 0 !important; margin-bottom: 0 !important; }
-.sa-modal-body > * + * { margin-top: 16px; }
-.sa-modal-footer { position: sticky; bottom: -20px; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin: 4px -22px -20px; border-top: 1px solid var(--sa-border); background: var(--sa-surface-2); padding: 12px 22px; }
+.sa-modal-footer { position: sticky; bottom: -20px; z-index: 1; display: flex; flex-shrink: 0; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin: 4px -22px -20px; border-top: 1px solid var(--sa-border); background: var(--sa-surface-2); padding: 12px 22px; }
 .sa-modal-body > form > .sa-modal-footer { margin: 4px -22px -20px !important; }
 
 /* Instruction callout: a title and a short list of steps / notes. */
