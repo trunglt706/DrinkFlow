@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -21,8 +23,12 @@ return new class extends Migration {
                     ADD COLUMN active_order_key BIGINT UNSIGNED
                     GENERATED ALWAYS AS (
                         CASE WHEN status IN ('submitted', 'confirmed', 'ordering', 'ordered', 'delivering') THEN room_user_id ELSE NULL END
-                    ) VIRTUAL NULL AFTER room_user_id
+                    ) VIRTUAL AFTER room_user_id
                 ");
+            }
+
+            // DDL may have succeeded only partially on a previous attempt.
+            if (! Schema::hasIndex('orders', 'orders_campaign_active_user_unique')) {
                 DB::statement('CREATE UNIQUE INDEX orders_campaign_active_user_unique ON orders (campaign_id, active_order_key)');
             }
 
@@ -33,15 +39,20 @@ return new class extends Migration {
                     ADD COLUMN default_room_key BIGINT UNSIGNED
                     GENERATED ALWAYS AS (
                         CASE WHEN is_default = 1 THEN room_id ELSE NULL END
-                    ) VIRTUAL NULL AFTER room_id
+                    ) VIRTUAL AFTER room_id
                 ");
+            }
+
+            if (! Schema::hasIndex('payment_accounts', 'payment_accounts_room_default_unique')) {
                 DB::statement('CREATE UNIQUE INDEX payment_accounts_room_default_unique ON payment_accounts (default_room_key)');
             }
 
             // 3. Orders: Composite index for (campaign_id, room_user_id, status)
-            DB::statement('CREATE INDEX orders_campaign_user_status_index ON orders (campaign_id, room_user_id, status)');
+            if (! Schema::hasIndex('orders', 'orders_campaign_user_status_index')) {
+                DB::statement('CREATE INDEX orders_campaign_user_status_index ON orders (campaign_id, room_user_id, status)');
+            }
         } elseif (in_array($driver, ['sqlite', 'pgsql'], true)) {
-            Schema::table('orders', function (Blueprint $table) {
+            Schema::table('orders', function (Blueprint $table): void {
                 $table->index(['campaign_id', 'room_user_id', 'status'], 'orders_campaign_user_status_index');
             });
         }
@@ -55,18 +66,30 @@ return new class extends Migration {
         $driver = DB::getDriverName();
 
         if ($driver === 'mysql') {
-            DB::statement('DROP INDEX IF EXISTS orders_campaign_user_status_index ON orders');
-            DB::statement('DROP INDEX IF EXISTS orders_campaign_active_user_unique ON orders');
+            if (Schema::hasIndex('orders', 'orders_campaign_user_status_index')) {
+                Schema::table('orders', function (Blueprint $table): void {
+                    $table->dropIndex('orders_campaign_user_status_index');
+                });
+            }
+            if (Schema::hasIndex('orders', 'orders_campaign_active_user_unique')) {
+                Schema::table('orders', function (Blueprint $table): void {
+                    $table->dropUnique('orders_campaign_active_user_unique');
+                });
+            }
             if (Schema::hasColumn('orders', 'active_order_key')) {
                 DB::statement('ALTER TABLE orders DROP COLUMN active_order_key');
             }
 
-            DB::statement('DROP INDEX IF EXISTS payment_accounts_room_default_unique ON payment_accounts');
+            if (Schema::hasIndex('payment_accounts', 'payment_accounts_room_default_unique')) {
+                Schema::table('payment_accounts', function (Blueprint $table): void {
+                    $table->dropUnique('payment_accounts_room_default_unique');
+                });
+            }
             if (Schema::hasColumn('payment_accounts', 'default_room_key')) {
                 DB::statement('ALTER TABLE payment_accounts DROP COLUMN default_room_key');
             }
         } elseif (in_array($driver, ['sqlite', 'pgsql'], true)) {
-            Schema::table('orders', function (Blueprint $table) {
+            Schema::table('orders', function (Blueprint $table): void {
                 $table->dropIndex('orders_campaign_user_status_index');
             });
         }
