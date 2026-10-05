@@ -25,10 +25,11 @@ class ResolveRoomUser
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $room = $request->route('room');
-        $room = $room instanceof Room
-            ? $room
-            : Room::where('slug', $room)->orWhere('id', is_numeric($room) ? (int) $room : 0)->firstOrFail();
+        $room = $request->attributes->get('room') ?? $request->route('room');
+        if (! ($room instanceof Room)) {
+            $room = Room::where('slug', $room)->orWhere('id', is_numeric($room) ? (int) $room : 0)->firstOrFail();
+            $request->attributes->set('room', $room);
+        }
 
         if ($room->status !== RoomStatus::Active) {
             $translationKey = $room->status === RoomStatus::Archived
@@ -104,7 +105,10 @@ class ResolveRoomUser
             }
         }
 
-        $roomUser->update(['last_active_at' => now()]);
+        $lastActive = $roomUser->last_active_at;
+        if ($lastActive === null || $lastActive->lte(now()->subMinutes(5))) {
+            $roomUser->update(['last_active_at' => now()]);
+        }
         $request->attributes->set('room', $room);
         $request->attributes->set('room_user', $roomUser);
 

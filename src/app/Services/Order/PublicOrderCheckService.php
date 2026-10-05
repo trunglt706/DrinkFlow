@@ -59,11 +59,24 @@ class PublicOrderCheckService
     public function findOrders(Campaign $campaign, string $identifier): Collection
     {
         $needle = Str::lower(trim($identifier));
+        if ($needle === '') {
+            return collect();
+        }
         $phoneNeedle = preg_replace('/[^0-9+]/', '', $needle) ?: '';
 
-        return Order::query()
+        $orders = Order::query()
             ->where('campaign_id', $campaign->id)
             ->where('status', '!=', OrderStatus::Cancelled->value)
+            ->where(static function ($query) use ($needle): void {
+                $query->whereRaw('LOWER(code) = ?', [$needle])
+                    ->orWhereHas('roomUser', static function ($ruQuery) use ($needle): void {
+                        $ruQuery->whereRaw('LOWER(user_code) = ?', [$needle])
+                            ->orWhereHas('globalUser', static function ($guQuery) use ($needle): void {
+                                $guQuery->whereRaw('LOWER(code) = ?', [$needle])
+                                    ->orWhereRaw('LOWER(email) = ?', [$needle]);
+                            });
+                    });
+            })
             ->with([
                 'roomUser.globalUser',
                 'items.toppings',
@@ -71,23 +84,29 @@ class PublicOrderCheckService
                 'children.items.toppings',
                 'parent.roomUser.globalUser',
             ])
-            ->get()
-            ->filter(static function (Order $order) use ($needle, $phoneNeedle): bool {
-                $roomUser = $order->roomUser;
-                $globalUser = $roomUser?->globalUser;
-                $email = Str::lower((string) ($globalUser?->email ?? ''));
-                $code = Str::lower((string) ($order->code ?? ''));
-                $userCode = Str::lower((string) ($roomUser?->user_code ?? ''));
-                $globalCode = Str::lower((string) ($globalUser?->code ?? ''));
-                $phone = preg_replace('/[^0-9+]/', '', (string) ($globalUser?->phone ?? '')) ?: '';
+            ->get();
 
-                return $needle === $code
-                    || $needle === $userCode
-                    || $needle === $globalCode
-                    || $needle === $email
-                    || ($phoneNeedle !== '' && $phoneNeedle === $phone);
-            })
-            ->values();
+        if ($orders->isEmpty() && $phoneNeedle !== '') {
+            $orders = Order::query()
+                ->where('campaign_id', $campaign->id)
+                ->where('status', '!=', OrderStatus::Cancelled->value)
+                ->with([
+                    'roomUser.globalUser',
+                    'items.toppings',
+                    'children.roomUser.globalUser',
+                    'children.items.toppings',
+                    'parent.roomUser.globalUser',
+                ])
+                ->get()
+                ->filter(static function (Order $order) use ($phoneNeedle): bool {
+                    $phone = preg_replace('/[^0-9+]/', '', (string) ($order->roomUser?->globalUser?->phone ?? '')) ?: '';
+
+                    return $phone !== '' && $phone === $phoneNeedle;
+                })
+                ->values();
+        }
+
+        return $orders;
     }
 
     /**

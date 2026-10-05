@@ -113,15 +113,18 @@ class UserRoomDashboardService
     {
         $from = Carbon::today()->subDays(6)->startOfDay();
         $to = Carbon::today()->endOfDay();
+        $cacheKey = "room:{$room->id}:top_sponsors:{$from->toDateString()}:{$limit}";
 
-        return $this->sponsorLeaderboard->build($room, $from, $to, $limit, [OrderStatus::Completed])
-            ->map(fn (array $row): array => [
-                'name' => $row['user_name'],
-                'amount' => $row['total_sponsored'],
-                'sponsored_campaigns' => $row['sponsored_campaigns'],
-            ])
-            ->values()
-            ->all();
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, now()->addMinutes(2), function () use ($room, $from, $to, $limit): array {
+            return $this->sponsorLeaderboard->build($room, $from, $to, $limit, [OrderStatus::Completed])
+                ->map(fn (array $row): array => [
+                    'name' => $row['user_name'],
+                    'amount' => $row['total_sponsored'],
+                    'sponsored_campaigns' => $row['sponsored_campaigns'],
+                ])
+                ->values()
+                ->all();
+        });
     }
 
     /**
@@ -133,41 +136,56 @@ class UserRoomDashboardService
     private function getWeeklyItemTrend(Room $room): array
     {
         $today = Carbon::today();
-        $dayLabels = [
-            1 => __('room.dashboard.day_monday'),
-            2 => __('room.dashboard.day_tuesday'),
-            3 => __('room.dashboard.day_wednesday'),
-            4 => __('room.dashboard.day_thursday'),
-            5 => __('room.dashboard.day_friday'),
-            6 => __('room.dashboard.day_saturday'),
-            0 => __('room.dashboard.day_sunday'),
-        ];
+        $from = $today->copy()->subDays(6)->startOfDay();
+        $to = $today->copy()->endOfDay();
+        $cacheKey = "room:{$room->id}:weekly_trend:{$today->toDateString()}";
 
-        $trend = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $currentDate = $today->copy()->subDays($i);
-            $dayOfWeek = (int) $currentDate->format('w');
-            $dayLabel = $i === 0 ? __('room.dashboard.day_today') : ($dayLabels[$dayOfWeek] ?? $currentDate->format('D'));
-
-            $dayOrders = Order::query()
-                ->where('room_id', $room->id)
-                ->whereDate('created_at', $currentDate)
-                ->where('status', OrderStatus::Completed->value);
-
-            // Order value before sponsorship, so fully sponsored orders still count.
-            $valueAmount = (int) (clone $dayOrders)->sum('subtotal');
-            $itemsCount = (int) DB::table('order_items')
-                ->joinSub((clone $dayOrders)->select('id'), 'day_orders', 'day_orders.id', '=', 'order_items.order_id')
-                ->sum('order_items.quantity');
-
-            $trend[] = [
-                'date' => FormatHelper::formatDate($currentDate, 'd/m'),
-                'day_name' => $dayLabel,
-                'items_count' => $itemsCount,
-                'value_amount' => $valueAmount,
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, now()->addMinutes(2), function () use ($room, $today, $from, $to): array {
+            $dayLabels = [
+                1 => __('room.dashboard.day_monday'),
+                2 => __('room.dashboard.day_tuesday'),
+                3 => __('room.dashboard.day_wednesday'),
+                4 => __('room.dashboard.day_thursday'),
+                5 => __('room.dashboard.day_friday'),
+                6 => __('room.dashboard.day_saturday'),
+                0 => __('room.dashboard.day_sunday'),
             ];
-        }
 
-        return $trend;
+            $dailySubtotals = Order::query()
+                ->selectRaw('DATE(created_at) as date_key, SUM(subtotal) as total_subtotal')
+                ->where('room_id', $room->id)
+                ->where('created_at', '>=', $from)
+                ->where('created_at', '<=', $to)
+                ->where('status', OrderStatus::Completed->value)
+                ->groupBy(DB::raw('DATE(created_at)'))
+                ->pluck('total_subtotal', 'date_key');
+
+            $dailyQuantities = DB::table('order_items')
+                ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                ->selectRaw('DATE(orders.created_at) as date_key, SUM(order_items.quantity) as total_quantity')
+                ->where('orders.room_id', $room->id)
+                ->where('orders.created_at', '>=', $from)
+                ->where('orders.created_at', '<=', $to)
+                ->where('orders.status', OrderStatus::Completed->value)
+                ->groupBy(DB::raw('DATE(orders.created_at)'))
+                ->pluck('total_quantity', 'date_key');
+
+            $trend = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $currentDate = $today->copy()->subDays($i);
+                $dateKey = $currentDate->toDateString();
+                $dayOfWeek = (int) $currentDate->format('w');
+                $dayLabel = $i === 0 ? __('room.dashboard.day_today') : ($dayLabels[$dayOfWeek] ?? $currentDate->format('D'));
+
+                $trend[] = [
+                    'date' => FormatHelper::formatDate($currentDate, 'd/m'),
+                    'day_name' => $dayLabel,
+                    'items_count' => (int) ($dailyQuantities[$dateKey] ?? 0),
+                    'value_amount' => (int) ($dailySubtotals[$dateKey] ?? 0),
+                ];
+            }
+
+            return $trend;
+        });
     }
 }

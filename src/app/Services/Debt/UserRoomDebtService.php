@@ -193,13 +193,18 @@ class UserRoomDebtService
             ->where('room_user_id', $roomUser->id)
             ->where(static function (Builder $query) use ($roomUser): void {
                 $query
-                    ->whereHas('campaign.orders', static function (Builder $orderQuery) use ($roomUser): void {
-                        $orderQuery
-                            ->where('room_user_id', $roomUser->id)
-                            ->where('status', '!=', OrderStatus::Cancelled->value);
+                    ->whereExists(static function (\Illuminate\Database\Query\Builder $orderQuery) use ($roomUser): void {
+                        $orderQuery->select(DB::raw(1))
+                            ->from('orders')
+                            ->whereColumn('orders.campaign_id', 'debts.campaign_id')
+                            ->where('orders.room_user_id', $roomUser->id)
+                            ->where('orders.status', '!=', OrderStatus::Cancelled->value);
                     })
-                    ->orWhereDoesntHave('campaign.orders', static function (Builder $orderQuery) use ($roomUser): void {
-                        $orderQuery->where('room_user_id', $roomUser->id);
+                    ->orWhereNotExists(static function (\Illuminate\Database\Query\Builder $orderQuery) use ($roomUser): void {
+                        $orderQuery->select(DB::raw(1))
+                            ->from('orders')
+                            ->whereColumn('orders.campaign_id', 'debts.campaign_id')
+                            ->where('orders.room_user_id', $roomUser->id);
                     });
             });
     }

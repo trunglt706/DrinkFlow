@@ -51,16 +51,28 @@ class EnsureRoomIpAllowed
      */
     public static function room(Request $request): ?Room
     {
+        $cached = $request->attributes->get('room');
+        if ($cached instanceof Room) {
+            return $cached;
+        }
+
         $room = $request->route('room');
         if ($room instanceof Room) {
+            $request->attributes->set('room', $room);
             return $room;
         }
         if ($room === null || $room === '') {
             return null;
         }
 
-        return Room::query()->where('slug', (string) $room)
+        $resolved = Room::query()->where('slug', (string) $room)
             ->when(is_numeric($room), static fn ($query) => $query->orWhere('id', (int) $room))
             ->first();
+
+        if ($resolved instanceof Room) {
+            $request->attributes->set('room', $resolved);
+        }
+
+        return $resolved;
     }
 }

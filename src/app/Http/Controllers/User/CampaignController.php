@@ -319,21 +319,35 @@ class CampaignController extends Controller
         abort_if($search === '' || mb_strlen($search) > 255, 404);
         $normalizedSearch = Str::lower($search);
         $normalizedPhone = preg_replace('/[^0-9+]/', '', $search) ?: '';
-        $roomUsers = RoomUser::query()
+        $roomUser = RoomUser::query()
             ->with('globalUser')
             ->where('room_id', $room->id)
             ->where('status', RoomUserStatus::Active->value)
+            ->where(static function ($query) use ($normalizedSearch): void {
+                $query->whereRaw('LOWER(user_code) = ?', [$normalizedSearch])
+                    ->orWhereHas('globalUser', static function ($gq) use ($normalizedSearch): void {
+                        $gq->where('status', GlobalUserStatus::Active->value)
+                            ->whereRaw('LOWER(email) = ?', [$normalizedSearch]);
+                    });
+            })
             ->whereHas('globalUser', static fn ($query) => $query->where('status', GlobalUserStatus::Active->value))
-            ->get();
-        $roomUser = $roomUsers->first(static function (RoomUser $candidate) use ($normalizedSearch, $normalizedPhone): bool {
-            $email = Str::lower((string) ($candidate->globalUser?->email ?? ''));
-            $userCode = Str::lower((string) $candidate->user_code);
-            $phone = preg_replace('/[^0-9+]/', '', (string) ($candidate->globalUser?->phone ?? '')) ?: '';
+            ->first();
 
-            return $userCode === $normalizedSearch
-                || $email === $normalizedSearch
-                || ($normalizedPhone !== '' && $phone === $normalizedPhone);
-        });
+        if ($roomUser === null && $normalizedPhone !== '') {
+            $candidates = RoomUser::query()
+                ->with('globalUser')
+                ->where('room_id', $room->id)
+                ->where('status', RoomUserStatus::Active->value)
+                ->whereHas('globalUser', static fn ($query) => $query->where('status', GlobalUserStatus::Active->value))
+                ->get();
+
+            $roomUser = $candidates->first(static function (RoomUser $candidate) use ($normalizedPhone): bool {
+                $phone = preg_replace('/[^0-9+]/', '', (string) ($candidate->globalUser?->phone ?? '')) ?: '';
+
+                return $phone !== '' && $phone === $normalizedPhone;
+            });
+        }
+
         abort_if($roomUser === null, 404);
         // Ordering on behalf of yourself is not allowed: the requester is excluded from the lookup.
         $requester = $request->attributes->get('room_user');
