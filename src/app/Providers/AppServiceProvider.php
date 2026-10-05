@@ -137,6 +137,14 @@ class AppServiceProvider extends ServiceProvider
             return \Illuminate\Cache\RateLimiting\Limit::perMinute(5)->by($userKey);
         });
 
+        \Illuminate\Support\Facades\RateLimiter::for('room-member-lookup', function (\Illuminate\Http\Request $request) {
+            $userKey = $request->user('web')?->id
+                ? 'user:' . $request->user('web')->id
+                : 'ip:' . ($request->ip() ?: '127.0.0.1');
+
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(20)->by($userKey);
+        });
+
         \Illuminate\Support\Facades\RateLimiter::for('crawler-preview', function (\Illuminate\Http\Request $request) {
             $adminKey = $request->user('admin')?->id ? 'admin:' . $request->user('admin')->id : ($request->ip() ?: '127.0.0.1');
             return \Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by($adminKey);

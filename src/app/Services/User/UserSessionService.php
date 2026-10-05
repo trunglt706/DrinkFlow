@@ -89,6 +89,7 @@ class UserSessionService
      *
      * @param  \App\Models\GlobalUser  $user  Tài khoản người dùng sở hữu phiên
      * @param  string  $sessionId  Mã định danh phiên làm việc cần xóa
+     * @param  string  $currentDeviceUuid  UUID thiết bị hiện tại
      * @return void
      */
     public function logoutDevice(GlobalUser $user, string $sessionId, string $currentDeviceUuid): void
@@ -97,15 +98,6 @@ class UserSessionService
             ->where('id', $sessionId)
             ->where('user_id', $user->id)
             ->delete();
-
-        $roomUserIds = $user->roomUsers()->pluck('id');
-        $query = RoomUserDevice::query()->whereIn('room_user_id', $roomUserIds)->whereNull('revoked_at');
-        if ($currentDeviceUuid !== '') {
-            $query->where('device_uuid', '!=', $currentDeviceUuid);
-        }
-        $deviceUuids = $query->pluck('device_uuid')->all();
-        $query->update(['revoked_at' => now()]);
-        $this->publishRevocations($deviceUuids);
     }
 
     /**
@@ -113,6 +105,7 @@ class UserSessionService
      *
      * @param  \App\Models\GlobalUser  $user  Tài khoản người dùng
      * @param  string  $currentSessionId  Mã định danh phiên làm việc hiện tại cần giữ lại
+     * @param  string  $currentDeviceUuid  UUID thiết bị hiện tại cần giữ lại
      * @return void
      */
     public function logoutOtherDevices(GlobalUser $user, string $currentSessionId, string $currentDeviceUuid): void
@@ -122,7 +115,7 @@ class UserSessionService
             ->where('id', '!=', $currentSessionId)
             ->delete();
 
-        // Revoke trusted device tokens
+        // Revoke other trusted device tokens
         $roomUserIds = $user->roomUsers()->pluck('id');
         $query = RoomUserDevice::query()->whereIn('room_user_id', $roomUserIds)->whereNull('revoked_at');
         if ($currentDeviceUuid !== '') {
@@ -131,6 +124,13 @@ class UserSessionService
         $deviceUuids = $query->pluck('device_uuid')->all();
         $query->update(['revoked_at' => now()]);
         $this->publishRevocations($deviceUuids);
+
+        // Rotate remember_token to invalidate existing remember me cookies on other devices
+        $user->forceFill(['remember_token' => Str::random(60)])->save();
+
+        if (auth('web')->check() && auth('web')->id() === $user->id) {
+            auth('web')->login($user, true);
+        }
     }
 
     /**

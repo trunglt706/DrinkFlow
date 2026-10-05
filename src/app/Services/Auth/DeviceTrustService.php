@@ -35,7 +35,15 @@ class DeviceTrustService
     public function resolve(string $deviceUuid, string $token, ?int $roomId = null): ?RoomUserDevice
     {
         if ($deviceUuid === '' || $token === '') return null;
-        $query = RoomUserDevice::query()->with('roomUser.globalUser')->where('device_uuid', $deviceUuid)->whereNull('revoked_at');
+        $ttlDays = (int) config('auth.trusted_device_ttl_days', 30);
+        $cutoff = now()->subDays($ttlDays);
+
+        $query = RoomUserDevice::query()
+            ->with('roomUser.globalUser')
+            ->where('device_uuid', $deviceUuid)
+            ->whereNull('revoked_at')
+            ->where('verified_at', '>=', $cutoff);
+
         if ($roomId !== null) $query->whereHas('roomUser', fn($q) => $q->where('room_id', $roomId));
         $device = $query->latest('id')->get()->first(fn(RoomUserDevice $device) => hash_equals($device->token_hash, $this->hash($token)));
         if ($device) $device->update(['last_seen_at' => now()]);

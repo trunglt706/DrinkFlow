@@ -50,11 +50,24 @@ class CreateOrderAction
             ]);
         }
 
-        $order = DB::transaction(function () use ($campaign, $roomUser, $data, $parentId, $allowLocked): Order {
+        $order = DB::transaction(function () use ($campaign, $roomUser, $data, $parentId, $allowLocked, $allowEmpty): Order {
             $campaign = Campaign::query()->lockForUpdate()->findOrFail($campaign->id);
             // Serialize daily order numbering across campaigns in the same room.
             \App\Models\Room::query()->whereKey($campaign->room_id)->lockForUpdate()->firstOrFail();
             $this->ensureCampaignIsOrderable($campaign, $allowLocked);
+
+            $hasActiveOrder = Order::query()
+                ->where('campaign_id', $campaign->id)
+                ->where('room_user_id', $roomUser->id)
+                ->whereIn('status', OrderStatus::activeValues())
+                ->exists();
+
+            if ($hasActiveOrder) {
+                throw ValidationException::withMessages([
+                    'active_order_exists' => __('global.orders.active_order_exists'),
+                ]);
+            }
+
             $items = $data['items'] ?? [];
             if ($items === [] && ! $allowEmpty) {
                 throw ValidationException::withMessages([

@@ -75,6 +75,6 @@ class CampaignDetailsEndpointTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('data.orders.0.items.0.image_url', 'https://cdn.drinkflow.test/items/tra-sua.jpg')
-            ->assertJsonPath('data.orders.0.orderer_email', 'debts-member@company.com');
+            ->assertJsonPath('data.orders.0.orderer_email', 'd***@company.com');
     }
 }

@@ -12,12 +12,12 @@
 - **Hiện trạng:**
   - Unique index `orders_one_active_per_user_campaign` chỉ được tạo khi driver là `pgsql`/`sqlite` (`src/database/migrations/2026_09_10_000000_create_drinkflow_core_tables.php:201`, `2026_09_27_000000_add_placed_by_admin_id_to_orders_table.php:41`).
   - Đã kiểm tra `information_schema.STATISTICS` trên MySQL local: **không có** index này.
-  - `CreateOrderAction` không tự kiểm tra đơn active đã tồn tại, chỉ dựa vào index. Nhánh bắt lỗi `orders_one_active_per_user_campaign` ở `src/app/Http/Controllers/User/OrderController.php:111` không bao giờ chạy trên MySQL.
+  - `CreateOrderAction` không tự kiểm tra đơn active đã tồn tại, chỉ dựa vào index. Nhánh bắt lỗi `orders_one_active_per_user_campaign` ở `src/app/Http/Controllers/User/OrderController.php:78-115` không bao giờ chạy trên MySQL.
   - Thành viên gửi lại form là tạo thêm đơn active. Bảng `debts` có unique `(campaign_id, room_user_id)` nên công nợ và đơn có thể lệch nhau.
   - Test vẫn PASS vì `phpunit.xml` dùng sqlite.
 - **Phương án đề xuất:**
-  1. Trong transaction của `CreateOrderAction` (campaign đã `lockForUpdate`), kiểm tra `exists()` đơn có status thuộc nhóm active (`Submitted, Confirmed, Ordering, Ordered, Delivering`) của `(campaign_id, room_user_id)`. Nếu có, ném `ValidationException` với code `active_order_exists` (dùng lại key dịch `global.orders.active_order_exists`).
-  2. Chuyển danh sách status active thành một hàm tĩnh trên enum `OrderStatus` (ví dụ `OrderStatus::activeValues()`), thay các mảng lặp ở `OrderController`, `UserRoomCampaignService`.
+  1. Trong transaction của `CreateOrderAction` (campaign đã `lockForUpdate`), kiểm tra `exists()` đơn có status thuộc nhóm active (`OrderStatus::activeValues()`) của `(campaign_id, room_user_id)`. Nếu có, ném `ValidationException` với code `active_order_exists` (dùng lại key dịch `global.orders.active_order_exists`).
+  2. Enum `App\Enums\OrderStatus` đã có hàm `OrderStatus::activeValues()`. Cần thay thế toàn bộ các mảng enum/string lặp ở `src/app/Http/Controllers/User/OrderController.php`, `src/app/Services/Campaign/UserRoomCampaignService.php` sang gọi `OrderStatus::activeValues()`.
   3. Migration mới cho MySQL: thêm generated column `active_order_key` (= `room_user_id` khi status active, ngược lại `NULL`) và unique index `(campaign_id, active_order_key)`. Giữ nguyên partial index cho sqlite.
   4. Controller xử lý cả `ValidationException` mới lẫn `QueryException` của index MySQL (tên index mới).
   5. Trước khi thêm unique index: viết truy vấn kiểm tra dữ liệu trùng hiện có; nếu có, dừng lại báo quản trị để quyết định cách gộp/huỷ.
@@ -27,8 +27,8 @@
   - `php artisan migrate` chạy thành công trên MySQL; `SHOW INDEX FROM orders` thấy index mới.
   - `php artisan test` PASS.
 - **Rủi ro / lưu ý:** Migration thất bại nếu dữ liệu đã có đơn trùng → bắt buộc bước kiểm tra ở phương án (5).
-- **Xác nhận của quản trị:** ⏳ Chưa xác nhận
-- **Trạng thái thực hiện:** ⬜ Chưa thực hiện
+- **Xác nhận của quản trị:** ✅ Đã xác nhận (05/10/2026: "Đồng ý thực hiện toàn bộ File 01")
+- **Trạng thái thực hiện:** ✅ Hoàn thành
 
 ---
 
@@ -41,8 +41,8 @@
   2. Action lưu tài khoản mặc định bỏ cờ mặc định của tài khoản cũ trong cùng transaction.
   3. Kiểm tra dữ liệu trùng trước khi thêm index, báo quản trị nếu có.
 - **Tiêu chí hoàn thành:** Test đặt tài khoản mặc định mới thì tài khoản cũ mất cờ; migration chạy trên MySQL; `php artisan test` PASS.
-- **Xác nhận của quản trị:** ⏳ Chưa xác nhận
-- **Trạng thái thực hiện:** ⬜ Chưa thực hiện
+- **Xác nhận của quản trị:** ✅ Đã xác nhận (05/10/2026: "Đồng ý thực hiện toàn bộ File 01")
+- **Trạng thái thực hiện:** ✅ Hoàn thành
 
 ---
 
@@ -52,5 +52,5 @@
 - **Hiện trạng:** Bảng `orders` chỉ có `(campaign_id, status)`, `(room_user_id, created_at)`. Các truy vấn "đơn của thành viên X trong campaign Y" (kiểm tra đơn active, `queryVisibleDebts`, `has_ordered` trên dashboard) phải lọc thêm trên tập đơn của campaign.
 - **Phương án đề xuất:** Migration thêm index `(campaign_id, room_user_id, status)`. Nếu UPG-01.1 đã tạo unique index bắt đầu bằng `(campaign_id, ...)` thì đánh giá lại xem còn cần hay không.
 - **Tiêu chí hoàn thành:** `EXPLAIN` truy vấn kiểm tra đơn active dùng index mới; migration chạy trên MySQL; `php artisan test` PASS.
-- **Xác nhận của quản trị:** ⏳ Chưa xác nhận
-- **Trạng thái thực hiện:** ⬜ Chưa thực hiện
+- **Xác nhận của quản trị:** ✅ Đã xác nhận (05/10/2026: "Đồng ý thực hiện toàn bộ File 01")
+- **Trạng thái thực hiện:** ✅ Hoàn thành

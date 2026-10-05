@@ -247,13 +247,15 @@ class SecurityAndDriverEnhancementsTest extends TestCase
 
         // Repeated hits to /logout from same IP
         for ($i = 0; $i < 20; $i++) {
-            $this->withServerVariables(['REMOTE_ADDR' => $testIp])
-                ->get('/logout');
+            $this->withoutMiddleware(ValidateCsrfToken::class)
+                ->withServerVariables(['REMOTE_ADDR' => $testIp])
+                ->post('/logout');
         }
 
         // 21st request is throttled with 429
-        $response = $this->withServerVariables(['REMOTE_ADDR' => $testIp])
-            ->get('/logout');
+        $response = $this->withoutMiddleware(ValidateCsrfToken::class)
+            ->withServerVariables(['REMOTE_ADDR' => $testIp])
+            ->post('/logout');
 
         $response->assertStatus(429);
     }

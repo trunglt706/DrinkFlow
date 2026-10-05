@@ -41,8 +41,28 @@ class DrinkflowOrderTest extends TestCase
         $order = $action->execute($campaign, $roomUser, ['items' => [['item_id' => $item->id, 'quantity' => 2]], 'discount_amount' => 999999, 'sponsor_amount' => 999999]);
         $this->assertSame(40000, $order->final_amount);
         $this->assertDatabaseHas('user_notifications', ['global_user_id' => $user->id, 'type' => 'order.created']);
-        $this->expectException(QueryException::class);
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
         $action->execute($campaign, $roomUser, ['items' => [['item_id' => $item->id, 'quantity' => 1]]]);
+    }
+
+    public function test_user_can_place_order_after_previous_order_cancelled(): void
+    {
+        $user = GlobalUser::create(['name' => 'Reorder User', 'normalized_name' => 'REORDER USER', 'email' => 'reorder@company.com']);
+        $room = Room::create(['name' => 'IT', 'slug' => 'it-reorder']);
+        $roomUser = app(JoinRoomAction::class)->execute($user, $room, 'device-reorder', 'hash-reorder');
+        $campaign = Campaign::create(['room_id' => $room->id, 'name' => 'Lunch Reorder', 'restaurant' => 'Cafe', 'status' => CampaignStatus::Active]);
+        $item = CampaignItem::create(['campaign_id' => $campaign->id, 'name' => 'Coffee', 'normalized_name' => 'COFFEE', 'base_price' => 25000, 'status' => 'active']);
+        $action = app(CreateOrderAction::class);
+
+        $order1 = $action->execute($campaign, $roomUser, ['items' => [['item_id' => $item->id, 'quantity' => 1]]]);
+        $this->assertSame(25000, $order1->final_amount);
+
+        // Cancel order 1
+        $order1->update(['status' => \App\Enums\OrderStatus::Cancelled]);
+
+        // Placing a new order should succeed
+        $order2 = $action->execute($campaign, $roomUser, ['items' => [['item_id' => $item->id, 'quantity' => 2]]]);
+        $this->assertSame(50000, $order2->final_amount);
     }
 
     public function test_duplicate_order_response_links_to_existing_order(): void

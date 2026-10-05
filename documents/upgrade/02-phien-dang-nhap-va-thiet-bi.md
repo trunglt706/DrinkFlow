@@ -21,8 +21,8 @@
   - Test: phiên B có cookie remember; phiên A gọi "đăng xuất thiết bị khác"; request của B với cookie remember cũ → không còn đăng nhập.
   - Phiên A vẫn đăng nhập bình thường.
   - `php artisan test` PASS.
-- **Xác nhận của quản trị:** ⏳ Chưa xác nhận
-- **Trạng thái thực hiện:** ⬜ Chưa thực hiện
+- **Xác nhận của quản trị:** ✅ Đã xác nhận (05/10/2026: "Tiếp tục File 02")
+- **Trạng thái thực hiện:** ✅ Hoàn thành
 
 ---
 
@@ -38,8 +38,8 @@
      - (b) chuyển sang cơ chế remember theo thiết bị (bảng riêng), phức tạp hơn.
 - **Tiêu chí hoàn thành:** Test: user có 3 thiết bị, đăng xuất thiết bị 2 → thiết bị 1 và 3 vẫn hoạt động, thiết bị 2 không còn đăng nhập được. `php artisan test` PASS.
 - **Cần quản trị quyết định:** phương án (a) hay (b) ở bước 3.
-- **Xác nhận của quản trị:** ⏳ Chưa xác nhận
-- **Trạng thái thực hiện:** ⬜ Chưa thực hiện
+- **Xác nhận của quản trị:** ✅ Đã xác nhận (05/10/2026: "Tiếp tục File 02")
+- **Trạng thái thực hiện:** ✅ Hoàn thành
 
 ---
 
@@ -53,8 +53,8 @@
   3. Tuỳ chọn: xoay vòng (rotate) token khi dùng để khôi phục phiên.
 - **Tiêu chí hoàn thành:** Test token quá hạn → không khôi phục phiên, cookie bị xoá. `php artisan test` PASS.
 - **Cần quản trị quyết định:** TTL tính theo ngày cấp hay theo lần hoạt động cuối; có rotate token hay không.
-- **Xác nhận của quản trị:** ⏳ Chưa xác nhận
-- **Trạng thái thực hiện:** ⬜ Chưa thực hiện
+- **Xác nhận của quản trị:** ✅ Đã xác nhận (05/10/2026: "Tiếp tục File 02")
+- **Trạng thái thực hiện:** ✅ Hoàn thành
 
 ---
 
@@ -67,5 +67,5 @@
   2. Bỏ GET và bỏ miễn CSRF.
   3. Riêng trường hợp session hết hạn gây lỗi 419 khi logout: xử lý trong exception handler bằng cách redirect về `/`.
 - **Tiêu chí hoàn thành:** GET `/logout` → 405; POST không token → không đăng xuất; POST có token → đăng xuất. `npm run build`, `php artisan test` PASS; kiểm tra lại nút đăng xuất trên trình duyệt.
-- **Xác nhận của quản trị:** ⏳ Chưa xác nhận
-- **Trạng thái thực hiện:** ⬜ Chưa thực hiện
+- **Xác nhận của quản trị:** ✅ Đã xác nhận (05/10/2026: "Tiếp tục File 02")
+- **Trạng thái thực hiện:** ✅ Hoàn thành

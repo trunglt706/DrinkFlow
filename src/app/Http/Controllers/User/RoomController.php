@@ -10,6 +10,8 @@ use App\Enums\RoomStatus;
 use App\Enums\RoomUserStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\ResolveRoomUser;
+use App\Http\Resources\RoomResource;
+use App\Http\Resources\RoomUserResource;
 use App\Models\GlobalUser;
 use App\Models\Room;
 use App\Services\Audit\AuditService;
@@ -99,7 +101,12 @@ class RoomController extends Controller
             return redirect()->route('user.dashboard', $room->slug);
         }
 
-        return response()->json(['data' => $room->loadCount(['campaigns']), 'room_user' => $membership]);
+        $room->loadCount(['campaigns']);
+
+        return response()->json([
+            'data' => (new RoomResource($room))->resolve($request),
+            'room_user' => (new RoomUserResource($membership))->resolve($request),
+        ]);
     }
 
     /**
@@ -134,7 +141,12 @@ class RoomController extends Controller
                 ->withCookie(cookie('drinkflow_trusted_token', $token, 60 * 24 * 30, '/', null, $request->isSecure(), true, false, 'lax'));
         }
 
-        return response()->json(['data' => $roomUser->load('room'), 'redirect' => route('user.campaigns.index', $room->slug)])
+        $roomUser->load('room');
+
+        return response()->json([
+            'data' => (new RoomUserResource($roomUser))->resolve($request),
+            'redirect' => route('user.campaigns.index', $room->slug),
+        ])
             ->withCookie(cookie('drinkflow_device_uuid', $deviceUuid, 60 * 24 * 365, '/', null, $request->isSecure(), true, false, 'lax'))
             ->withCookie(cookie('drinkflow_trusted_token', $token, 60 * 24 * 30, '/', null, $request->isSecure(), true, false, 'lax'));
     }

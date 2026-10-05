@@ -46,7 +46,7 @@ class PlaceOrderOnBehalfAction
 
         $hasActiveOrder = $member->orders()
             ->where('campaign_id', $campaign->id)
-            ->where('status', '!=', OrderStatus::Cancelled->value)
+            ->whereIn('status', OrderStatus::activeValues())
             ->exists();
         if ($hasActiveOrder) {
             throw ValidationException::withMessages([

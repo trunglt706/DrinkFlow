@@ -8,6 +8,7 @@ use App\Enums\CampaignStatus;
 use App\Enums\OrderStatus;
 use App\Models\Campaign;
 use App\Models\Order;
+use App\Support\Privacy\PersonalDataMasker;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -106,7 +107,7 @@ class PublicOrderCheckService
                 'status' => $order->status?->value ?? (string) $order->status,
                 'status_label' => $order->status?->label() ?? (string) $order->status,
                 'member_name' => $recipient?->display_name ?: $recipient?->globalUser?->name,
-                'member_email' => $recipient?->globalUser?->email,
+                'member_email' => PersonalDataMasker::email($recipient?->globalUser?->email),
                 'note' => $order->note,
                 'ordered_by' => $this->personSummary($orderedBy),
                 'subtotal' => (int) $order->subtotal,
@@ -171,7 +172,7 @@ class PublicOrderCheckService
     {
         return [
             'name' => $roomUser?->display_name ?: $roomUser?->globalUser?->name,
-            'email' => $roomUser?->globalUser?->email,
+            'email' => PersonalDataMasker::email($roomUser?->globalUser?->email),
         ];
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\User\Global;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\OrderResource;
 use App\Models\GlobalUser;
 use App\Exports\PaymentStatementExport;
 use App\Services\Payment\UserPaymentsService;
@@ -60,7 +61,7 @@ class PaymentsController extends Controller
                     'paid_count' => $data['paidThisMonthCount'],
                     'sponsor_received' => $data['totalSponsorReceived'],
                 ],
-                'orders' => $data['displayedOrders']->values(),
+                'orders' => OrderResource::collection($data['displayedOrders']->values())->resolve($request),
                 'default_bank' => $data['defaultBank'],
             ]);
         }

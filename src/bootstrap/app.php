@@ -38,7 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
             return $request->is('admin', 'admin/*') ? route('admin.login.page') : route('auth.google');
         });
         // The payment provider cannot send a CSRF token; its notifications are HMAC-signed instead.
-        $middleware->validateCsrfTokens(except: ['logout', 'payments/webhook']);
+        $middleware->validateCsrfTokens(except: ['payments/webhook']);
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
             \App\Http\Middleware\EnsureActiveAdmin::class,

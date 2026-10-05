@@ -66,7 +66,7 @@
 - **Mức độ:** 🟡 Thấp
 - **Hiện trạng:** `whereDate()` / `whereMonth()` / `whereYear()` sinh ra `DATE(created_at) ...`, nên MySQL không dùng được index `(room_user_id, created_at)`. Các vị trí:
   - `UserOrdersService.php:70-75`, `:105-106`, `:161-164`
-  - `UserRoomDebtService.php:51`
+  - `UserRoomDebtService.php:63-64`
   - `ProfileController.php:205` (quota feedback)
 - **Phương án đề xuất:** Đổi sang so sánh khoảng: `where('created_at', '>=', $start)->where('created_at', '<', $end)`, tính `$start`/`$end` theo timezone của app.
 - **Tiêu chí hoàn thành:** Test biên (đơn lúc 00:00 và 23:59) cho các bộ lọc. `php artisan test` PASS.

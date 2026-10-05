@@ -52,13 +52,7 @@ class UserOrdersService
         if ($selectedStatus === 'paid') {
             $query->whereIn('status', [OrderStatus::Completed->value]);
         } elseif ($selectedStatus === 'unpaid') {
-            $query->whereIn('status', [
-                OrderStatus::Submitted->value,
-                OrderStatus::Confirmed->value,
-                OrderStatus::Ordering->value,
-                OrderStatus::Ordered->value,
-                OrderStatus::Delivering->value,
-            ]);
+            $query->whereIn('status', OrderStatus::activeValues());
         } elseif ($selectedStatus === 'cancelled') {
             $query->where('status', OrderStatus::Cancelled);
         }

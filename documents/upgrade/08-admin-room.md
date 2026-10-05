@@ -4,18 +4,14 @@
 
 > Mỗi task con dưới đây phải được quản trị xác nhận bằng lời (nêu rõ mã task) trước khi thực hiện. Xem [README](README.md#1-quy-trình-bắt-buộc-xác-nhận-trước-khi-thực-hiện).
 
-**Phạm vi đã kiểm tra (30/09/2026):** Các controller đã commit trong nhóm route `admin/{room}`:
+**Phạm vi đã kiểm tra (05/10/2026):** Các controller và module đã commit trên nhánh `master`:
 - Campaign, Order, Debt, RoomUser
 - PaymentAccount, NotificationChannel, Settings
 - Report, Audit, Dashboard, Notification
 - Crawler, DataGateway
 - `admin/profile`
-
-**Không kiểm tra**, vì session khác đang làm dở (file đang modified/untracked trong git):
-- Đăng nhập/đăng ký/quên mật khẩu admin (`AuthController`, `RegistrationController`)
-- `admin/rooms`, `admin/subscription`, `admin/billing`
-- `EnsureAdminRoomAccess`, `RoomPolicy`, `AgentScope`, `EnsureRoomSubscriptionActive`
-- `SocketTokenService`
+- Đăng nhập / đăng ký / kích hoạt / quên mật khẩu admin (`AuthController`, `RegistrationController`, `ActivationController`)
+- Quản lý phòng & gói dịch vụ của Admin (`admin/rooms`, `admin/subscription`, `admin/billing`)
 
 **Điểm đã ổn (không cần task):**
 - Mọi tài nguyên con (`{campaign}`, `{order}`, `{debt}`, `{roomUser}`, `{device}`, `{item}`, `{option}`, `{account}`, `{channel}`, `{paymentRequest}`) đều được kiểm tra thuộc đúng room.
@@ -30,7 +26,7 @@
 
 - **Mức độ:** 🔴 Cao (lỗi chức năng)
 - **Hiện trạng:**
-  - `CampaignController::deleteTopping` và `deleteSize` (`src/app/Http/Controllers/Admin/CampaignController.php:881`, `:896`) khai báo `(Campaign $campaign, CampaignItem $item, ...)` và **thiếu `Room $room`**.
+  - `CampaignController::deleteTopping` và `deleteSize` (`src/app/Http/Controllers/Admin/CampaignController.php:910`, `:924`) khai báo `(Campaign $campaign, CampaignItem $item, ...)` và **thiếu `Room $room`**.
   - Laravel truyền tham số route theo thứ tự vị trí (`{room}` đứng đầu), nên `$campaign` nhận giá trị room → `TypeError`, trả 500.
   - Hai route `admin.campaign-item-toppings.delete` / `admin.campaign-item-sizes.delete` không có test và không có nơi nào trong UI gọi tới.
 - **Phương án đề xuất:**

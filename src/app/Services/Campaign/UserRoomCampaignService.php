@@ -144,15 +144,7 @@ class UserRoomCampaignService
         $hasDeclined = false;
         $campaignStats  = null;
         $campaignSponsors = collect();
-
-        /** @var array<int, \App\Enums\OrderStatus> $activeOrderStatuses */
-        $activeOrderStatuses = [
-            OrderStatus::Submitted->value,
-            OrderStatus::Confirmed->value,
-            OrderStatus::Ordering->value,
-            OrderStatus::Ordered->value,
-            OrderStatus::Delivering->value,
-        ];
+        $activeOrderStatuses = OrderStatus::activeValues();
 
         if ($activeCampaign) {
             $sponsorAllocations = collect($activeCampaign->sponsor_allocations ?? []);

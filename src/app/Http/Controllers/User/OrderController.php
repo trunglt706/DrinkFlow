@@ -9,6 +9,7 @@ use App\Actions\Order\CreateProxyOrdersAction;
 use App\Enums\OrderStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOrderRequest;
+use App\Http\Resources\OrderResource;
 use App\Models\Campaign;
 use App\Models\Debt;
 use App\Models\Order;
@@ -22,6 +23,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
 {
@@ -48,7 +50,10 @@ class OrderController extends Controller
         }
 
         if ($request->expectsJson()) {
-            return response()->json(['data' => $orderPage->paginatedOrders($room, $roomUser)]);
+            $orders = $orderPage->paginatedOrders($room, $roomUser);
+            $orders->through(fn (Order $order): array => (new OrderResource($order))->resolve($request));
+
+            return response()->json(['data' => $orders]);
         }
 
         return view('user.orders', $orderPage->build($room, $roomUser));
@@ -75,23 +80,47 @@ class OrderController extends Controller
             $order = $hasProxyItems
                 ? $proxyAction->execute($campaign, $roomUser, $data)
                 : $action->execute($campaign, $roomUser, $data);
+        } catch (ValidationException $exception) {
+            if ($exception->validator->errors()->has('active_order_exists')) {
+                /** @var RoomUser|null $roomUser */
+                $roomUser = $request->attributes->get('room_user');
+                $activeOrder = $roomUser?->orders()
+                    ->where('campaign_id', $campaign->id)
+                    ->whereIn('status', OrderStatus::activeValues())
+                    ->latest()
+                    ->first();
+                /** @var Room|null $roomAttr */
+                $roomAttr = $request->attributes->get('room');
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'message' => __('global.orders.active_order_exists'),
+                        'code' => 'active_order_exists',
+                        'order_id' => $activeOrder?->id,
+                        // The order page is addressed by code, so the link and the label both use it.
+                        'order_code' => $activeOrder?->code,
+                        'order_status' => $activeOrder?->status?->value,
+                        'order_url' => $activeOrder && $roomAttr ? route('user.orders.page', [$roomAttr, $activeOrder]) : null,
+                    ], 422);
+                }
+
+                return redirect()->route('user.orders.index', $room->slug)->with('error', __('global.orders.active_order_exists'));
+            }
+            throw $exception;
         } catch (QueryException $exception) {
             $message = $exception->getMessage();
             if (
                 str_contains($message, 'orders_one_active_per_user_campaign')
+                || str_contains($message, 'orders_campaign_active_user_unique')
+                || str_contains($message, 'active_order_key')
                 || str_contains($message, 'UNIQUE constraint failed: orders.campaign_id, orders.room_user_id')
+                || str_contains($message, 'UNIQUE constraint failed: orders.campaign_id, orders.active_order_key')
             ) {
                 /** @var RoomUser|null $roomUser */
                 $roomUser = $request->attributes->get('room_user');
                 $activeOrder = $roomUser?->orders()
                     ->where('campaign_id', $campaign->id)
-                    ->whereIn('status', [
-                        OrderStatus::Submitted->value,
-                        OrderStatus::Confirmed->value,
-                        OrderStatus::Ordering->value,
-                        OrderStatus::Ordered->value,
-                        OrderStatus::Delivering->value,
-                    ])
+                    ->whereIn('status', OrderStatus::activeValues())
                     ->latest()
                     ->first();
                 /** @var Room|null $roomAttr */
@@ -116,7 +145,7 @@ class OrderController extends Controller
 
         if ($request->expectsJson()) {
             $request->session()->forget("room_campaign_cart_{$room->id}_{$campaign->id}");
-            return response()->json(['data' => $order], 201);
+            return response()->json(['data' => (new OrderResource($order))->resolve($request)], 201);
         }
 
         $request->session()->forget("room_campaign_cart_{$room->id}_{$campaign->id}");
@@ -140,7 +169,9 @@ class OrderController extends Controller
         abort_unless($order->room_id === $room->id && $canViewOrder, 404);
 
         if ($request->expectsJson()) {
-            return response()->json(['data' => $order->load(['items.toppings', 'campaign', 'room'])]);
+            $order->load(['items.toppings', 'campaign', 'room']);
+
+            return response()->json(['data' => (new OrderResource($order))->resolve($request)]);
         }
 
         return redirect()->route('user.orders.index', $room->slug);

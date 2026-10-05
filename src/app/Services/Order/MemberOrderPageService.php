@@ -12,6 +12,8 @@ use App\Models\Order;
 use App\Models\Room;
 use App\Models\RoomUser;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Builds the data shared by the member order list (/rooms/{room}/orders) and the single order
@@ -33,8 +35,6 @@ final class MemberOrderPageService
         'children.roomUser.globalUser',
         'children.items.toppings',
         'children.items.campaignItem',
-        'campaign.paymentAccount',
-        'campaign.orders',
     ];
 
     /**
@@ -58,6 +58,14 @@ final class MemberOrderPageService
             // A pinned order is loaded from the URL binding, so it carries none of the relations
             // the list query eager loads.
             $activeOrder->loadMissing(self::ORDER_RELATIONS);
+            $activeOrder->loadMissing('campaign.paymentAccount');
+            if ($activeOrder->campaign !== null && ! isset($activeOrder->campaign->active_orders_subtotal)) {
+                $activeOrder->campaign->loadSum([
+                    'orders as active_orders_subtotal' => static fn (Builder $query): Builder => $query
+                        ->where('status', '!=', OrderStatus::Cancelled->value)
+                        ->whereNull('cancelled_at'),
+                ], 'subtotal');
+            }
         }
 
         return [
@@ -95,7 +103,16 @@ final class MemberOrderPageService
             ->visibleToMember($roomUser)
             ->inLiveCampaign()
             ->where('status', '!=', OrderStatus::Cancelled->value)
-            ->with(self::ORDER_RELATIONS)
+            ->with([
+                ...self::ORDER_RELATIONS,
+                'campaign' => static fn (BelongsTo $query): BelongsTo => $query
+                    ->with('paymentAccount')
+                    ->withSum([
+                        'orders as active_orders_subtotal' => static fn (Builder $orders): Builder => $orders
+                            ->where('status', '!=', OrderStatus::Cancelled->value)
+                            ->whereNull('cancelled_at'),
+                    ], 'subtotal'),
+            ])
             ->latest()
             ->paginate(20);
     }

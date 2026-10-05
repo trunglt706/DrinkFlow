@@ -8,6 +8,7 @@ use App\Enums\RoomStatus;
 use App\Enums\RoomUserStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\JoinRoomByCodeRequest;
+use App\Http\Resources\RoomUserResource;
 use App\Models\GlobalUser;
 use App\Services\Room\RoomAccessPolicy;
 use App\Services\Room\UserRoomsService;
@@ -44,8 +45,11 @@ class RoomsController extends Controller
 
         // Backward compatibility for JSON clients
         if ($request->wantsJson()) {
+            $memberships = $user->roomUsers()->with('room')->where('status', RoomUserStatus::Active->value)->paginate(20);
+            $memberships->through(fn ($membership): array => (new RoomUserResource($membership))->resolve($request));
+
             return response()->json([
-                'data' => $user->roomUsers()->with('room')->where('status', RoomUserStatus::Active->value)->paginate(20),
+                'data' => $memberships,
             ]);
         }
 
@@ -100,4 +104,3 @@ class RoomsController extends Controller
         return redirect()->route('user.rooms.join.show', $room);
     }
 }
-

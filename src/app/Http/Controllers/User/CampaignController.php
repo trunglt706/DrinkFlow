@@ -12,6 +12,7 @@ use App\Enums\GlobalUserStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCampaignCartRequest;
 use App\Http\Requests\UpdateCartProxyRequest;
+use App\Http\Resources\CampaignResource;
 use App\Models\Campaign;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -22,6 +23,7 @@ use App\Enums\RoomUserStatus;
 use App\Services\Campaign\UserRoomCampaignService;
 use App\Services\Debt\DebtCreditService;
 use App\Support\Helpers\FormatHelper;
+use App\Support\Privacy\PersonalDataMasker;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -88,7 +90,7 @@ class CampaignController extends Controller
             $displayName = $roomUser?->display_name ?: ($globalUser?->name ?: __('room.debts.campaign_orderer'));
             $userCode = $roomUser?->user_code ?: '';
             $avatarUrl = $globalUser?->avatar_url ?: null;
-            $email = $globalUser?->email;
+            $email = PersonalDataMasker::email($globalUser?->email);
 
             $items = $order->items->map(function (OrderItem $item): array {
                 $toppings = $item->toppings->map(fn ($t) => [
@@ -343,8 +345,8 @@ class CampaignController extends Controller
 
         return response()->json([
             'display_name' => $roomUser->display_name ?: $roomUser->globalUser?->name,
-            'email' => $roomUser->globalUser?->email,
-            'phone' => $roomUser->globalUser?->phone,
+            'email' => PersonalDataMasker::email($roomUser->globalUser?->email),
+            'phone' => PersonalDataMasker::phone($roomUser->globalUser?->phone),
             'user_code' => $roomUser->user_code,
             'avatar_url' => $roomUser->globalUser?->avatar_url,
         ]);
@@ -402,7 +404,9 @@ class CampaignController extends Controller
         abort_unless($campaign->room_id === $room->id && in_array($campaign->status?->value, ['active', 'scheduled'], true), 404);
 
         if ($request->expectsJson()) {
-            return response()->json(['data' => $campaign->load(['items' => fn ($q) => $q->where('status', 'active')->with(['sizes', 'toppings']), 'room'])]);
+            $campaign->load(['items' => fn ($q) => $q->where('status', 'active')->with(['sizes', 'toppings']), 'room']);
+
+            return response()->json(['data' => (new CampaignResource($campaign))->resolve($request)]);
         }
 
         return redirect()->route('user.campaigns.index', $room->slug);

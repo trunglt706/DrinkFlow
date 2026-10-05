@@ -22,6 +22,8 @@ return [
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
     ],
 
+    'trusted_device_ttl_days' => (int) env('AUTH_TRUSTED_DEVICE_TTL_DAYS', 30),
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Guards
