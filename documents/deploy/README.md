@@ -67,6 +67,8 @@ INTERNET / USERS
 
 ## 🔒 Checklist An ninh & Trước khi Go-Live
 
+Xem [cấu hình trusted proxy](./trusted-proxies.md). Với mô hình hiện tại không có proxy, giữ `TRUSTED_PROXIES` trống.
+
 Trước khi công bố đường dẫn cho người dùng nội bộ, hãy chắc chắn hoàn thành các mục kiểm tra an toàn sau:
 
 - [ ] `APP_ENV=production` và `APP_DEBUG=false` trong file `.env`.

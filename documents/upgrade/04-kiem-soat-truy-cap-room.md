@@ -19,9 +19,9 @@
   1. Trong `ResolveRoomUser`, nếu room không `active`: request JSON trả 404/403, request thường hiển thị trang thông báo room đã tạm dừng (có key dịch vi/en/ja).
   2. Quản trị chọn: room `inactive` có cho **xem** lịch sử/công nợ (chỉ đọc) hay chặn hoàn toàn.
 - **Tiêu chí hoàn thành:** Test mỗi route thành viên với room `inactive` và `archived`. `php artisan test` PASS.
-- **Cần quản trị quyết định:** Chặn hoàn toàn, hay cho phép chỉ đọc (xem công nợ để thanh toán) khi room `inactive`.
-- **Xác nhận của quản trị:** ⏳ Chưa xác nhận
-- **Trạng thái thực hiện:** ⬜ Chưa thực hiện
+- **Quyết định áp dụng:** Room `inactive` và `archived` bị chặn hoàn toàn.
+- **Xác nhận của quản trị:** ✅ Đã xác nhận — “Đồng ý UPG-04.1, UPG-04.2 và UPG-04.3”; “UPG-04.1: room inactive chặn hoàn toàn” (05/10/2026)
+- **Trạng thái thực hiện:** ⚠️ Bị chặn — phần triển khai và test mục tiêu đã hoàn tất (`26 passed`, `167 assertions`; test mới UPG-04: `4 passed`, `35 assertions`). Toàn suite ngày 05/10/2026: `944 passed`, `2 skipped`, `3 failed`; ba lỗi đều thuộc billing/subscription đã tồn tại trước UPG-04 (`PlatformBillingTest`, `PlatformSecurityIsolationTest`, `SubscriptionManagementTest`).
 
 ---
 
@@ -34,8 +34,9 @@
   - (b) chặn tạo đơn/campaign mới nhưng vẫn cho xem và thanh toán công nợ;
   - (c) chặn hoàn toàn.
 - **Tiêu chí hoàn thành:** Theo phương án được chọn, có test tương ứng; `php artisan test` PASS.
-- **Xác nhận của quản trị:** ⏳ Chưa xác nhận
-- **Trạng thái thực hiện:** ⬜ Chưa thực hiện
+- **Quyết định áp dụng:** Chọn (c), chặn hoàn toàn route thành viên khi subscription của chủ room không còn hiệu lực.
+- **Xác nhận của quản trị:** ✅ Đã xác nhận — “Đồng ý UPG-04.1, UPG-04.2 và UPG-04.3”; “UPG-04.2: chọn (c) chặn hoàn toàn” (05/10/2026)
+- **Trạng thái thực hiện:** ⚠️ Bị chặn — phần triển khai và test mục tiêu đã hoàn tất (`26 passed`, `167 assertions`; test mới UPG-04: `4 passed`, `35 assertions`). Toàn suite ngày 05/10/2026: `944 passed`, `2 skipped`, `3 failed`; ba lỗi đều thuộc billing/subscription đã tồn tại trước UPG-04 (`PlatformBillingTest`, `PlatformSecurityIsolationTest`, `SubscriptionManagementTest`).
 
 ---
 
@@ -49,6 +50,6 @@
   1. Thêm `$middleware->trustProxies(at: config('trustedproxy.proxies'))`, đọc từ config (env `TRUSTED_PROXIES`, danh sách IP/CIDR cụ thể, **không** dùng `*` trên production).
   2. Ghi chú cấu hình vào `documents/deploy`.
 - **Tiêu chí hoàn thành:** Test với header `X-Forwarded-For` từ proxy tin cậy / không tin cậy. `php artisan test` PASS.
-- **Cần quản trị cung cấp:** Mô hình deploy thực tế (có proxy/CDN hay không, dải IP).
-- **Xác nhận của quản trị:** ⏳ Chưa xác nhận
-- **Trạng thái thực hiện:** ⬜ Chưa thực hiện
+- **Mô hình deploy:** Không sử dụng reverse proxy/CDN; ứng dụng không tin cậy `X-Forwarded-*` từ client.
+- **Xác nhận của quản trị:** ✅ Đã xác nhận — “Đồng ý UPG-04.1, UPG-04.2 và UPG-04.3”; “UPG-04.3: không proxy” (05/10/2026)
+- **Trạng thái thực hiện:** ⚠️ Bị chặn — phần triển khai và test proxy tin cậy/không tin cậy đã hoàn tất (`4 passed`, `35 assertions` trong test UPG-04). Toàn suite ngày 05/10/2026: `944 passed`, `2 skipped`, `3 failed`; ba lỗi đều thuộc billing/subscription đã tồn tại trước UPG-04 (`PlatformBillingTest`, `PlatformSecurityIsolationTest`, `SubscriptionManagementTest`).

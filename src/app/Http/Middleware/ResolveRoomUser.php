@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Enums\RoomStatus;
 use App\Enums\RoomUserStatus;
+use App\Exceptions\RoomAccessDeniedException;
 use App\Models\Room;
 use App\Services\Auth\DeviceTrustService;
 use Closure;
@@ -19,9 +21,7 @@ class ResolveRoomUser
     /**
      * Xác định RoomUser từ request và bảo vệ route khỏi truy cập trái phép.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure(\Illuminate\Http\Request): \Symfony\Component\HttpFoundation\Response  $next
-     * @return \Symfony\Component\HttpFoundation\Response
+     * @param  Closure(Request): Response  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -30,9 +30,17 @@ class ResolveRoomUser
             ? $room
             : Room::where('slug', $room)->orWhere('id', is_numeric($room) ? (int) $room : 0)->firstOrFail();
 
+        if ($room->status !== RoomStatus::Active) {
+            $translationKey = $room->status === RoomStatus::Archived
+                ? 'room.access.room_archived'
+                : 'room.access.room_inactive';
+
+            throw new RoomAccessDeniedException(__($translationKey));
+        }
+
         $globalUser = $request->attributes->get('global_user') ?? $request->user('web');
 
-        if (!$globalUser) {
+        if (! $globalUser) {
             if ($request->expectsJson()) {
                 abort(401, __('errors.common.unauthenticated'));
             }
@@ -49,7 +57,7 @@ class ResolveRoomUser
 
         $roomUser = $globalUser->roomUsers()->where('room_id', $room->id)->first();
 
-        if (!$roomUser) {
+        if (! $roomUser) {
             if ($request->expectsJson()) {
                 abort(403, __('errors.common.room_membership_required'));
             }
@@ -70,6 +78,7 @@ class ResolveRoomUser
             if ($request->expectsJson()) {
                 abort(403, __('errors.common.room_blocked'));
             }
+
             return response()->view('user.blocked-room', [
                 'room' => $room,
                 'roomUser' => $roomUser,

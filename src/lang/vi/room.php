@@ -551,5 +551,8 @@ return [
     'access' => [
         'ip_denied' => 'Địa chỉ IP :ip không được phép truy cập phòng này. Vui lòng liên hệ quản trị viên phòng.',
         'email_domain_denied' => 'Phòng này chỉ cho phép tài khoản có email thuộc: :domains.',
+        'room_inactive' => 'Room này đang tạm dừng hoạt động và hiện không thể truy cập.',
+        'room_archived' => 'Room này đã được lưu trữ và hiện không thể truy cập.',
+        'subscription_blocked' => 'Room này hiện không khả dụng do gói dịch vụ của chủ phòng không còn hiệu lực.',
     ],
 ];

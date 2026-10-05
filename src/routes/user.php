@@ -31,15 +31,15 @@ if (app()->environment('local')) {
 }
 
 // room.ip: the room's allowed / blocked IP lists; room.email_domain: the room's allowed account email domains.
-Route::get('/rooms/{room}', [\App\Http\Controllers\User\RoomController::class, 'show'])->middleware('room.ip')->name('user.rooms.show');
+Route::get('/rooms/{room}', [\App\Http\Controllers\User\RoomController::class, 'show'])->middleware(['room.ip', 'room.subscription'])->name('user.rooms.show');
 Route::get('/rooms/{room}/join', \App\Http\Controllers\User\JoinPageController::class)
-    ->middleware(['room.ip', 'room.email_domain'])
+    ->middleware(['room.ip', 'room.email_domain', 'room.subscription'])
     ->name('user.rooms.join.show');
 Route::post('/rooms/{room}/join', [\App\Http\Controllers\User\RoomController::class, 'join'])
-    ->middleware(['throttle:room-join', 'room.ip', 'room.email_domain'])
+    ->middleware(['throttle:room-join', 'room.ip', 'room.email_domain', 'room.subscription'])
     ->name('user.rooms.join');
 
-Route::middleware(['room.ip', 'global.user', 'room.user'])->group(function () {
+Route::middleware(['room.ip', 'global.user', 'room.user', 'room.subscription'])->group(function () {
     Route::get('/rooms/{room}/dashboard', \App\Http\Controllers\User\DashboardController::class)->name('user.dashboard');
     Route::get('/rooms/{room}/orders', [\App\Http\Controllers\User\OrderController::class, 'index'])->name('user.orders.index');
     Route::get('/rooms/{room}/campaigns', [\App\Http\Controllers\User\CampaignController::class, 'index'])->name('user.campaigns.index');

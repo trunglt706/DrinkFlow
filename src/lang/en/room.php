@@ -551,5 +551,8 @@ return [
     'access' => [
         'ip_denied' => 'The IP address :ip is not allowed to access this room. Please contact the room admin.',
         'email_domain_denied' => 'This room only accepts accounts with an email from: :domains.',
+        'room_inactive' => 'This Room is inactive and cannot currently be accessed.',
+        'room_archived' => 'This Room has been archived and cannot currently be accessed.',
+        'subscription_blocked' => "This Room is unavailable because its owner's subscription is no longer active.",
     ],
 ];
