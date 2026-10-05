@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Actions\Order\ConfirmOrderPaymentAction;
+use App\Actions\Order\AdminApproveOrderPaymentAction;
 use App\Enums\CampaignStatus;
 use App\Enums\DebtStatus;
 use App\Enums\OrderStatus;
@@ -157,7 +157,7 @@ class AdminRoomUpgradeTest extends TestCase
         $this->assertEquals(50000, $debt->paid_amount);
 
         // Confirming again does not create duplicate debts
-        $action = app(ConfirmOrderPaymentAction::class);
+        $action = app(AdminApproveOrderPaymentAction::class);
         $action->execute($order->fresh());
 
         $this->assertEquals(1, Debt::where('campaign_id', $this->campaign->id)

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\Debt\ApproveDebtPaymentAction;
-use App\Actions\Order\ConfirmOrderPaymentAction;
+use App\Actions\Order\AdminApproveOrderPaymentAction;
 use App\Actions\Order\DeleteOrderAction;
 use App\Actions\Order\PlaceOrderOnBehalfAction;
 use App\Actions\Order\UpdateOrderAction;
@@ -392,10 +392,10 @@ class OrderController extends Controller
      *
      * @param Room $room Room entity.
      * @param Order $order Order to confirm payment for.
-     * @param ConfirmOrderPaymentAction $action Domain action to confirm order payment.
+     * @param AdminApproveOrderPaymentAction $action Domain action to confirm order payment.
      * @return JsonResponse Result of the operation.
      */
-    public function confirmPayment(Room $room, Order $order, ConfirmOrderPaymentAction $action): JsonResponse
+    public function confirmPayment(Room $room, Order $order, AdminApproveOrderPaymentAction $action): JsonResponse
     {
         $this->assertRoom($order);
         $this->assertCampaignLive($order);
