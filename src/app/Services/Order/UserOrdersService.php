@@ -7,6 +7,7 @@ namespace App\Services\Order;
 use App\Enums\OrderStatus;
 use App\Models\GlobalUser;
 use App\Models\Order;
+use App\Support\Helpers\QueryHelper;
 use App\Support\Traits\HandlesDatabaseDriver;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
@@ -68,19 +69,21 @@ class UserOrdersService
         }
 
         // Filter: Search query
-        $search = trim((string) $request->input('q', ''));
-        if ($search !== '') {
-            $query->where(function ($q) use ($search) {
-                $stripped = preg_replace('/[^0-9]/', '', $search);
+        $rawSearch = QueryHelper::sanitizeSearchTerm($request->input('q'));
+        $search = $rawSearch;
+        if ($rawSearch !== '') {
+            $escapedSearch = QueryHelper::escapeLike($rawSearch);
+            $query->where(function ($q) use ($rawSearch, $escapedSearch) {
+                $stripped = preg_replace('/[^0-9]/', '', $rawSearch);
                 if (! empty($stripped)) {
                     $q->orWhere('id', (int) $stripped);
                 }
                 $like = $this->getCaseInsensitiveLikeOperator();
-                $q->orWhereHas('campaign', function ($cq) use ($search, $like) {
-                    $cq->where('restaurant', $like, "%{$search}%")
-                        ->orWhere('name', $like, "%{$search}%");
-                })->orWhereHas('items', function ($iq) use ($search, $like) {
-                    $iq->where('item_name', $like, "%{$search}%");
+                $q->orWhereHas('campaign', function ($cq) use ($escapedSearch, $like) {
+                    $cq->where('restaurant', $like, "%{$escapedSearch}%")
+                        ->orWhere('name', $like, "%{$escapedSearch}%");
+                })->orWhereHas('items', function ($iq) use ($escapedSearch, $like) {
+                    $iq->where('item_name', $like, "%{$escapedSearch}%");
                 });
             });
         }

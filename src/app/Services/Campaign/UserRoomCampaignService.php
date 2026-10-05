@@ -23,6 +23,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Support\Helpers\QueryHelper;
 
 class UserRoomCampaignService
 {
@@ -100,22 +101,24 @@ class UserRoomCampaignService
             ->where('room_id', $room->id)
             ->whereIn('status', [CampaignStatus::Active->value, CampaignStatus::Scheduled->value]);
 
-        return $query->with(['items' => function ($q) use ($request) {
+        $rawTerm = QueryHelper::sanitizeSearchTerm($request->query('q'));
+        $escapedTerm = QueryHelper::escapeLike($rawTerm);
+        $escapedNormalized = QueryHelper::escapeLike(strtoupper(Str::ascii($rawTerm)));
+
+        return $query->with(['items' => function ($q) use ($request, $rawTerm, $escapedTerm, $escapedNormalized) {
             $q->where('status', CampaignItemStatus::Active)
-              ->when($request->filled('q'), fn ($items) => $items->where(function ($search) use ($request) {
-                  $term = trim($request->string('q')->toString());
-                  $search->where('name', 'like', "%{$term}%")
-                         ->orWhere('normalized_name', 'like', '%' . strtoupper(Str::ascii($term)) . '%');
+              ->when($rawTerm !== '', fn ($items) => $items->where(function ($search) use ($escapedTerm, $escapedNormalized) {
+                  $search->where('name', 'like', "%{$escapedTerm}%")
+                         ->orWhere('normalized_name', 'like', "%{$escapedNormalized}%");
               }))
               ->when($request->filled('category'), fn ($items) => $items->where('category', $request->string('category')))
               ->with(['sizes', 'toppings']);
         }])
-        ->when($request->filled('q'), fn ($campaigns) => $campaigns->whereHas('items', fn ($items) => $items
+        ->when($rawTerm !== '', fn ($campaigns) => $campaigns->whereHas('items', fn ($items) => $items
             ->where('status', CampaignItemStatus::Active)
-            ->where(function ($search) use ($request) {
-                $term = trim($request->string('q')->toString());
-                $search->where('name', 'like', "%{$term}%")
-                       ->orWhere('normalized_name', 'like', '%' . strtoupper(Str::ascii($term)) . '%');
+            ->where(function ($search) use ($escapedTerm, $escapedNormalized) {
+                $search->where('name', 'like', "%{$escapedTerm}%")
+                       ->orWhere('normalized_name', 'like', "%{$escapedNormalized}%");
             })
         ))
         ->orderBy('deadline')

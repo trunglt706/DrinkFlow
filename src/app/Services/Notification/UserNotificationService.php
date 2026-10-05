@@ -18,7 +18,7 @@ use Illuminate\Http\Request;
 class UserNotificationService
 {
     /**
-     * Gửi thông báo đến toàn bộ thành viên đang hoạt động trong phòng.
+     * Gửi thông báo đến toàn bộ thành viên đang hoạt động trong phòng qua Queue Job + bulk insert.
      *
      * @param  \App\Models\Room  $room  Đối tượng phòng nhận thông báo
      * @param  string  $type  Loại thông báo (ví dụ: campaign.created, room.notice)
@@ -30,12 +30,7 @@ class UserNotificationService
      */
     public function toRoom(Room $room, string $type, string $title, ?string $body = null, array $data = [], ?string $link = null): void
     {
-        $room->roomUsers()
-            ->where('status', RoomUserStatus::Active->value)
-            ->whereHas('globalUser', static fn ($query) => $query->where('status', GlobalUserStatus::Active->value))
-            ->each(function (RoomUser $roomUser) use ($type, $title, $body, $data, $link): void {
-            $this->toRoomUser($roomUser, $type, $title, $body, $data, $link);
-            });
+        \App\Jobs\SendRoomNotificationJob::dispatch($room, $type, $title, $body, $data, $link);
     }
 
     /**
