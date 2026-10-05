@@ -6,16 +6,17 @@ namespace App\View\Composers;
 
 use App\Constants\AppLocale;
 use App\Models\GlobalUser;
-use Illuminate\Support\Collection;
+use App\Services\Notification\UserNotificationSummary;
 use Illuminate\View\View;
 
 class UserGlobalLayoutComposer
 {
+    public function __construct(private readonly UserNotificationSummary $notificationSummary) {}
+
     /**
      * Share user profile and unread notification data with the global user portal layout.
      *
-     * @param View $view Blade view instance.
-     * @return void
+     * @param  View  $view  Blade view instance.
      */
     public function compose(View $view): void
     {
@@ -25,18 +26,9 @@ class UserGlobalLayoutComposer
         $unreadCount = $data['unreadNotificationsCount'] ?? null;
 
         if ($user instanceof GlobalUser) {
-            if ($notifications === null) {
-                $notifications = $user->notifications()
-                    ->whereNull('read_at')
-                    ->latest('created_at')
-                    ->take(5)
-                    ->get();
-            }
-            if ($unreadCount === null) {
-                $unreadCount = $user->notifications()
-                    ->whereNull('read_at')
-                    ->count();
-            }
+            $summary = $this->notificationSummary->for($user);
+            $notifications ??= $summary['notifications'];
+            $unreadCount ??= $summary['unread_count'];
         } else {
             $notifications = $notifications ?? collect();
             $unreadCount = $unreadCount ?? 0;

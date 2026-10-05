@@ -5,73 +5,55 @@ declare(strict_types=1);
 namespace App\Services\Analytics;
 
 use App\Enums\OrderStatus;
+use App\Enums\RoomUserStatus;
 use App\Models\GlobalUser;
 use App\Models\Order;
-use App\Enums\RoomUserStatus;
 use App\Support\Helpers\FormatHelper;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class UserGlobalAnalyticsService
 {
-    /**
-     * Tổng hợp và phân tích số liệu thống kê chi tiêu, tỷ lệ tài trợ, xu hướng chi tiêu 4 tuần và top món yêu thích cho toàn hệ thống.
-     *
-     * @param  \App\Models\GlobalUser  $user  Tài khoản người dùng toàn hệ thống
-     * @return array<string, mixed>  Mảng dữ liệu cho View thống kê
-     */
+    /** @return array<string, mixed> */
     public function getAnalyticsViewData(GlobalUser $user): array
     {
-        $roomUsers = $user->roomUsers()->with('room')->where('status', RoomUserStatus::Active->value)->get();
-        $roomUserIds = $roomUsers->pluck('id');
-        $orders = Order::query()->whereIn('room_user_id', $roomUserIds)
-            ->with(['campaign', 'items'])
-            ->latest()
-            ->get()
-            ->filter(fn (Order $order): bool => $order->status === OrderStatus::Completed)
-            ->values();
-        $items = $orders->pluck('items')->flatten();
-
-        $totalOrders = $orders->count();
-        $totalSpent = (int) $orders->sum('final_amount');
+        $metrics = (clone $this->completedOrders($user))
+            ->selectRaw('COUNT(*) AS total_orders')
+            ->selectRaw('COALESCE(SUM(final_amount), 0) AS total_spent')
+            ->selectRaw('COALESCE(SUM(sponsor_amount), 0) AS total_sponsor')
+            ->first();
+        $totalOrders = (int) ($metrics?->total_orders ?? 0);
+        $totalSpent = (int) ($metrics?->total_spent ?? 0);
+        $totalSponsor = (int) ($metrics?->total_sponsor ?? 0);
         $avgSpent = $totalOrders > 0 ? (int) round($totalSpent / $totalOrders) : 0;
-        $totalSponsor = (int) $orders->sum('sponsor_amount');
-        $sponsorPercent = ($totalSpent + $totalSponsor) > 0 ? (int) round(($totalSponsor / ($totalSpent + $totalSponsor)) * 100) : 0;
+        $sponsorPercent = ($totalSpent + $totalSponsor) > 0
+            ? (int) round(($totalSponsor / ($totalSpent + $totalSponsor)) * 100)
+            : 0;
 
-        // Top favorite item
-        $topItemRecord = $items->groupBy('item_name')->map(fn ($rows, $name) => [
-            'name' => $name,
-            'quantity' => (int) $rows->sum('quantity'),
-        ])->sortByDesc('quantity')->first();
+        $topItems = $this->topItems($user, 10);
+        $topItem = $topItems->first();
+        $favoriteItem = $topItem?->name ?? __('global.statistics.no_favorite_item');
+        $favoriteItemOrders = (int) ($topItem?->quantity ?? 0);
+        $totalItemQuantity = $this->totalItemQuantity($user);
+        $colors = ['#006948', '#64748b', '#f59e0b', '#0284c7'];
+        $categoryStats = $topItems->take(3)->values()->map(
+            static fn (object $item, int $index): array => [
+                'name' => $item->name,
+                'percent' => $totalItemQuantity > 0 ? (int) round(((int) $item->quantity / $totalItemQuantity) * 100) : 0,
+                'color' => $colors[$index % count($colors)],
+                'quantity' => (int) $item->quantity,
+            ]
+        )->all();
 
-        $favoriteItem = $topItemRecord ? $topItemRecord['name'] : __('global.statistics.no_favorite_item');
-        $favoriteItemOrders = $topItemRecord ? $topItemRecord['quantity'] : 0;
-
-        // Weekly trend statistics from real orders
-        $weeklyStats = [
-            1 => ['label' => __('global.statistics.week_1_label'), 'spent' => 0, 'sponsor' => 0, 'height_spent' => 0, 'height_sponsor' => 0],
-            2 => ['label' => __('global.statistics.week_2_label'), 'spent' => 0, 'sponsor' => 0, 'height_spent' => 0, 'height_sponsor' => 0],
-            3 => ['label' => __('global.statistics.week_3_label'), 'spent' => 0, 'sponsor' => 0, 'height_spent' => 0, 'height_sponsor' => 0],
-            4 => ['label' => __('global.statistics.week_4_label'), 'spent' => 0, 'sponsor' => 0, 'height_spent' => 0, 'height_sponsor' => 0],
-        ];
-
-        foreach ($orders as $o) {
-            $day = (int) $o->created_at->format('j');
-            $weekIdx = match(true) {
-                $day <= 7 => 1,
-                $day <= 14 => 2,
-                $day <= 21 => 3,
-                default => 4,
-            };
-            $weeklyStats[$weekIdx]['spent'] += (int) $o->final_amount;
-            $weeklyStats[$weekIdx]['sponsor'] += (int) $o->sponsor_amount;
-        }
-
+        $weeklyStats = $this->weeklyStats($user);
         $allAmounts = array_merge(array_column($weeklyStats, 'spent'), array_column($weeklyStats, 'sponsor'));
         $maxWeeklySpent = max(1, ...$allAmounts);
-        foreach ($weeklyStats as $k => $w) {
-            $weeklyStats[$k]['height_spent'] = $w['spent'] > 0 ? max(8, (int) round(($w['spent'] / $maxWeeklySpent) * 85)) : 0;
-            $weeklyStats[$k]['height_sponsor'] = $w['sponsor'] > 0 ? max(8, (int) round(($w['sponsor'] / $maxWeeklySpent) * 85)) : 0;
+        foreach ($weeklyStats as $key => $week) {
+            $weeklyStats[$key]['height_spent'] = $week['spent'] > 0 ? max(8, (int) round(($week['spent'] / $maxWeeklySpent) * 85)) : 0;
+            $weeklyStats[$key]['height_sponsor'] = $week['sponsor'] > 0 ? max(8, (int) round(($week['sponsor'] / $maxWeeklySpent) * 85)) : 0;
         }
-
         $peakWeek = collect($weeklyStats)->sortByDesc('spent')->first();
         $peakWeekText = ($peakWeek && $peakWeek['spent'] > 0)
             ? __('global.statistics.peak_week_text', [
@@ -81,109 +63,135 @@ class UserGlobalAnalyticsService
             ])
             : __('global.statistics.no_expense_in_period');
 
-        // Category breakdown from real items
-        $categoryStats = [];
-        $totalItemQuantity = (int) $items->sum('quantity');
-        if ($totalItemQuantity > 0) {
-            $itemGroups = $items->groupBy('item_name')->map->sum('quantity')->sortByDesc(fn ($q) => $q);
-            $colors = ['#006948', '#64748b', '#f59e0b', '#0284c7'];
-            $idx = 0;
-            foreach ($itemGroups->take(3) as $itemName => $qty) {
-                $pct = (int) round(($qty / $totalItemQuantity) * 100);
-                $categoryStats[] = [
-                    'name' => $itemName,
-                    'percent' => $pct,
-                    'color' => $colors[$idx % count($colors)],
-                    'quantity' => $qty,
-                ];
-                $idx++;
-            }
-        }
+        $roomStats = DB::table('orders')
+            ->join('room_users', 'room_users.id', '=', 'orders.room_user_id')
+            ->join('rooms', 'rooms.id', '=', 'room_users.room_id')
+            ->where('room_users.global_user_id', $user->id)
+            ->where('room_users.status', RoomUserStatus::Active->value)
+            ->where('orders.status', OrderStatus::Completed->value)
+            ->groupBy('rooms.id', 'rooms.name', 'rooms.description')
+            ->selectRaw('rooms.name AS name, rooms.description AS location, COUNT(orders.id) AS order_count')
+            ->selectRaw('COALESCE(SUM(orders.final_amount), 0) AS spent, COALESCE(SUM(orders.sponsor_amount), 0) AS sponsor')
+            ->orderByDesc('spent')
+            ->get()
+            ->map(static fn (object $room): array => [
+                'name' => $room->name,
+                'location' => $room->location ?: __('global.statistics.default_workspace_desc'),
+                'order_count' => (int) $room->order_count,
+                'spent' => (int) $room->spent,
+                'sponsor' => (int) $room->sponsor,
+            ])->all();
 
-        // Spending by Room
-        $roomStats = [];
-        foreach ($roomUsers as $ru) {
-            // Keep the per-room breakdown consistent with the completed-only
-            // dataset used by the rest of the global statistics.
-            $rOrders = $ru->orders
-                ->filter(fn (Order $order): bool => $order->status === OrderStatus::Completed)
-                ->values();
-            if ($rOrders->isNotEmpty()) {
-                $roomStats[] = [
-                    'name' => $ru->room?->name ?? 'Room #' . $ru->room_id,
-                    'location' => $ru->room?->description ?: __('global.statistics.default_workspace_desc'),
-                    'order_count' => $rOrders->count(),
-                    'spent' => (int) $rOrders->sum('final_amount'),
-                    'sponsor' => (int) $rOrders->sum('sponsor_amount'),
-                ];
-            }
-        }
-
-        // Top Restaurant Brands
-        $restaurantGrouping = $orders->filter(fn ($o) => !empty($o->campaign?->restaurant))->groupBy(fn ($o) => $o->campaign->restaurant);
-        $topRestaurants = [];
-        $rank = 1;
-        foreach ($restaurantGrouping as $resName => $resOrders) {
-            $topRestaurants[] = [
-                'rank' => $rank++,
-                'name' => $resName,
+        $topRestaurants = DB::table('orders')
+            ->join('room_users', 'room_users.id', '=', 'orders.room_user_id')
+            ->join('campaigns', 'campaigns.id', '=', 'orders.campaign_id')
+            ->where('room_users.global_user_id', $user->id)
+            ->where('room_users.status', RoomUserStatus::Active->value)
+            ->where('orders.status', OrderStatus::Completed->value)
+            ->whereNotNull('campaigns.restaurant')
+            ->where('campaigns.restaurant', '!=', '')
+            ->groupBy('campaigns.restaurant')
+            ->selectRaw('campaigns.restaurant AS name, COUNT(orders.id) AS order_count, COALESCE(SUM(orders.final_amount), 0) AS spent')
+            ->orderByDesc('order_count')
+            ->limit(4)
+            ->get()
+            ->values()
+            ->map(static fn (object $restaurant, int $index): array => [
+                'rank' => $index + 1,
+                'name' => $restaurant->name,
                 'sub_title' => __('global.statistics.popular_beverages'),
-                'order_count' => $resOrders->count(),
-                'spent' => (int) $resOrders->sum('final_amount'),
-            ];
-            if ($rank > 4) break;
-        }
+                'order_count' => (int) $restaurant->order_count,
+                'spent' => (int) $restaurant->spent,
+            ])->all();
 
         $breadcrumbs = [
             ['label' => __('global.rooms.breadcrumb_personal'), 'url' => route('user.me.dashboard')],
             ['label' => __('global.statistics.breadcrumb_stats'), 'url' => route('user.me.statistics')],
         ];
 
-        $unreadNotificationsCount = $user->notifications()->whereNull('read_at')->count();
-        $notifications = $user->notifications()->whereNull('read_at')->latest()->take(5)->get();
-
         return compact(
-            'user',
-            'totalOrders',
-            'totalSpent',
-            'avgSpent',
-            'totalSponsor',
-            'sponsorPercent',
-            'favoriteItem',
-            'favoriteItemOrders',
-            'weeklyStats',
-            'peakWeekText',
-            'categoryStats',
-            'roomStats',
-            'topRestaurants',
-            'breadcrumbs',
-            'unreadNotificationsCount',
-            'notifications'
+            'user', 'totalOrders', 'totalSpent', 'avgSpent', 'totalSponsor', 'sponsorPercent',
+            'favoriteItem', 'favoriteItemOrders', 'weeklyStats', 'peakWeekText', 'categoryStats',
+            'roomStats', 'topRestaurants', 'breadcrumbs',
         );
     }
 
-    /**
-     * Tính toán số liệu thống kê tổng hợp dạng JSON cho client API hoặc ứng dụng di động.
-     *
-     * @param  \App\Models\GlobalUser  $user  Tài khoản người dùng toàn hệ thống
-     * @return array<string, mixed>  Dữ liệu JSON tóm tắt (tổng đơn, tổng ly, chi tiêu, tài trợ, top món)
-     */
+    /** @return array<string, mixed> */
     public function getAnalyticsApiData(GlobalUser $user): array
     {
-        $orders = $user->roomUsers()->where('status', RoomUserStatus::Active->value)->with('orders.items')->get()->pluck('orders')->flatten()
-            ->filter(fn (Order $order): bool => $order->status === OrderStatus::Completed)
-            ->values();
-        $items = $orders->pluck('items')->flatten();
+        $metrics = (clone $this->completedOrders($user))
+            ->selectRaw('COUNT(*) AS total_orders')
+            ->selectRaw('COALESCE(SUM(final_amount), 0) AS total_amount')
+            ->selectRaw('COALESCE(SUM(sponsor_amount), 0) AS sponsor_received')
+            ->first();
 
         return [
-            'total_orders' => $orders->count(),
-            'total_cups' => (int) $items->sum('quantity'),
-            'total_amount' => (int) $orders->sum('final_amount'),
-            'sponsor_received' => (int) $orders->sum('sponsor_amount'),
-            'top_items' => $items->groupBy('item_name')->map(fn ($rows, $name) => [
-                'name' => $name,
-                'quantity' => (int) $rows->sum('quantity'),
-            ])->sortByDesc('quantity')->values()->take(10),
+            'total_orders' => (int) ($metrics?->total_orders ?? 0),
+            'total_cups' => $this->totalItemQuantity($user),
+            'total_amount' => (int) ($metrics?->total_amount ?? 0),
+            'sponsor_received' => (int) ($metrics?->sponsor_received ?? 0),
+            'top_items' => $this->topItems($user, 10)->map(static fn (object $item): array => [
+                'name' => $item->name,
+                'quantity' => (int) $item->quantity,
+            ])->values(),
         ];
+    }
+
+    /** @return Builder<Order> */
+    private function completedOrders(GlobalUser $user): Builder
+    {
+        return Order::query()
+            ->where('status', OrderStatus::Completed->value)
+            ->whereIn('room_user_id', $user->roomUsers()
+                ->select('room_users.id')
+                ->where('status', RoomUserStatus::Active->value));
+    }
+
+    /** @return Collection<int, object> */
+    private function topItems(GlobalUser $user, int $limit): Collection
+    {
+        return DB::table('order_items')
+            ->joinSub((clone $this->completedOrders($user))->select('orders.id'), 'completed_orders', 'completed_orders.id', '=', 'order_items.order_id')
+            ->groupBy('order_items.item_name')
+            ->selectRaw('order_items.item_name AS name, COALESCE(SUM(order_items.quantity), 0) AS quantity')
+            ->orderByDesc('quantity')
+            ->limit($limit)
+            ->get();
+    }
+
+    private function totalItemQuantity(GlobalUser $user): int
+    {
+        return (int) DB::table('order_items')
+            ->joinSub((clone $this->completedOrders($user))->select('orders.id'), 'completed_orders', 'completed_orders.id', '=', 'order_items.order_id')
+            ->sum('order_items.quantity');
+    }
+
+    /** @return array<int, array{label: string, spent: int, sponsor: int, height_spent: int, height_sponsor: int}> */
+    private function weeklyStats(GlobalUser $user): array
+    {
+        $firstWeekStart = CarbonImmutable::now(config('app.timezone'))->startOfWeek()->subWeeks(3);
+        $bindings = [];
+        $selects = [];
+        for ($week = 1; $week <= 4; $week++) {
+            $start = $firstWeekStart->addWeeks($week - 1);
+            $end = $start->addWeek();
+            $selects[] = "COALESCE(SUM(CASE WHEN created_at >= ? AND created_at < ? THEN final_amount ELSE 0 END), 0) AS spent_{$week}";
+            $selects[] = "COALESCE(SUM(CASE WHEN created_at >= ? AND created_at < ? THEN sponsor_amount ELSE 0 END), 0) AS sponsor_{$week}";
+            array_push($bindings, $start, $end, $start, $end);
+        }
+
+        $row = (clone $this->completedOrders($user))->selectRaw(implode(', ', $selects), $bindings)->first();
+        $result = [];
+        for ($week = 1; $week <= 4; $week++) {
+            $result[$week] = [
+                'label' => __('global.statistics.week_'.$week.'_label'),
+                'spent' => (int) ($row->{"spent_{$week}"} ?? 0),
+                'sponsor' => (int) ($row->{"sponsor_{$week}"} ?? 0),
+                'height_spent' => 0,
+                'height_sponsor' => 0,
+            ];
+        }
+
+        return $result;
     }
 }

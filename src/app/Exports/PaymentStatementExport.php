@@ -6,52 +6,69 @@ namespace App\Exports;
 
 use App\Models\Order;
 use App\Support\Helpers\FormatHelper;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMapping;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 
-class PaymentStatementExport extends DefaultValueBinder implements FromArray, WithHeadings, WithColumnFormatting, WithCustomValueBinder, ShouldAutoSize
+class PaymentStatementExport extends DefaultValueBinder implements FromQuery, ShouldAutoSize, WithColumnFormatting, WithCustomValueBinder, WithHeadings, WithMapping
 {
-    /**
-     * Store the user's filtered payment orders.
-     *
-     * @param Collection<int, Order> $orders Personal orders in display order.
-     * @return void
-     */
-    public function __construct(private readonly Collection $orders)
+    /** @var Builder<Order> */
+    private readonly Builder $orders;
+
+    /** @var Collection<int, Order>|null */
+    private readonly ?Collection $sourceCollection;
+
+    /** @param Builder<Order>|Collection<int, Order> $orders */
+    public function __construct(Builder|Collection $orders)
     {
+        $this->sourceCollection = $orders instanceof Collection ? $orders : null;
+        $this->orders = $orders instanceof Builder
+            ? $orders
+            : Order::query()->whereKey($orders->pluck('id')->filter()->all())->with(['room', 'campaign']);
     }
 
-    /**
-     * Build statement rows with numeric monetary values.
-     *
-     * @return array<int, array<int, string|float>> Statement rows.
-     */
-    public function array(): array
+    /** @return Builder<Order> */
+    public function query(): Builder
     {
-        return $this->orders->map(static fn (Order $order): array => [
-            '#' . $order->code,
+        return clone $this->orders;
+    }
+
+    /** @return array<int, string|float> */
+    public function map($order): array
+    {
+        return [
+            '#'.$order->code,
             $order->created_at ? FormatHelper::formatDateTime($order->created_at, 'd/m/Y H:i') : '',
             $order->room?->name ?? '',
             $order->campaign?->restaurant ?: ($order->campaign?->name ?? ''),
             (float) $order->subtotal,
             (float) $order->sponsor_amount,
             (float) $order->final_amount,
-            __('payment_statement.statuses.' . $order->status->value),
-        ])->values()->all();
+            __('payment_statement.statuses.'.$order->status->value),
+        ];
     }
 
     /**
-     * Translate column headings in the active interface language.
+     * Retained for lightweight unit assertions; real downloads use chunked FromQuery processing.
      *
-     * @return array<int, string> Statement headings.
+     * @return array<int, array<int, string|float>>
      */
+    public function array(): array
+    {
+        $orders = $this->sourceCollection ?? $this->query()->get();
+
+        return $orders->map(fn (Order $order): array => $this->map($order))->all();
+    }
+
+    /** @return array<int, string> */
     public function headings(): array
     {
         return array_map(static fn (string $key): string => __($key), [
@@ -66,23 +83,12 @@ class PaymentStatementExport extends DefaultValueBinder implements FromArray, Wi
         ]);
     }
 
-    /**
-     * Format monetary columns as whole currency amounts.
-     *
-     * @return array<string, string> Excel column number formats.
-     */
+    /** @return array<string, string> */
     public function columnFormats(): array
     {
         return ['E' => '#,##0', 'F' => '#,##0', 'G' => '#,##0'];
     }
 
-    /**
-     * Preserve text literally so names cannot become spreadsheet formulas.
-     *
-     * @param Cell $cell Target spreadsheet cell.
-     * @param mixed $value Exported cell value.
-     * @return bool Whether the cell value was bound.
-     */
     public function bindValue(Cell $cell, mixed $value): bool
     {
         if (is_string($value)) {

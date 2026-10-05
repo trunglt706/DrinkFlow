@@ -14,18 +14,16 @@ use Illuminate\Http\Request;
 class UserOrdersService
 {
     use HandlesDatabaseDriver;
+
     /**
      * Thu thập danh sách đơn hàng phân trang và tính toán các chỉ số chi tiêu, tài trợ, nợ chờ thanh toán theo bộ lọc.
      *
-     * @param  \App\Models\GlobalUser  $user  Tài khoản người dùng toàn hệ thống
-     * @param  \Illuminate\Http\Request  $request  Đối tượng HTTP Request chứa bộ lọc room, status, time_range, search
-     * @return array<string, mixed>  Mảng dữ liệu cho View lịch sử đơn hàng
+     * @param  GlobalUser  $user  Tài khoản người dùng toàn hệ thống
+     * @param  Request  $request  Đối tượng HTTP Request chứa bộ lọc room, status, time_range, search
+     * @return array<string, mixed> Mảng dữ liệu cho View lịch sử đơn hàng
      */
     public function getOrdersPageData(GlobalUser $user, Request $request): array
     {
-        $unreadNotificationsCount = $user->notifications()->whereNull('read_at')->count();
-        $notifications = $user->notifications()->whereNull('read_at')->latest()->take(5)->get();
-
         $breadcrumbs = [
             ['label' => __('global.rooms.breadcrumb_personal'), 'url' => route('user.me.dashboard')],
             ['label' => __('global.orders.breadcrumb_history'), 'url' => route('user.me.orders')],
@@ -61,12 +59,12 @@ class UserOrdersService
         $selectedTime = $request->input('time_range', 'this_month');
         $now = now();
         if ($selectedTime === 'this_month') {
-            $query->whereDate('created_at', '>=', $now->copy()->startOfMonth());
+            $query->where('created_at', '>=', $now->copy()->startOfMonth());
         } elseif ($selectedTime === 'last_month') {
-            $query->whereDate('created_at', '>=', $now->copy()->subMonth()->startOfMonth())
-                  ->whereDate('created_at', '<=', $now->copy()->subMonth()->endOfMonth());
+            $query->where('created_at', '>=', $now->copy()->subMonthNoOverflow()->startOfMonth())
+                ->where('created_at', '<', $now->copy()->startOfMonth());
         } elseif ($selectedTime === 'last_3_months') {
-            $query->whereDate('created_at', '>=', $now->copy()->subMonths(3)->startOfMonth());
+            $query->where('created_at', '>=', $now->copy()->subMonthsNoOverflow(3)->startOfMonth());
         }
 
         // Filter: Search query
@@ -74,13 +72,13 @@ class UserOrdersService
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $stripped = preg_replace('/[^0-9]/', '', $search);
-                if (!empty($stripped)) {
+                if (! empty($stripped)) {
                     $q->orWhere('id', (int) $stripped);
                 }
                 $like = $this->getCaseInsensitiveLikeOperator();
                 $q->orWhereHas('campaign', function ($cq) use ($search, $like) {
                     $cq->where('restaurant', $like, "%{$search}%")
-                       ->orWhere('name', $like, "%{$search}%");
+                        ->orWhere('name', $like, "%{$search}%");
                 })->orWhereHas('items', function ($iq) use ($search, $like) {
                     $iq->where('item_name', $like, "%{$search}%");
                 });
@@ -92,12 +90,17 @@ class UserOrdersService
         // Calculate metrics for user
         $thisMonthStart = $now->copy()->startOfMonth();
         $prevMonthStart = $now->copy()->subMonth()->startOfMonth();
-        $prevMonthEnd = $now->copy()->subMonth()->endOfMonth();
+        $thisMonthEnd = $now->copy()->addMonthNoOverflow()->startOfMonth();
 
         $allUserOrders = Order::query()->whereIn('room_user_id', $roomUserIds);
         $completedOrders = (clone $allUserOrders)->where('status', OrderStatus::Completed->value);
-        $thisMonthOrders = (clone $completedOrders)->whereDate('created_at', '>=', $thisMonthStart);
-        $prevMonthOrdersCount = (clone $completedOrders)->whereDate('created_at', '>=', $prevMonthStart)->whereDate('created_at', '<=', $prevMonthEnd)->count();
+        $thisMonthOrders = (clone $completedOrders)
+            ->where('created_at', '>=', $thisMonthStart)
+            ->where('created_at', '<', $thisMonthEnd);
+        $prevMonthOrdersCount = (clone $completedOrders)
+            ->where('created_at', '>=', $prevMonthStart)
+            ->where('created_at', '<', $thisMonthStart)
+            ->count();
 
         $totalOrdersCount = (clone $thisMonthOrders)->count();
         $ordersDiff = $totalOrdersCount - $prevMonthOrdersCount;
@@ -120,8 +123,6 @@ class UserOrdersService
             'totalSponsor' => $totalSponsor,
             'pendingPaymentAmount' => $pendingPaymentAmount,
             'pendingPaymentCount' => $pendingPaymentCount,
-            'unreadNotificationsCount' => $unreadNotificationsCount,
-            'notifications' => $notifications,
             'breadcrumbs' => $breadcrumbs,
         ];
     }
@@ -129,9 +130,9 @@ class UserOrdersService
     /**
      * Truy vấn danh sách đơn hàng dạng phân trang cho JSON API client.
      *
-     * @param  \App\Models\GlobalUser  $user  Tài khoản người dùng toàn hệ thống
-     * @param  \Illuminate\Http\Request  $request  Đối tượng HTTP Request chứa bộ lọc API
-     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator  Đối tượng phân trang chứa danh sách đơn hàng
+     * @param  GlobalUser  $user  Tài khoản người dùng toàn hệ thống
+     * @param  Request  $request  Đối tượng HTTP Request chứa bộ lọc API
+     * @return LengthAwarePaginator Đối tượng phân trang chứa danh sách đơn hàng
      */
     public function getOrdersApiData(GlobalUser $user, Request $request): LengthAwarePaginator
     {
@@ -152,10 +153,10 @@ class UserOrdersService
             $query->where('status', $request->string('status')->toString());
         }
         if ($request->filled('from')) {
-            $query->whereDate('created_at', '>=', $request->date('from'));
+            $query->where('created_at', '>=', $request->date('from')?->startOfDay());
         }
         if ($request->filled('to')) {
-            $query->whereDate('created_at', '<=', $request->date('to'));
+            $query->where('created_at', '<', $request->date('to')?->addDay()->startOfDay());
         }
 
         return $query->paginate(20);

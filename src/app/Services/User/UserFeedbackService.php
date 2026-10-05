@@ -8,6 +8,7 @@ use App\Enums\FeedbackStatus;
 use App\Enums\RoomUserStatus;
 use App\Models\Feedback;
 use App\Models\GlobalUser;
+use App\Support\Helpers\FormatHelper;
 use Illuminate\Http\Request;
 
 class UserFeedbackService
@@ -15,9 +16,9 @@ class UserFeedbackService
     /**
      * Lấy danh sách góp ý phân trang, tính toán điểm sao trung bình và tỷ lệ phân bổ đánh giá.
      *
-     * @param  \App\Models\GlobalUser  $user  Tài khoản người dùng toàn hệ thống
-     * @param  \Illuminate\Http\Request  $request  Đối tượng HTTP Request hiện tại
-     * @return array<string, mixed>  Mảng chứa cờ `is_json` và dữ liệu tương ứng (JSON hoặc View data)
+     * @param  GlobalUser  $user  Tài khoản người dùng toàn hệ thống
+     * @param  Request  $request  Đối tượng HTTP Request hiện tại
+     * @return array<string, mixed> Mảng chứa cờ `is_json` và dữ liệu tương ứng (JSON hoặc View data)
      */
     public function getFeedbackData(GlobalUser $user, Request $request): array
     {
@@ -39,7 +40,7 @@ class UserFeedbackService
                             'subsystem' => $fb->subsystem,
                             'subsystem_label' => $fb->subsystem_label,
                             'content' => $fb->content,
-                            'created_at_formatted' => \App\Support\Helpers\FormatHelper::formatDate($fb->created_at),
+                            'created_at_formatted' => FormatHelper::formatDate($fb->created_at),
                         ];
                     }),
                     'current_page' => $feedbacks->currentPage(),
@@ -57,7 +58,8 @@ class UserFeedbackService
         // Daily quota: 1 submission per day
         $todayCount = Feedback::query()
             ->where('global_user_id', $user->id)
-            ->whereDate('created_at', now()->toDateString())
+            ->where('created_at', '>=', now()->startOfDay())
+            ->where('created_at', '<', now()->addDay()->startOfDay())
             ->count();
         $canSubmit = $todayCount < 1;
 
@@ -89,9 +91,6 @@ class UserFeedbackService
             ['label' => __('global.feedback.breadcrumb_feedback'), 'url' => route('user.me.feedback')],
         ];
 
-        $unreadNotificationsCount = $user->notifications()->whereNull('read_at')->count();
-        $notifications = $user->notifications()->whereNull('read_at')->latest()->take(5)->get();
-
         return [
             'is_json' => false,
             'view_data' => compact(
@@ -103,9 +102,7 @@ class UserFeedbackService
                 'avgScore',
                 'countsByStar',
                 'feedbacks',
-                'breadcrumbs',
-                'unreadNotificationsCount',
-                'notifications'
+                'breadcrumbs'
             ),
         ];
     }
@@ -113,9 +110,8 @@ class UserFeedbackService
     /**
      * Lưu trữ phản hồi góp ý từ người dùng toàn hệ thống.
      *
-     * @param  \App\Models\GlobalUser  $user  Tài khoản người dùng gửi góp ý
+     * @param  GlobalUser  $user  Tài khoản người dùng gửi góp ý
      * @param  array<string, mixed>  $validated  Dữ liệu đánh giá (rating, subsystem, content) đã validate
-     * @return void
      */
     public function storeFeedback(GlobalUser $user, array $validated): void
     {

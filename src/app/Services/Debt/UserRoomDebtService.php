@@ -28,10 +28,10 @@ class UserRoomDebtService
     /**
      * Thu thập danh sách công nợ trong phòng, tính toán tổng nợ chưa trả và tạo payload VietQR chuyển khoản nhanh.
      *
-     * @param  \App\Models\Room  $room  Đối tượng phòng hiện tại
-     * @param  \App\Models\RoomUser  $roomUser  Thành viên phòng của người dùng hiện tại
-     * @param  \App\Models\GlobalUser|null  $user  Tài khoản người dùng toàn hệ thống
-     * @return array<string, mixed>  Mảng dữ liệu cho View công nợ phòng
+     * @param  Room  $room  Đối tượng phòng hiện tại
+     * @param  RoomUser  $roomUser  Thành viên phòng của người dùng hiện tại
+     * @param  GlobalUser|null  $user  Tài khoản người dùng toàn hệ thống
+     * @return array<string, mixed> Mảng dữ liệu cho View công nợ phòng
      */
     public function getDebtViewData(Room $room, RoomUser $roomUser, ?GlobalUser $user): array
     {
@@ -60,11 +60,12 @@ class UserRoomDebtService
 
         $paidThisMonth = (clone $baseDebtsQuery)
             ->where('status', DebtStatus::Paid->value)
-            ->whereMonth('updated_at', now()->month)
-            ->whereYear('updated_at', now()->year)
-            ->get();
-        $totalPaidMonthAmount = (int) $paidThisMonth->sum('paid_amount');
-        $totalPaidMonthCount = $paidThisMonth->count();
+            ->where('updated_at', '>=', now()->startOfMonth())
+            ->where('updated_at', '<', now()->addMonthNoOverflow()->startOfMonth())
+            ->selectRaw('COUNT(*) AS aggregate_count, COALESCE(SUM(paid_amount), 0) AS aggregate_amount')
+            ->first();
+        $totalPaidMonthAmount = (int) ($paidThisMonth?->aggregate_amount ?? 0);
+        $totalPaidMonthCount = (int) ($paidThisMonth?->aggregate_count ?? 0);
 
         // Default Payment Account in this room for VietQR
         $paymentAccount = $this->accounts->forRoom($room);
@@ -75,13 +76,13 @@ class UserRoomDebtService
         if ($paymentAccount && $totalPayableAmount > 0) {
             $transferContent = $payAllContent;
             $vietqrData = [
-                'bank_code'       => $paymentAccount->bank_code,
-                'bank_name'       => $paymentAccount->bank_name,
-                'account_number'  => $paymentAccount->account_number,
-                'account_name'    => $paymentAccount->account_name,
-                'amount'          => $totalPayableAmount,
+                'bank_code' => $paymentAccount->bank_code,
+                'bank_name' => $paymentAccount->bank_name,
+                'account_number' => $paymentAccount->account_number,
+                'account_name' => $paymentAccount->account_name,
+                'amount' => $totalPayableAmount,
                 'transfer_content' => $transferContent,
-                'payload'         => $this->vietQr->generate($paymentAccount, $totalPayableAmount, $transferContent),
+                'payload' => $this->vietQr->generate($paymentAccount, $totalPayableAmount, $transferContent),
             ];
         }
 
@@ -134,11 +135,11 @@ class UserRoomDebtService
      * reports "not configured" instead of a QR for another account. Debts without a campaign use the
      * room account.
      *
-     * @param iterable<Debt> $debts Debts (top-level and bundled) to build QR data for.
-     * @param PaymentAccount|null $roomAccount Room-level fallback account.
-     * @param string $payerName Name used in the transfer content.
+     * @param  iterable<Debt>  $debts  Debts (top-level and bundled) to build QR data for.
+     * @param  PaymentAccount|null  $roomAccount  Room-level fallback account.
+     * @param  string  $payerName  Name used in the transfer content.
      * @return array{qrPayloads: array<int, string>, qrAccounts: array<int, array{bank_name: string, account_number: string, account_name: string}>, transferContents: array<int, string>}
-     *         VietQR payload, account details and transfer content keyed by debt ID.
+     *                                                                                                                                                                                     VietQR payload, account details and transfer content keyed by debt ID.
      */
     private function qrMapsFor(iterable $debts, ?PaymentAccount $roomAccount, string $payerName): array
     {
@@ -181,8 +182,8 @@ class UserRoomDebtService
      * has no order there at all: that is a sponsor debt (the sponsor pays for orders placed by
      * others, including orders placed on the sponsor's behalf) and must not be hidden.
      *
-     * @param Room $room Current room.
-     * @param RoomUser $roomUser Current room member.
+     * @param  Room  $room  Current room.
+     * @param  RoomUser  $roomUser  Current room member.
      * @return Builder<Debt> Visible debt query.
      */
     public function queryVisibleDebts(Room $room, RoomUser $roomUser): Builder

@@ -18,9 +18,9 @@ class UserSessionService
     /**
      * Tổng hợp thông tin thiết bị, phiên làm việc hiện tại và danh sách các phiên đăng nhập từ xa của người dùng.
      *
-     * @param  \App\Models\GlobalUser  $user  Tài khoản người dùng toàn hệ thống
-     * @param  \Illuminate\Http\Request  $request  Đối tượng HTTP Request hiện tại
-     * @return array<string, mixed>  Mảng dữ liệu hiển thị trên trang quản lý thiết bị
+     * @param  GlobalUser  $user  Tài khoản người dùng toàn hệ thống
+     * @param  Request  $request  Đối tượng HTTP Request hiện tại
+     * @return array<string, mixed> Mảng dữ liệu hiển thị trên trang quản lý thiết bị
      */
     public function getDevicesData(GlobalUser $user, Request $request): array
     {
@@ -34,7 +34,7 @@ class UserSessionService
         $currentUa = $request->userAgent() ?: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/128.0.0.0';
         $currentDeviceInfo = $this->parseUserAgent($currentUa);
         $currentIp = $request->ip() ?: __('global.devices.internal_network');
-        $currentSessionCode = '#SES-' . strtoupper(substr(md5((string) $currentSessionId), 0, 4)) . '-VN';
+        $currentSessionCode = '#SES-'.strtoupper(substr(md5((string) $currentSessionId), 0, 4)).'-VN';
 
         // Query other sessions from database sessions table
         $dbSessions = DB::table('sessions')
@@ -66,9 +66,6 @@ class UserSessionService
             ['label' => __('global.devices.breadcrumb_devices'), 'url' => route('user.me.devices')],
         ];
 
-        $unreadNotificationsCount = $user->notifications()->whereNull('read_at')->count();
-        $notifications = $user->notifications()->whereNull('read_at')->latest()->take(5)->get();
-
         return compact(
             'user',
             'domain',
@@ -78,19 +75,16 @@ class UserSessionService
             'currentIp',
             'currentSessionCode',
             'otherSessions',
-            'breadcrumbs',
-            'unreadNotificationsCount',
-            'notifications'
+            'breadcrumbs'
         );
     }
 
     /**
      * Hủy bỏ và đăng xuất một phiên làm việc từ xa theo Session ID.
      *
-     * @param  \App\Models\GlobalUser  $user  Tài khoản người dùng sở hữu phiên
+     * @param  GlobalUser  $user  Tài khoản người dùng sở hữu phiên
      * @param  string  $sessionId  Mã định danh phiên làm việc cần xóa
      * @param  string  $currentDeviceUuid  UUID thiết bị hiện tại
-     * @return void
      */
     public function logoutDevice(GlobalUser $user, string $sessionId, string $currentDeviceUuid): void
     {
@@ -103,10 +97,9 @@ class UserSessionService
     /**
      * Thu hồi toàn bộ các phiên làm việc và thiết bị tin cậy khác ngoại trừ phiên hiện tại.
      *
-     * @param  \App\Models\GlobalUser  $user  Tài khoản người dùng
+     * @param  GlobalUser  $user  Tài khoản người dùng
      * @param  string  $currentSessionId  Mã định danh phiên làm việc hiện tại cần giữ lại
      * @param  string  $currentDeviceUuid  UUID thiết bị hiện tại cần giữ lại
-     * @return void
      */
     public function logoutOtherDevices(GlobalUser $user, string $currentSessionId, string $currentDeviceUuid): void
     {
@@ -136,7 +129,7 @@ class UserSessionService
     /**
      * Force pages still open on the revoked trusted devices to reload, so they are signed out immediately.
      *
-     * @param list<string> $deviceUuids Revoked device UUIDs.
+     * @param  list<string>  $deviceUuids  Revoked device UUIDs.
      */
     private function publishRevocations(array $deviceUuids): void
     {
@@ -149,7 +142,7 @@ class UserSessionService
      * Phân tích chuỗi User-Agent thành thông tin thiết bị, trình duyệt và hệ điều hành dễ đọc.
      *
      * @param  string|null  $userAgent  Chuỗi User-Agent từ HTTP header
-     * @return array<string, string>  Mảng chứa tên thiết bị, hệ điều hành, icon và badge style
+     * @return array<string, string> Mảng chứa tên thiết bị, hệ điều hành, icon và badge style
      */
     public function parseUserAgent(?string $userAgent): array
     {

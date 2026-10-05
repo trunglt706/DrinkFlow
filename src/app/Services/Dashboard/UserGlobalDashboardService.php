@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Dashboard;
 
-use App\Support\Helpers\FormatHelper;
+use App\Enums\CampaignStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
-use App\Enums\CampaignStatus;
 use App\Enums\RoomStatus;
 use App\Enums\RoomUserStatus;
 use App\Models\GlobalUser;
@@ -15,16 +14,19 @@ use App\Models\Order;
 use App\Models\Room;
 use App\Models\RoomUser;
 use App\Services\Room\UserRoomsService;
-use Illuminate\Support\Str;
+use App\Support\Helpers\FormatHelper;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class UserGlobalDashboardService
 {
+    public function __construct(private readonly UserRoomsService $roomService) {}
+
     /**
      * Tổng hợp toàn bộ dữ liệu thống kê, phòng gần đây, đơn hàng gần đây và thông báo cho Dashboard người dùng toàn hệ thống.
      *
-     * @param  \App\Models\GlobalUser  $user  Tài khoản người dùng toàn hệ thống đang đăng nhập
-     * @return array<string, mixed>  Mảng dữ liệu cho View Dashboard
+     * @param  GlobalUser  $user  Tài khoản người dùng toàn hệ thống đang đăng nhập
+     * @return array<string, mixed> Mảng dữ liệu cho View Dashboard
      */
     public function getDashboardData(GlobalUser $user): array
     {
@@ -34,6 +36,9 @@ class UserGlobalDashboardService
 
         // Query active room users of current user
         $roomUsers = $user->roomUsers()
+            ->withCount('orders')
+            ->withSum('orders', 'final_amount')
+            ->withMax('orders', 'created_at')
             ->with(['room', 'room.campaigns' => function (HasMany $query): void {
                 $query->where('status', CampaignStatus::Active)->orderByDesc('started_at')->orderByDesc('id');
             }])
@@ -63,10 +68,9 @@ class UserGlobalDashboardService
             : 0;
 
         // Recent rooms (up to 4)
-        $roomService = new UserRoomsService();
         $recentRooms = $roomUsers->take(4)->map(
-            function (RoomUser $membership) use ($roomService): object {
-                $card = $roomService->formatRoomCard($membership);
+            function (RoomUser $membership): object {
+                $card = $this->roomService->formatRoomCard($membership);
                 $campaign = $membership->room?->status === RoomStatus::Active
                     ? $membership->room->campaigns->first()
                     : null;
@@ -95,12 +99,13 @@ class UserGlobalDashboardService
                 $itemsText = $order->items->map(function ($item) {
                     $txt = $item->item_name;
                     if ($item->size_name) {
-                        $txt .= ' (' . $item->size_name . ')';
+                        $txt .= ' ('.$item->size_name.')';
                     }
-                    $txt .= ' x' . $item->quantity;
+                    $txt .= ' x'.$item->quantity;
                     if ($item->note) {
-                        $txt .= ', ' . $item->note;
+                        $txt .= ', '.$item->note;
                     }
+
                     return $txt;
                 })->join('; ');
 
@@ -117,7 +122,7 @@ class UserGlobalDashboardService
 
                 return [
                     'id' => $order->id,
-                    'code' => '#' . $order->code,
+                    'code' => '#'.$order->code,
                     'time_formatted' => $timeText,
                     'room_name' => $order->room?->name ?? 'DrinkFlow Room',
                     'restaurant' => $order->campaign?->restaurant ?: 'Cửa hàng',
@@ -134,10 +139,6 @@ class UserGlobalDashboardService
                 ];
             });
 
-        // Notifications
-        $unreadNotificationsCount = $user->notifications()->whereNull('read_at')->count();
-        $notifications = $user->notifications()->whereNull('read_at')->latest()->take(5)->get();
-
         return [
             'user' => $user,
             'workspaceText' => $workspaceText,
@@ -148,8 +149,6 @@ class UserGlobalDashboardService
             'savingsPercent' => $savingsPercent,
             'recentRooms' => $recentRooms,
             'recentOrders' => $recentOrders,
-            'unreadNotificationsCount' => $unreadNotificationsCount,
-            'notifications' => $notifications,
         ];
     }
 }

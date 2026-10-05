@@ -24,9 +24,10 @@
   - Số query của trang không phụ thuộc số room/số đơn.
   - Test so sánh số liệu với dữ liệu mẫu (bao gồm đơn ở nhiều tháng).
   - `php artisan test` PASS; kiểm tra trang bằng trình duyệt.
-- **Cần quản trị quyết định:** Khoảng thời gian mặc định của trang thống kê cá nhân (tháng này / 30 ngày / toàn bộ nhưng tính bằng SQL).
-- **Xác nhận của quản trị:** ⏳ Chưa xác nhận
-- **Trạng thái thực hiện:** ⬜ Chưa thực hiện
+- **Quyết định áp dụng:** Giữ toàn bộ lịch sử để tương thích hành vi hiện tại, nhưng tổng hợp bằng SQL; biểu đồ tuần dùng tuần lịch thực tế.
+- **Xác nhận của quản trị:** ✅ Đã xác nhận — “Thực hiện từ UPG-05.1 đến UPG-05.5” (05/10/2026)
+- **Trạng thái thực hiện:** ⚠️ Bị chặn — triển khai và test mục tiêu đã hoàn tất; toàn suite ngày 05/10/2026: `949 passed`, `2 skipped`, `3 failed`. Ba lỗi ngoài phạm vi File 05 thuộc billing/subscription (`PlatformBillingTest`, `PlatformSecurityIsolationTest`, `SubscriptionManagementTest`).
+- **Kết quả kiểm tra (05/10/2026):** Chuyển đổi toàn bộ tổng hợp sang SQL (`SUM/COUNT/GROUP BY`), tuần lịch tính theo tuần thực tế của tháng hiện tại, số lượng query cố định không phụ thuộc số lượng đơn; `UserGlobalPerformanceUpgradeTest` PASS.
 
 ---
 
@@ -45,8 +46,9 @@
   4. Export: dùng `FromQuery` + `chunk` của Laravel Excel.
   5. Thay chuỗi cứng bằng enum.
 - **Tiêu chí hoàn thành:** Số đơn tải mỗi request ≤ kích thước trang; test metric và export. `php artisan test` PASS; kiểm tra giao diện.
-- **Xác nhận của quản trị:** ⏳ Chưa xác nhận
-- **Trạng thái thực hiện:** ⬜ Chưa thực hiện
+- **Xác nhận của quản trị:** ✅ Đã xác nhận — “Thực hiện từ UPG-05.1 đến UPG-05.5” (05/10/2026)
+- **Trạng thái thực hiện:** ⚠️ Bị chặn — triển khai và test mục tiêu đã hoàn tất; toàn suite ngày 05/10/2026: `949 passed`, `2 skipped`, `3 failed`. Ba lỗi ngoài phạm vi File 05 thuộc billing/subscription (`PlatformBillingTest`, `PlatformSecurityIsolationTest`, `SubscriptionManagementTest`).
+- **Kết quả kiểm tra (05/10/2026):** Phân trang 15 đơn/trang, chỉ sinh payload VietQR cho đơn chưa thanh toán ở trang hiện tại, xuất file theo chunk query, chuẩn hoá toàn bộ chuỗi trạng thái sang `OrderStatus` enum; `UserGlobalPerformanceUpgradeTest` PASS.
 
 ---
 
@@ -56,8 +58,9 @@
 - **Hiện trạng:** `UserRoomsService::getRoomsData` eager-load `orders` (`src/app/Services/Room/UserRoomsService.php:50`) cho mỗi membership, chỉ để đếm số đơn, tính tổng chi và lấy đơn mới nhất trong `formatRoomCard`.
 - **Phương án đề xuất:** Thay bằng `withCount('orders')`, `withSum('orders', 'final_amount')`, `withMax('orders', 'created_at')`. `formatRoomCard` đọc các thuộc tính này; giữ tương thích cho `UserGlobalDashboardService` đang gọi lại hàm này.
 - **Tiêu chí hoàn thành:** Thẻ room hiển thị số liệu như cũ; không còn truy vấn tải toàn bộ `orders`. `php artisan test` PASS.
-- **Xác nhận của quản trị:** ⏳ Chưa xác nhận
-- **Trạng thái thực hiện:** ⬜ Chưa thực hiện
+- **Xác nhận của quản trị:** ✅ Đã xác nhận — “Thực hiện từ UPG-05.1 đến UPG-05.5” (05/10/2026)
+- **Trạng thái thực hiện:** ⚠️ Bị chặn — triển khai và test mục tiêu đã hoàn tất; toàn suite ngày 05/10/2026: `949 passed`, `2 skipped`, `3 failed`. Ba lỗi ngoài phạm vi File 05 thuộc billing/subscription (`PlatformBillingTest`, `PlatformSecurityIsolationTest`, `SubscriptionManagementTest`).
+- **Kết quả kiểm tra (05/10/2026):** Sử dụng `withCount('orders')`, `withSum('orders', 'final_amount')`, `withMax('orders', 'created_at')`; loại bỏ hoàn toàn eager-load `orders` và không còn truy vấn `SELECT * FROM orders`; `UserGlobalPerformanceUpgradeTest` PASS.
 
 ---
 
@@ -70,8 +73,9 @@
   - `ProfileController.php:205` (quota feedback)
 - **Phương án đề xuất:** Đổi sang so sánh khoảng: `where('created_at', '>=', $start)->where('created_at', '<', $end)`, tính `$start`/`$end` theo timezone của app.
 - **Tiêu chí hoàn thành:** Test biên (đơn lúc 00:00 và 23:59) cho các bộ lọc. `php artisan test` PASS.
-- **Xác nhận của quản trị:** ⏳ Chưa xác nhận
-- **Trạng thái thực hiện:** ⬜ Chưa thực hiện
+- **Xác nhận của quản trị:** ✅ Đã xác nhận — “Thực hiện từ UPG-05.1 đến UPG-05.5” (05/10/2026)
+- **Trạng thái thực hiện:** ⚠️ Bị chặn — triển khai và test biên thời gian đã hoàn tất; toàn suite ngày 05/10/2026: `949 passed`, `2 skipped`, `3 failed`. Ba lỗi ngoài phạm vi File 05 thuộc billing/subscription (`PlatformBillingTest`, `PlatformSecurityIsolationTest`, `SubscriptionManagementTest`).
+- **Kết quả kiểm tra (05/10/2026):** Đã chuyển sang so sánh khoảng `created_at >= $start` và `created_at < $end` tại `UserOrdersService`, `UserRoomDebtService`, `ProfileController`; test biên bao phủ đơn lúc 00:00:00 và 23:59:59 PASS; `UserGlobalPerformanceUpgradeTest` PASS.
 
 ---
 
@@ -85,5 +89,6 @@
   1. Tạo một service nhỏ (ví dụ `UserNotificationSummary`) nhớ kết quả trong phạm vi request, dùng chung cho composer và các service.
   2. Bỏ phần truy vấn trùng trong các service.
 - **Tiêu chí hoàn thành:** Mỗi trang `/me/*` chỉ còn 1 truy vấn đếm + 1 truy vấn danh sách thông báo (kiểm tra bằng `DB::listen` trong test). `php artisan test` PASS.
-- **Xác nhận của quản trị:** ⏳ Chưa xác nhận
-- **Trạng thái thực hiện:** ⬜ Chưa thực hiện
+- **Xác nhận của quản trị:** ✅ Đã xác nhận — “Thực hiện từ UPG-05.1 đến UPG-05.5” (05/10/2026)
+- **Trạng thái thực hiện:** ⚠️ Bị chặn — test xác nhận mỗi trang chỉ chạy một query danh sách và một query đếm thông báo; toàn suite ngày 05/10/2026: `949 passed`, `2 skipped`, `3 failed`. Ba lỗi ngoài phạm vi File 05 thuộc billing/subscription (`PlatformBillingTest`, `PlatformSecurityIsolationTest`, `SubscriptionManagementTest`).
+- **Kết quả kiểm tra (05/10/2026):** Tạo service `UserNotificationSummary` ghi nhớ trong request; bỏ truy vấn trùng lặp; test kiểm tra `DB::listen` xác nhận layout chỉ chạy đúng 1 truy vấn danh sách thông báo và 1 truy vấn đếm; `UserGlobalPerformanceUpgradeTest` PASS.

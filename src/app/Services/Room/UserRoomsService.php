@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Room;
 
-use App\Support\Helpers\FormatHelper;
-use App\Enums\RoomUserStatus;
 use App\Enums\CampaignStatus;
+use App\Enums\RoomUserStatus;
 use App\Models\GlobalUser;
 use App\Models\Order;
 use App\Models\Room;
 use App\Models\RoomUser;
+use App\Support\Helpers\FormatHelper;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 
 class UserRoomsService
@@ -18,9 +19,9 @@ class UserRoomsService
     /**
      * Thu thập và phân trang danh sách các phòng mà người dùng đã tham gia kèm bộ lọc và tìm kiếm.
      *
-     * @param  \App\Models\GlobalUser  $user  Tài khoản người dùng toàn hệ thống
-     * @param  \Illuminate\Http\Request  $request  Đối tượng HTTP Request chứa các query params: search, filter, sort
-     * @return array<string, mixed>  Mảng dữ liệu cho View quản lý phòng
+     * @param  GlobalUser  $user  Tài khoản người dùng toàn hệ thống
+     * @param  Request  $request  Đối tượng HTTP Request chứa các query params: search, filter, sort
+     * @return array<string, mixed> Mảng dữ liệu cho View quản lý phòng
      */
     public function getRoomsData(GlobalUser $user, Request $request): array
     {
@@ -36,6 +37,9 @@ class UserRoomsService
         $sort = $request->get('sort', 'latest');
 
         $query = $user->roomUsers()
+            ->withCount('orders')
+            ->withSum('orders', 'final_amount')
+            ->withMax('orders', 'created_at')
             ->with([
                 'room' => function ($q) {
                     $q->withCount(['roomUsers' => function ($ru) {
@@ -47,7 +51,6 @@ class UserRoomsService
                             ->orderByDesc('id');
                     }]);
                 },
-                'orders',
             ]);
 
         // Filter by membership status
@@ -93,10 +96,6 @@ class UserRoomsService
         // Map room users to display objects with formatted statistics
         $roomUsers = $paginator->through(fn (RoomUser $membership): object => $this->formatRoomCard($membership));
 
-        // Notifications for layout
-        $unreadNotificationsCount = $user->notifications()->whereNull('read_at')->count();
-        $notifications = $user->notifications()->whereNull('read_at')->latest()->take(5)->get();
-
         $breadcrumbs = [
             ['label' => __('global.rooms.breadcrumb_personal'), 'url' => route('user.me.dashboard')],
             ['label' => __('global.rooms.breadcrumb_rooms'), 'url' => route('user.me.rooms')],
@@ -113,27 +112,22 @@ class UserRoomsService
             'filter' => $filter,
             'sort' => $sort,
             'breadcrumbs' => $breadcrumbs,
-            'unreadNotificationsCount' => $unreadNotificationsCount,
-            'notifications' => $notifications,
         ];
     }
 
     /**
      * Format membership details and order statistics for the shared room card.
      *
-     * @param RoomUser $membership Membership with its room and orders loaded.
+     * @param  RoomUser  $membership  Membership with its room and order aggregates loaded.
      * @return object Display data for the room card.
      */
     public function formatRoomCard(RoomUser $membership): object
     {
-        $orders = $membership->orders;
-        $ordersCount = $orders->count();
-        $totalSpent = (int) $orders->sum('final_amount');
-
-        $latestOrder = $orders->sortByDesc('created_at')->first();
+        $ordersCount = (int) ($membership->orders_count ?? 0);
+        $totalSpent = (int) ($membership->orders_sum_final_amount ?? 0);
         $lastOrderTime = null;
-        if ($latestOrder && $latestOrder->created_at) {
-            $lastOrderTime = $latestOrder->created_at->diffForHumans();
+        if ($membership->orders_max_created_at) {
+            $lastOrderTime = CarbonImmutable::parse((string) $membership->orders_max_created_at)->diffForHumans();
         } elseif ($membership->last_active_at) {
             $lastOrderTime = $membership->last_active_at->diffForHumans();
         }
@@ -142,8 +136,8 @@ class UserRoomsService
         $isActive = $statusVal === RoomUserStatus::Active->value;
         $isBlocked = $statusVal === RoomUserStatus::Blocked->value;
 
-        $roomSlug = $membership->room?->slug ?: ('room-' . $membership->room_id);
-        $roomIdDisplay = 'ROOM-ID: ' . strtoupper($roomSlug);
+        $roomSlug = $membership->room?->slug ?: ('room-'.$membership->room_id);
+        $roomIdDisplay = 'ROOM-ID: '.strtoupper($roomSlug);
         $campaign = $membership->room?->campaigns?->first();
         $isLive = $campaign !== null;
 
@@ -151,12 +145,12 @@ class UserRoomsService
             'id' => $membership->id,
             'room' => $membership->room,
             'room_id' => $membership->room_id,
-            'room_name' => $membership->room?->name ?? 'Room #' . $membership->room_id,
+            'room_name' => $membership->room?->name ?? 'Room #'.$membership->room_id,
             'room_id_display' => $roomIdDisplay,
             'status' => $statusVal,
             'is_active' => $isActive,
             'is_blocked' => $isBlocked,
-            'joined_at_formatted' => $membership->joined_at ? \App\Support\Helpers\FormatHelper::formatDate($membership->joined_at) : ($membership->created_at ? \App\Support\Helpers\FormatHelper::formatDate($membership->created_at) : 'N/A'),
+            'joined_at_formatted' => $membership->joined_at ? FormatHelper::formatDate($membership->joined_at) : ($membership->created_at ? FormatHelper::formatDate($membership->created_at) : 'N/A'),
             'orders_count' => $ordersCount,
             'total_spent' => $totalSpent,
             'total_spent_formatted' => FormatHelper::formatCurrency($totalSpent),
@@ -175,13 +169,13 @@ class UserRoomsService
      * Tìm đối tượng phòng từ URL liên kết hoặc mã ID/slug nhập vào.
      *
      * @param  string  $inputUrl  Đường dẫn URL tham gia phòng (ví dụ: http://localhost:8080/rooms/tech-room)
-     * @return \App\Models\Room|null  Đối tượng Room tìm được hoặc null nếu không hợp lệ
+     * @return Room|null Đối tượng Room tìm được hoặc null nếu không hợp lệ
      */
     public function resolveRoomFromUrl(string $inputUrl): ?Room
     {
         $path = parse_url($inputUrl, PHP_URL_PATH) ?? '';
 
-        if (!preg_match('#/rooms/([^/]+)#', $path, $matches)) {
+        if (! preg_match('#/rooms/([^/]+)#', $path, $matches)) {
             return null;
         }
 

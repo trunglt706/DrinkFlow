@@ -382,6 +382,12 @@
       @endif
     </div>
 
+    @if($displayedOrders->hasPages())
+      <div class="mt-6">
+        {{ $displayedOrders->links() }}
+      </div>
+    @endif
+
 
 
     <!-- VIETQR MODAL POPUP -->

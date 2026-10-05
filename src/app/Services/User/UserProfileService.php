@@ -15,18 +15,19 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class UserProfileService
 {
     public function __construct(
         protected ImageUploadService $imageUploadService
-    ) {
-    }
+    ) {}
+
     /**
      * Thu thập toàn bộ dữ liệu hồ sơ cá nhân toàn hệ thống, cấp bậc thành viên (tier gamification), tùy chọn ăn uống và tài khoản ngân hàng.
      *
-     * @param  \App\Models\GlobalUser  $user  Tài khoản người dùng toàn hệ thống
-     * @return array<string, mixed>  Mảng dữ liệu cho View Profile
+     * @param  GlobalUser  $user  Tài khoản người dùng toàn hệ thống
+     * @return array<string, mixed> Mảng dữ liệu cho View Profile
      */
     public function getProfileData(GlobalUser $user): array
     {
@@ -41,7 +42,7 @@ class UserProfileService
                     $q->with([
                         'paymentAccounts' => function ($pa) {
                             $pa->where('status', RoomUserStatus::Active->value);
-                        }
+                        },
                     ]);
                 },
             ])
@@ -127,9 +128,6 @@ class UserProfileService
         $notifyCampaign = $preferences['notify_campaign'] ?? true;
         $notifySound = $preferences['notify_sound'] ?? true;
 
-        $unreadNotificationsCount = $user->notifications()->whereNull('read_at')->count();
-        $notifications = $user->notifications()->whereNull('read_at')->latest()->take(5)->get();
-
         $breadcrumbs = [
             ['label' => __('global.rooms.breadcrumb_personal'), 'url' => route('user.me.dashboard')],
             ['label' => __('global.profile.breadcrumb_profile'), 'url' => route('user.me.profile')],
@@ -163,8 +161,6 @@ class UserProfileService
             'orderNote',
             'notifyCampaign',
             'notifySound',
-            'unreadNotificationsCount',
-            'notifications',
             'breadcrumbs'
         );
     }
@@ -172,10 +168,9 @@ class UserProfileService
     /**
      * Cập nhật thông tin liên hệ và sở thích đồ uống của người dùng.
      *
-     * @param  \App\Models\GlobalUser  $user  Tài khoản người dùng cần cập nhật
+     * @param  GlobalUser  $user  Tài khoản người dùng cần cập nhật
      * @param  array<string, mixed>  $data  Dữ liệu đã qua kiểm duyệt hợp lệ
-     * @param  \Illuminate\Http\Request|null  $request  Đối tượng Request (tùy chọn để kiểm tra cờ boolean)
-     * @return void
+     * @param  Request|null  $request  Đối tượng Request (tùy chọn để kiểm tra cờ boolean)
      */
     public function updateProfile(GlobalUser $user, array $data, ?Request $request = null): void
     {
@@ -187,7 +182,7 @@ class UserProfileService
             }
         } elseif (isset($data['avatar']) && $data['avatar'] instanceof UploadedFile) {
             $updates['avatar_url'] = $this->imageUploadService->uploadAvatar($data['avatar']);
-        } elseif (array_key_exists('avatar_url', $data) && !empty($data['avatar_url'])) {
+        } elseif (array_key_exists('avatar_url', $data) && ! empty($data['avatar_url'])) {
             $updates['avatar_url'] = $data['avatar_url'];
         }
 
@@ -228,9 +223,9 @@ class UserProfileService
     /**
      * Vô hiệu hóa tài khoản cá nhân và đăng xuất khỏi toàn bộ phiên làm việc.
      *
-     * @param  \App\Models\GlobalUser  $user  Tài khoản người dùng yêu cầu xóa/vô hiệu hóa
-     * @param  \Illuminate\Http\Request  $request  Đối tượng Request chứa chuỗi xác nhận xác minh
-     * @return bool  True nếu xóa tài khoản thành công, False nếu chuỗi xác nhận không khớp
+     * @param  GlobalUser  $user  Tài khoản người dùng yêu cầu xóa/vô hiệu hóa
+     * @param  Request  $request  Đối tượng Request chứa chuỗi xác nhận xác minh
+     * @return bool True nếu xóa tài khoản thành công, False nếu chuỗi xác nhận không khớp
      */
     public function deleteAccount(GlobalUser $user, Request $request): bool
     {
@@ -240,7 +235,7 @@ class UserProfileService
         }
 
         if ($user->hasOutstandingDebts()) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'confirm_delete' => __('admin.cannot_delete_user_with_outstanding_debt'),
             ]);
         }

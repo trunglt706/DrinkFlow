@@ -22,9 +22,9 @@ class ProfileController extends Controller
     /**
      * Chuyển tiếp request đến phương thức hiển thị hồ sơ cá nhân.
      *
-     * @param  \Illuminate\Http\Request  $request  Đối tượng HTTP Request hiện tại
-     * @param  \App\Services\User\UserProfileService  $service  Service xử lý dữ liệu hồ sơ
-     * @return \Illuminate\Contracts\View\View  Giao diện thông tin cá nhân
+     * @param  Request  $request  Đối tượng HTTP Request hiện tại
+     * @param  UserProfileService  $service  Service xử lý dữ liệu hồ sơ
+     * @return View Giao diện thông tin cá nhân
      */
     public function __invoke(Request $request, UserProfileService $service): View
     {
@@ -34,9 +34,9 @@ class ProfileController extends Controller
     /**
      * Hiển thị trang hồ sơ cá nhân toàn hệ thống (/me/profile).
      *
-     * @param  \Illuminate\Http\Request  $request  Đối tượng HTTP Request hiện tại
-     * @param  \App\Services\User\UserProfileService  $service  Service xử lý dữ liệu hồ sơ
-     * @return \Illuminate\Contracts\View\View  Giao diện hồ sơ cá nhân
+     * @param  Request  $request  Đối tượng HTTP Request hiện tại
+     * @param  UserProfileService  $service  Service xử lý dữ liệu hồ sơ
+     * @return View Giao diện hồ sơ cá nhân
      */
     public function index(Request $request, UserProfileService $service): View
     {
@@ -51,9 +51,9 @@ class ProfileController extends Controller
     /**
      * Cập nhật thông tin liên hệ và sở thích gọi đồ của người dùng.
      *
-     * @param  \App\Http\Requests\UpdateGlobalProfileRequest  $request  Đối tượng Form Request đã xác thực
-     * @param  \App\Services\User\UserProfileService  $service  Service xử lý cập nhật
-     * @return \Illuminate\Http\RedirectResponse  Phản hồi chuyển hướng kèm thông báo thành công
+     * @param  UpdateGlobalProfileRequest  $request  Đối tượng Form Request đã xác thực
+     * @param  UserProfileService  $service  Service xử lý cập nhật
+     * @return RedirectResponse Phản hồi chuyển hướng kèm thông báo thành công
      */
     public function update(UpdateGlobalProfileRequest $request, UserProfileService $service): RedirectResponse
     {
@@ -70,8 +70,8 @@ class ProfileController extends Controller
     /**
      * Trả về dữ liệu JSON hồ sơ người dùng cho các client API hoặc realtime frontend.
      *
-     * @param  \Illuminate\Http\Request  $request  Đối tượng HTTP Request hiện tại
-     * @return \Illuminate\Http\JsonResponse  Dữ liệu JSON chứa thông tin người dùng và các liên kết
+     * @param  Request  $request  Đối tượng HTTP Request hiện tại
+     * @return JsonResponse Dữ liệu JSON chứa thông tin người dùng và các liên kết
      */
     public function show(Request $request): JsonResponse
     {
@@ -83,8 +83,8 @@ class ProfileController extends Controller
     /**
      * Trang đối soát và lịch sử thanh toán cá nhân (/me/payments).
      *
-     * @param  \Illuminate\Http\Request  $request  Đối tượng HTTP Request
-     * @return \Illuminate\Contracts\View\View|\Illuminate\Http\JsonResponse  Giao diện hoặc dữ liệu JSON thanh toán
+     * @param  Request  $request  Đối tượng HTTP Request
+     * @return View|JsonResponse Giao diện hoặc dữ liệu JSON thanh toán
      */
     public function payments(Request $request): View|JsonResponse
     {
@@ -94,9 +94,9 @@ class ProfileController extends Controller
     /**
      * Hiển thị trang quản lý thiết bị và phiên đăng nhập (/me/devices).
      *
-     * @param  \Illuminate\Http\Request  $request  Đối tượng HTTP Request
-     * @param  \App\Services\User\UserSessionService  $service  Service xử lý phiên làm việc
-     * @return \Illuminate\Contracts\View\View  Giao diện quản lý thiết bị
+     * @param  Request  $request  Đối tượng HTTP Request
+     * @param  UserSessionService  $service  Service xử lý phiên làm việc
+     * @return View Giao diện quản lý thiết bị
      */
     public function devices(Request $request, UserSessionService $service): View
     {
@@ -111,10 +111,10 @@ class ProfileController extends Controller
     /**
      * Đăng xuất một thiết bị / phiên làm việc từ xa cụ thể.
      *
-     * @param  \Illuminate\Http\Request  $request  Đối tượng HTTP Request
-     * @param  \App\Services\User\UserSessionService  $service  Service xử lý phiên
+     * @param  Request  $request  Đối tượng HTTP Request
+     * @param  UserSessionService  $service  Service xử lý phiên
      * @param  string  $sessionId  Mã định danh phiên làm việc cần thu hồi
-     * @return \Illuminate\Http\RedirectResponse  Phản hồi chuyển hướng quay lại
+     * @return RedirectResponse Phản hồi chuyển hướng quay lại
      */
     public function logoutDevice(Request $request, UserSessionService $service, string $sessionId): RedirectResponse
     {
@@ -129,9 +129,9 @@ class ProfileController extends Controller
     /**
      * Đăng xuất tất cả các thiết bị và phiên làm việc khác ngoại trừ phiên hiện tại.
      *
-     * @param  \Illuminate\Http\Request  $request  Đối tượng HTTP Request
-     * @param  \App\Services\User\UserSessionService  $service  Service xử lý phiên
-     * @return \Illuminate\Http\RedirectResponse  Phản hồi chuyển hướng quay lại
+     * @param  Request  $request  Đối tượng HTTP Request
+     * @param  UserSessionService  $service  Service xử lý phiên
+     * @return RedirectResponse Phản hồi chuyển hướng quay lại
      */
     public function logoutOtherDevices(Request $request, UserSessionService $service): RedirectResponse
     {
@@ -150,9 +150,9 @@ class ProfileController extends Controller
     /**
      * Xử lý yêu cầu vô hiệu hóa hoặc xóa tài khoản cá nhân.
      *
-     * @param  \Illuminate\Http\Request  $request  Đối tượng HTTP Request chứa chuỗi xác nhận
-     * @param  \App\Services\User\UserProfileService  $service  Service xử lý hồ sơ
-     * @return \Illuminate\Http\RedirectResponse  Chuyển hướng về trang chủ sau khi xóa
+     * @param  Request  $request  Đối tượng HTTP Request chứa chuỗi xác nhận
+     * @param  UserProfileService  $service  Service xử lý hồ sơ
+     * @return RedirectResponse Chuyển hướng về trang chủ sau khi xóa
      */
     public function deleteAccount(Request $request, UserProfileService $service): RedirectResponse
     {
@@ -160,7 +160,7 @@ class ProfileController extends Controller
         $user = $request->attributes->get('global_user') ?? $request->user('web');
 
         $deleted = $service->deleteAccount($user, $request);
-        if (!$deleted) {
+        if (! $deleted) {
             return back()->withErrors(['confirm_delete' => __('global.devices.delete_confirm_invalid')]);
         }
 
@@ -170,9 +170,9 @@ class ProfileController extends Controller
     /**
      * Hiển thị danh sách hoặc dữ liệu JSON góp ý phản hồi của người dùng (/me/feedback).
      *
-     * @param  \Illuminate\Http\Request  $request  Đối tượng HTTP Request
-     * @param  \App\Services\User\UserFeedbackService  $service  Service quản lý góp ý
-     * @return \Illuminate\Contracts\View\View|\Illuminate\Http\JsonResponse  Giao diện hoặc phản hồi JSON
+     * @param  Request  $request  Đối tượng HTTP Request
+     * @param  UserFeedbackService  $service  Service quản lý góp ý
+     * @return View|JsonResponse Giao diện hoặc phản hồi JSON
      */
     public function feedback(Request $request, UserFeedbackService $service): View|JsonResponse
     {
@@ -191,9 +191,9 @@ class ProfileController extends Controller
     /**
      * Tiếp nhận và lưu trữ góp ý mới từ người dùng toàn hệ thống.
      *
-     * @param  \App\Http\Requests\StoreFeedbackRequest  $request  Đối tượng Form Request chứa nội dung góp ý
-     * @param  \App\Services\User\UserFeedbackService  $service  Service xử lý lưu góp ý
-     * @return \Illuminate\Http\RedirectResponse  Phản hồi chuyển hướng kèm thông báo thành công
+     * @param  StoreFeedbackRequest  $request  Đối tượng Form Request chứa nội dung góp ý
+     * @param  UserFeedbackService  $service  Service xử lý lưu góp ý
+     * @return RedirectResponse Phản hồi chuyển hướng kèm thông báo thành công
      */
     public function storeFeedback(StoreFeedbackRequest $request, UserFeedbackService $service): RedirectResponse
     {
@@ -202,7 +202,8 @@ class ProfileController extends Controller
 
         $todayCount = Feedback::query()
             ->where('global_user_id', $user->id)
-            ->whereDate('created_at', now()->toDateString())
+            ->where('created_at', '>=', now()->startOfDay())
+            ->where('created_at', '<', now()->addDay()->startOfDay())
             ->count();
 
         if ($todayCount >= 1) {
