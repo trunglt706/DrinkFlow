@@ -29,6 +29,8 @@
             </div>
         </div>
 
+        <x-sponsor-honors :honors="$sponsorHonors" />
+
         <!-- 5 Summary Metrics Grid -->
         <section id="metrics-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
             <!-- Metric 1: Active Rooms -->

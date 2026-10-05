@@ -16,6 +16,7 @@ use App\Models\Order;
 use App\Models\PaymentAccount;
 use App\Models\Room;
 use App\Models\RoomUser;
+use App\Services\Reporting\MonthlySponsorStatisticsService;
 use App\Support\Helpers\FormatHelper;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,6 +25,10 @@ use Illuminate\Support\Facades\Cache;
 
 class AdminDashboardService
 {
+    public function __construct(private readonly MonthlySponsorStatisticsService $monthlySponsors)
+    {
+    }
+
     /**
      * Get aggregated data for Admin Dashboard Blade view.
      *
@@ -47,6 +52,7 @@ class AdminDashboardService
 
         return [
             'room' => $room,
+            'sponsorHonors' => $this->monthlySponsors->previousMonthHonors($room),
             'assignedRooms' => $assignedRooms,
             'activeRoomsCount' => $metrics['active_rooms'],
             'ordersTodayCount' => $metrics['orders_today'],

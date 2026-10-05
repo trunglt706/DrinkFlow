@@ -10,23 +10,62 @@
   <!-- Main Canvas Space -->
   <div class="space-y-4">
 
-    <!-- 1. Top Announcement Card -->
-    <div class="w-full bg-white rounded-xl border border-slate-200/80 shadow-2xs p-3 sm:p-3.5 flex items-start sm:items-center justify-between gap-3 relative overflow-hidden transition-all">
-      <div class="absolute left-0 top-0 bottom-0 w-1 bg-amber-500"></div>
-      <div class="flex items-start sm:items-center gap-2.5 pl-1 min-w-0">
-        <div class="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 border border-amber-200/70 shrink-0 flex items-center justify-center">
-          <span class="material-symbols-outlined text-[16px]">campaign</span>
-        </div>
-        <p class="text-xs text-slate-800 truncate leading-relaxed">
-          <span class="font-bold text-amber-800">{{ __('room.dashboard.announcement_label') }}</span>
-          {{ __('room.dashboard.announcement_default', ['name' => $room->name]) }}
-        </p>
-      </div>
-    </div>
+    <x-sponsor-honors :honors="$sponsorHonors" />
 
-    <!-- 3. Main Grid Layout: Left Column (Active Campaign) & Right Column (Overview Summary) -->
+    <!-- Weekly charts followed by the active campaign -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
       
+      <!-- Sponsor Leaderboard & Weekly Trend Charts -->
+      <div class="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-4"
+        data-room-dashboard-charts
+        data-top-sponsors="{{ json_encode($topSponsors ?? [], JSON_UNESCAPED_UNICODE) }}"
+        data-weekly-trend="{{ json_encode($weeklyItemTrend ?? [], JSON_UNESCAPED_UNICODE) }}"
+        data-chart-labels="{{ json_encode([
+          'items' => __('room.dashboard.chart_items_label'),
+          'value' => __('room.dashboard.chart_value_label'),
+          'sponsoredCampaigns' => __('room.dashboard.sponsored_campaigns_count'),
+          'sponsorTotal' => __('room.dashboard.top_sponsors_total'),
+          'noSponsorData' => __('room.dashboard.no_sponsor_data'),
+          'noTrendData' => __('room.dashboard.no_weekly_trend_data'),
+        ], JSON_UNESCAPED_UNICODE) }}"
+      >
+        <!-- Top Sponsors Donut Chart -->
+        <section class="lg:col-span-5 bg-white border border-slate-200/80 rounded-xl p-4 shadow-2xs flex flex-col">
+          <div class="flex items-center gap-2 pb-2.5 border-b border-slate-100 mb-2.5">
+            <span class="material-symbols-outlined text-[#006948] text-[18px]" aria-hidden="true">military_tech</span>
+            <div class="min-w-0">
+              <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-700">{{ __('room.dashboard.top_sponsors_title') }}</h3>
+              <p class="text-[10px] text-slate-400 truncate">{{ __('room.dashboard.top_sponsors_subtitle') }}</p>
+            </div>
+          </div>
+          <div class="relative flex-1 min-h-[200px]">
+            <div id="top-sponsors-chart" class="h-full min-h-[200px]"></div>
+            <x-loading-overlay data-chart-loading :visible="true" />
+          </div>
+        </section>
+
+        <!-- Weekly Items & Value Combo Chart -->
+        <section class="lg:col-span-7 bg-white border border-slate-200/80 rounded-xl p-4 shadow-2xs flex flex-col">
+          <div class="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100 mb-2.5">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="material-symbols-outlined text-[#006948] text-[18px]" aria-hidden="true">area_chart</span>
+              <div class="min-w-0">
+                <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-700">{{ __('room.dashboard.weekly_trend_title') }}</h3>
+                <p class="text-[10px] text-slate-400 truncate">{{ __('room.dashboard.weekly_trend_subtitle') }}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 text-[10px] text-slate-500 shrink-0">
+              <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-[#006948]"></span>{{ __('room.dashboard.chart_items_label') }}</span>
+              <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm border-t-2 border-blue-600 bg-blue-600/25"></span>{{ __('room.dashboard.chart_value_label') }}</span>
+            </div>
+          </div>
+          <div class="relative flex-1 min-h-[200px]">
+            <div id="weekly-trend-chart" class="h-full min-h-[200px]"></div>
+            <x-loading-overlay data-chart-loading :visible="true" />
+          </div>
+        </section>
+      </div>
+
       <!-- Live Campaign and Top Items -->
       <div class="lg:col-span-12">
         @if($activeCampaign)
@@ -152,57 +191,6 @@
             </p>
           </div>
         @endif
-      </div>
-
-      <!-- 4. Sponsor Leaderboard & Weekly Trend Charts -->
-      <div class="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-4"
-        data-room-dashboard-charts
-        data-top-sponsors="{{ json_encode($topSponsors ?? [], JSON_UNESCAPED_UNICODE) }}"
-        data-weekly-trend="{{ json_encode($weeklyItemTrend ?? [], JSON_UNESCAPED_UNICODE) }}"
-        data-chart-labels="{{ json_encode([
-          'items' => __('room.dashboard.chart_items_label'),
-          'value' => __('room.dashboard.chart_value_label'),
-          'sponsoredCampaigns' => __('room.dashboard.sponsored_campaigns_count'),
-          'sponsorTotal' => __('room.dashboard.top_sponsors_total'),
-          'noSponsorData' => __('room.dashboard.no_sponsor_data'),
-          'noTrendData' => __('room.dashboard.no_weekly_trend_data'),
-        ], JSON_UNESCAPED_UNICODE) }}"
-      >
-        <!-- Top Sponsors Donut Chart -->
-        <section class="lg:col-span-5 bg-white border border-slate-200/80 rounded-xl p-4 shadow-2xs flex flex-col">
-          <div class="flex items-center gap-2 pb-2.5 border-b border-slate-100 mb-2.5">
-            <span class="material-symbols-outlined text-[#006948] text-[18px]" aria-hidden="true">military_tech</span>
-            <div class="min-w-0">
-              <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-700">{{ __('room.dashboard.top_sponsors_title') }}</h3>
-              <p class="text-[10px] text-slate-400 truncate">{{ __('room.dashboard.top_sponsors_subtitle') }}</p>
-            </div>
-          </div>
-          <div class="relative flex-1 min-h-[200px]">
-            <div id="top-sponsors-chart" class="h-full min-h-[200px]"></div>
-            <x-loading-overlay data-chart-loading :visible="true" />
-          </div>
-        </section>
-
-        <!-- Weekly Items & Value Combo Chart -->
-        <section class="lg:col-span-7 bg-white border border-slate-200/80 rounded-xl p-4 shadow-2xs flex flex-col">
-          <div class="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100 mb-2.5">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="material-symbols-outlined text-[#006948] text-[18px]" aria-hidden="true">area_chart</span>
-              <div class="min-w-0">
-                <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-700">{{ __('room.dashboard.weekly_trend_title') }}</h3>
-                <p class="text-[10px] text-slate-400 truncate">{{ __('room.dashboard.weekly_trend_subtitle') }}</p>
-              </div>
-            </div>
-            <div class="flex items-center gap-3 text-[10px] text-slate-500 shrink-0">
-              <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-[#006948]"></span>{{ __('room.dashboard.chart_items_label') }}</span>
-              <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm border-t-2 border-blue-600 bg-blue-600/25"></span>{{ __('room.dashboard.chart_value_label') }}</span>
-            </div>
-          </div>
-          <div class="relative flex-1 min-h-[200px]">
-            <div id="weekly-trend-chart" class="h-full min-h-[200px]"></div>
-            <x-loading-overlay data-chart-loading :visible="true" />
-          </div>
-        </section>
       </div>
 
     </div>

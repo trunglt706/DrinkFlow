@@ -14,6 +14,7 @@ use App\Models\Room;
 use App\Models\RoomUser;
 use App\Services\Campaign\UserRoomCampaignService;
 use App\Services\Reporting\SponsorLeaderboardService;
+use App\Services\Reporting\MonthlySponsorStatisticsService;
 use App\Support\Helpers\FormatHelper;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,7 @@ class UserRoomDashboardService
     public function __construct(
         private readonly UserRoomCampaignService $campaignService,
         private readonly SponsorLeaderboardService $sponsorLeaderboard,
+        private readonly MonthlySponsorStatisticsService $monthlySponsors,
     ) {
     }
 
@@ -96,6 +98,7 @@ class UserRoomDashboardService
             'userRooms' => $userRooms,
             'unreadNotificationsCount' => $unreadCount,
             'topSponsors' => $this->getTopSponsors($room),
+            'sponsorHonors' => $this->monthlySponsors->previousMonthHonors($room),
             'weeklyItemTrend' => $this->getWeeklyItemTrend($room),
         ];
     }

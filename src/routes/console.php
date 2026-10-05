@@ -54,3 +54,8 @@ Schedule::command('billing:process-overdue')
 Schedule::command('billing:enforce-overdue')
     ->dailyAt('01:45')
     ->withoutOverlapping();
+
+// Calculate last month's honors for active rooms on the first day of each month.
+Schedule::command('drinkflow:calculate-monthly-sponsors')
+    ->monthlyOn(1, '00:15')
+    ->withoutOverlapping();

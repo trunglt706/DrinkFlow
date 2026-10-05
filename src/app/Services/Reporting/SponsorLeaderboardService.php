@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Reporting;
 
 use App\Enums\OrderStatus;
+use App\Enums\CampaignStatus;
 use App\Models\Campaign;
 use App\Models\Order;
 use App\Models\Room;
@@ -35,11 +36,15 @@ class SponsorLeaderboardService
      * @param Carbon|null $to Inclusive campaign creation period end; null = no upper bound.
      * @param int|null $limit Maximum rows to return; null = unlimited.
      * @param list<OrderStatus>|null $orderStatuses Only count orders in these statuses; null = every non-cancelled order.
+     * @param list<CampaignStatus>|null $campaignStatuses Optional campaign lifecycle filter.
      * @return Collection<int, array{room_user_id: ?int, user_name: string, user_email: ?string, sponsored_campaigns: int, total_sponsored: int}> Highest total first.
      */
-    public function build(Room $room, ?Carbon $from = null, ?Carbon $to = null, ?int $limit = null, ?array $orderStatuses = null): Collection
+    public function build(Room $room, ?Carbon $from = null, ?Carbon $to = null, ?int $limit = null, ?array $orderStatuses = null, ?array $campaignStatuses = null): Collection
     {
         $campaignsQuery = Campaign::query()->where('room_id', $room->id);
+        if ($campaignStatuses !== null) {
+            $campaignsQuery->whereIn('status', array_map(static fn (CampaignStatus $status): string => $status->value, $campaignStatuses));
+        }
         if ($from !== null && $to !== null) {
             $campaignsQuery->whereBetween('created_at', [$from, $to]);
         }
