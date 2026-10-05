@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\Debt\ApproveDebtPaymentAction;
+use App\Actions\Order\ConfirmOrderPaymentAction;
 use App\Actions\Order\DeleteOrderAction;
 use App\Actions\Order\PlaceOrderOnBehalfAction;
 use App\Actions\Order\UpdateOrderAction;
@@ -27,6 +28,7 @@ use App\Models\Order;
 use App\Models\Room;
 use App\Services\Admin\AdminOrderOnBehalfService;
 use App\Services\Audit\AuditService;
+use App\Support\Helpers\DateRangeHelper;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -52,8 +54,14 @@ class OrderController extends Controller
         }
         if ($request->filled('campaign_id')) $query->where('campaign_id', $request->integer('campaign_id'));
         if ($request->filled('room_user_id')) $query->where('room_user_id', $request->integer('room_user_id'));
-        if ($request->filled('from')) $query->whereDate('created_at', '>=', $request->date('from'));
-        if ($request->filled('to')) $query->whereDate('created_at', '<=', $request->date('to'));
+        $fromDate = DateRangeHelper::parseCarbonSafe((string) $request->input('from'));
+        $toDate = DateRangeHelper::parseCarbonSafe((string) $request->input('to'));
+        if ($fromDate) {
+            $query->where('created_at', '>=', $fromDate->startOfDay());
+        }
+        if ($toDate) {
+            $query->where('created_at', '<=', $toDate->endOfDay());
+        }
         return response()->json(['data' => $query->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE)]);
     }
 
@@ -384,38 +392,19 @@ class OrderController extends Controller
      *
      * @param Room $room Room entity.
      * @param Order $order Order to confirm payment for.
-     * @param ApproveDebtPaymentAction $action Domain action to approve debt payment.
+     * @param ConfirmOrderPaymentAction $action Domain action to confirm order payment.
      * @return JsonResponse Result of the operation.
      */
-    public function confirmPayment(Room $room, Order $order, ApproveDebtPaymentAction $action): JsonResponse
+    public function confirmPayment(Room $room, Order $order, ConfirmOrderPaymentAction $action): JsonResponse
     {
         $this->assertRoom($order);
         $this->assertCampaignLive($order);
 
-        $debt = Debt::firstOrNew([
-            'campaign_id' => $order->campaign_id,
-            'room_user_id' => $order->room_user_id,
-        ]);
-        if (! $debt->exists) {
-            $debt->fill([
-                'room_id' => $order->room_id,
-                'original_amount' => (int) $order->final_amount,
-                'sponsor_amount' => (int) $order->sponsor_amount,
-                'sponsor_type' => $order->campaign?->sponsor_type ?? Campaign::SPONSOR_TYPE_NONE,
-                'sponsor_description' => $order->campaign?->sponsor_description,
-                'adjustment_amount' => 0,
-                'paid_amount' => 0,
-                'remaining_amount' => (int) $order->final_amount,
-                'status' => DebtStatus::Pending,
-                'payment_content' => $order->code,
-            ])->save();
-        }
-
-        $action->execute($debt);
+        $updatedOrder = $action->execute($order);
 
         return response()->json([
             'message' => __('admin.confirm_order_payment_success'),
-            'data' => $order->fresh(),
+            'data' => $updatedOrder,
         ]);
     }
 

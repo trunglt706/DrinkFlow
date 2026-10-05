@@ -449,6 +449,14 @@ export function initAdminDashboard() {
         loadDashboard();
     });
 
+    let socketReloadDebounceTimer = null;
+    function debouncedLoadDashboard(delayMs = 2500) {
+        clearTimeout(socketReloadDebounceTimer);
+        socketReloadDebounceTimer = setTimeout(() => {
+            loadDashboard();
+        }, delayMs);
+    }
+
     // Socket.IO Realtime
     if (socketTokenUrl) {
         fetch(socketTokenUrl, { headers: { Accept: 'application/json' } })
@@ -484,8 +492,11 @@ export function initAdminDashboard() {
                                     <span class="text-[10px] font-mono text-emerald-600">${new Date().toLocaleTimeString('vi-VN')}</span>
                                 </div>
                             `);
+                            while (stream.children.length > 50) {
+                                stream.lastElementChild?.remove();
+                            }
                         }
-                        loadDashboard();
+                        debouncedLoadDashboard(2500);
                     });
                 });
             })

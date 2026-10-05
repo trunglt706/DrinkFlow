@@ -133,6 +133,7 @@ class ProfileController extends Controller
         $data = $request->validated();
 
         if (!Hash::check($data['current_password'], $admin->password)) {
+            $audit->record('admin.password_update_failed', 'admin', $admin->id);
             return back()->withErrors(['current_password' => __('admin.current_password_incorrect')]);
         }
 
@@ -159,6 +160,7 @@ class ProfileController extends Controller
         $data = $request->validated();
 
         if (! Hash::check($data['current_password'], $admin->password)) {
+            $audit->record('admin.two_factor_update_failed', 'admin', $admin->id);
             return back()->withErrors(['two_factor_password' => __('admin.current_password_incorrect')]);
         }
 

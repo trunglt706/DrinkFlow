@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Helpers;
 
+use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 
 class DateRangeHelper
@@ -23,5 +24,25 @@ class DateRangeHelper
         $today = CarbonImmutable::today();
 
         return [$today->subDays(max(1, $days) - 1)->toDateString(), $today->toDateString()];
+    }
+
+    /**
+     * Safely parse a date string into a Carbon instance, returning null on invalid input.
+     *
+     * @param ?string $date Date string representation.
+     * @param ?string $timezone Optional timezone.
+     * @return ?Carbon
+     */
+    public static function parseCarbonSafe(?string $date, ?string $timezone = null): ?Carbon
+    {
+        if ($date === null || trim($date) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse(trim($date), $timezone ?: config('app.timezone'));
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

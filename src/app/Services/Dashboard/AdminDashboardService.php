@@ -8,6 +8,7 @@ use App\Enums\CampaignStatus;
 use App\Enums\DebtStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentAccountStatus;
+use App\Enums\RoomUserStatus;
 use App\Models\Admin;
 use App\Models\Campaign;
 use App\Models\Debt;
@@ -15,11 +16,11 @@ use App\Models\Order;
 use App\Models\PaymentAccount;
 use App\Models\Room;
 use App\Models\RoomUser;
-use App\Enums\RoomUserStatus;
 use App\Support\Helpers\FormatHelper;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 
 class AdminDashboardService
 {
@@ -70,27 +71,54 @@ class AdminDashboardService
     }
 
     /**
-     * Calculate core metrics for both API and Page view.
+     * Calculate core metrics for both API and Page view with short cache.
+     *
+     * @param Room $room Room entity.
+     * @param bool $skipCache Force calculate fresh metrics.
+     * @return array<string, mixed>
      */
-    public function getDashboardMetrics(Room $room): array
+    public function getDashboardMetrics(Room $room, bool $skipCache = false): array
+    {
+        if ($skipCache) {
+            return $this->calculateMetrics($room);
+        }
+
+        return Cache::remember(
+            "admin:dashboard:metrics:{$room->id}",
+            30,
+            fn (): array => $this->calculateMetrics($room)
+        );
+    }
+
+    /**
+     * Internal calculation of dashboard metrics using efficient range queries.
+     *
+     * @param Room $room Room entity.
+     * @return array<string, mixed>
+     */
+    private function calculateMetrics(Room $room): array
     {
         $today = Carbon::today();
-        $yesterday = $today->copy()->subDay();
+        $todayStart = $today->copy()->startOfDay();
+        $todayEnd = $today->copy()->endOfDay();
+        $yesterdayStart = $today->copy()->subDay()->startOfDay();
+        $yesterdayEnd = $today->copy()->subDay()->endOfDay();
+        $sevenDaysAgoStart = $today->copy()->subDays(6)->startOfDay();
 
         $orders = Order::query()->where('room_id', $room->id);
         $debts = Debt::query()->where('room_id', $room->id);
 
-        $campaignMetrics = static fn(HasMany $query): HasMany => $query
+        $campaignMetrics = static fn (HasMany $query): HasMany => $query
             ->withCount([
-                'orders' => static fn(Builder $orderQuery): Builder => $orderQuery
+                'orders' => static fn (Builder $orderQuery): Builder => $orderQuery
                     ->where('status', '!=', OrderStatus::Cancelled->value),
             ])
             ->withSum([
-                'orders as total_amount' => static fn(Builder $orderQuery): Builder => $orderQuery
+                'orders as total_amount' => static fn (Builder $orderQuery): Builder => $orderQuery
                     ->where('status', '!=', OrderStatus::Cancelled->value),
             ], 'final_amount')
             ->withSum([
-                'orders as sponsor_total' => static fn(Builder $orderQuery): Builder => $orderQuery
+                'orders as sponsor_total' => static fn (Builder $orderQuery): Builder => $orderQuery
                     ->where('status', '!=', OrderStatus::Cancelled->value),
             ], 'sponsor_amount');
 
@@ -102,18 +130,36 @@ class AdminDashboardService
         $secondaryCampaign = $activeCampaigns->count() > 1 ? $activeCampaigns->get(1) : null;
 
         $completedStatus = OrderStatus::Completed->value;
-        $ordersTodayCount = (clone $orders)->whereDate('created_at', $today)->where('status', $completedStatus)->count();
-        $ordersYesterdayCount = (clone $orders)->whereDate('created_at', $yesterday)->where('status', $completedStatus)->count();
+        $ordersTodayCount = (clone $orders)->whereBetween('created_at', [$todayStart, $todayEnd])->where('status', $completedStatus)->count();
+        $ordersYesterdayCount = (clone $orders)->whereBetween('created_at', [$yesterdayStart, $yesterdayEnd])->where('status', $completedStatus)->count();
         $ordersGrowth = $ordersYesterdayCount > 0
-            ? round((($ordersTodayCount - $ordersYesterdayCount) / $ordersYesterdayCount) * 100)
+            ? (int) round((($ordersTodayCount - $ordersYesterdayCount) / $ordersYesterdayCount) * 100)
             : ($ordersTodayCount > 0 ? 100 : 0);
 
-        $todayTotalValue = (int) (clone $orders)->whereDate('created_at', $today)->where('status', $completedStatus)->sum('final_amount');
-        $todaySponsorValue = (int) (clone $orders)->whereDate('created_at', $today)->where('status', $completedStatus)->sum('sponsor_amount');
+        $todayTotalValue = (int) (clone $orders)->whereBetween('created_at', [$todayStart, $todayEnd])->where('status', $completedStatus)->sum('final_amount');
+        $todaySponsorValue = (int) (clone $orders)->whereBetween('created_at', [$todayStart, $todayEnd])->where('status', $completedStatus)->sum('sponsor_amount');
 
         $pendingDebtUsersCount = (clone $debts)->whereIn('status', [DebtStatus::Unpaid->value, DebtStatus::Partial->value])->distinct('room_user_id')->count('room_user_id');
 
-        // Weekly trend for 7 days
+        // Weekly trend aggregated queries (2 queries instead of 14 queries inside loop)
+        $campaignCountsByDay = $room->campaigns()
+            ->whereBetween('created_at', [$sevenDaysAgoStart, $todayEnd])
+            ->selectRaw('DATE(created_at) as date_val, COUNT(*) as aggregate_count')
+            ->groupByRaw('DATE(created_at)')
+            ->pluck('aggregate_count', 'date_val')
+            ->all();
+
+        $orderCountsByDay = Order::query()
+            ->where('room_id', $room->id)
+            ->whereBetween('created_at', [$sevenDaysAgoStart, $todayEnd])
+            ->where('status', '!=', OrderStatus::Cancelled->value)
+            ->selectRaw('DATE(created_at) as date_val, COUNT(*) as aggregate_count')
+            ->groupByRaw('DATE(created_at)')
+            ->pluck('aggregate_count', 'date_val')
+            ->all();
+
+        $weeklyGrossByDay = $this->weeklyGrossSpendingByDay($room, $sevenDaysAgoStart, $todayEnd);
+
         $weeklyTrend = [];
         $maxSpending = 0;
         $maxDayIndex = -1;
@@ -130,20 +176,15 @@ class AdminDashboardService
             0 => __('admin.day_sunday'),
         ];
 
-        $weeklyGrossByDay = $this->weeklyGrossSpendingByDay($room, $today->copy()->subDays(6)->startOfDay(), $today->copy()->endOfDay());
-
         for ($i = 6; $i >= 0; $i--) {
             $currentDate = $today->copy()->subDays($i);
+            $dateString = $currentDate->toDateString();
             $dayOfWeek = (int) $currentDate->format('w');
             $dayLabel = $i === 0 ? __('admin.day_today') : ($dayLabels[$dayOfWeek] ?? $currentDate->format('D'));
 
-            $cCount = $room->campaigns()->whereDate('created_at', $currentDate)->count();
-            $sAmount = (int) ($weeklyGrossByDay[$currentDate->toDateString()] ?? 0);
-            $oCount = Order::query()
-                ->where('room_id', $room->id)
-                ->whereDate('created_at', $currentDate)
-                ->where('status', '!=', OrderStatus::Cancelled->value)
-                ->count();
+            $cCount = (int) ($campaignCountsByDay[$dateString] ?? 0);
+            $sAmount = (int) ($weeklyGrossByDay[$dateString] ?? 0);
+            $oCount = (int) ($orderCountsByDay[$dateString] ?? 0);
 
             $totalWeekCampaigns += $cCount;
             $totalWeekSpending += $sAmount;
@@ -177,7 +218,7 @@ class AdminDashboardService
                 ->count('room_user_id');
         }
 
-        // Active members of the room (shown on the dashboard and used as the participation denominator)
+        // Active members of the room
         $activeRoomUsers = RoomUser::query()
             ->where('room_id', $room->id)
             ->where('status', RoomUserStatus::Active->value)
@@ -214,80 +255,8 @@ class AdminDashboardService
     }
 
     /**
-     * Get data for Admin Operations Management Hub (/admin/{room}/manage).
-     *
-     * @param Room $room Room entity.
-     * @param ?Admin $admin Current logged-in admin account.
-     * @return array<string, mixed> Manage page payload.
-     */
-    public function getManagePageData(Room $room, ?Admin $admin): array
-    {
-        $assignedRooms = $admin?->rooms()->get() ?: collect([$room]);
-        if ($assignedRooms->isEmpty()) {
-            $assignedRooms = collect([$room]);
-        }
-
-        $activePaymentAccount = PaymentAccount::query()
-            ->where('room_id', $room->id)
-            ->where('status', PaymentAccountStatus::Active)
-            ->first();
-
-        $allPaymentAccounts = PaymentAccount::query()
-            ->where('room_id', $room->id)
-            ->latest()
-            ->get();
-
-        $activeCampaign = $room->campaigns()
-            ->where('status', CampaignStatus::Active)
-            ->with(['items.sizes', 'items.toppings'])
-            ->latest('started_at')
-            ->first();
-
-        $debts = Debt::query()
-            ->where('room_id', $room->id)
-            ->with(['roomUser.globalUser', 'campaign'])
-            ->latest()
-            ->get();
-
-        $roomUsers = $room->roomUsers()
-            ->with(['globalUser', 'devices'])
-            ->withCount(['orders', 'debts'])
-            ->latest('last_active_at')
-            ->get();
-
-        $notificationChannels = $room->notificationChannels()->get();
-        $roomSettings = $room->roomSettings()->pluck('value', 'key')->all();
-
-        $totalDebtsAmount = (int) $debts->sum('original_amount');
-        $unpaidDebtsAmount = (int) $debts->whereIn('status', [DebtStatus::Unpaid->value, DebtStatus::Partial->value])->sum('remaining_amount');
-        $paidDebtsAmount = (int) $debts->sum('paid_amount');
-        $debtUsersCount = $debts->whereIn('status', [DebtStatus::Unpaid->value, DebtStatus::Partial->value])->pluck('room_user_id')->unique()->count();
-
-        return [
-            'room' => $room,
-            'assignedRooms' => $assignedRooms,
-            'activePaymentAccount' => $activePaymentAccount,
-            'allPaymentAccounts' => $allPaymentAccounts,
-            'activeCampaign' => $activeCampaign,
-            'debts' => $debts,
-            'roomUsers' => $roomUsers,
-            'notificationChannels' => $notificationChannels,
-            'roomSettings' => $roomSettings,
-            'debtStats' => [
-                'total_amount' => $totalDebtsAmount,
-                'unpaid_amount' => $unpaidDebtsAmount,
-                'paid_amount' => $paidDebtsAmount,
-                'users_count' => $debtUsersCount,
-            ],
-        ];
-    }
-
-    /**
      * Gross spending per day for the weekly trend: each campaign created in the window adds its gross total
      * (non-cancelled order subtotals + delivery fee - discount, before sponsorship) to the day it was created.
-     *
-     * Draft/cancelled campaigns and campaigns without any order spend nothing, so a delivery fee is never counted
-     * for a campaign nobody ordered in.
      *
      * @param Room $room Room scope.
      * @param Carbon $from Window start (inclusive).

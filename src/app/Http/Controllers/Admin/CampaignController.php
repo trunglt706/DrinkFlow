@@ -902,12 +902,13 @@ class CampaignController extends Controller
 
     /**
      * Handle the delete topping operation.
+     * @param Room $room Parameter value.
      * @param Campaign $campaign Parameter value.
      * @param CampaignItem $item Parameter value.
      * @param CampaignItemTopping $option Parameter value.
      * @return JsonResponse Result of the operation.
      */
-    public function deleteTopping(Campaign $campaign, CampaignItem $item, CampaignItemTopping $option): JsonResponse
+    public function deleteTopping(Room $room, Campaign $campaign, CampaignItem $item, CampaignItemTopping $option): JsonResponse
     {
         $this->assertItemEditable($campaign, $item);
         abort_unless($option->campaign_item_id === $item->id, 404);
@@ -917,12 +918,13 @@ class CampaignController extends Controller
 
     /**
      * Handle the delete size operation.
+     * @param Room $room Parameter value.
      * @param Campaign $campaign Parameter value.
      * @param CampaignItem $item Parameter value.
      * @param CampaignItemSize $option Parameter value.
      * @return JsonResponse Result of the operation.
      */
-    public function deleteSize(Campaign $campaign, CampaignItem $item, CampaignItemSize $option): JsonResponse
+    public function deleteSize(Room $room, Campaign $campaign, CampaignItem $item, CampaignItemSize $option): JsonResponse
     {
         $this->assertItemEditable($campaign, $item);
         abort_unless($option->campaign_item_id === $item->id, 404);
@@ -938,7 +940,13 @@ class CampaignController extends Controller
      */
     public function aggregate(Request $request, \App\Services\Admin\OrderAggregationService $aggregator): JsonResponse
     {
-        return response()->json(['data' => $aggregator->forRoom(request()->attributes->get('room')->id, $request->integer('campaign_id'))]);
+        $validated = $request->validate([
+            'campaign_id' => 'required|integer|exists:campaigns,id',
+        ]);
+        $room = request()->attributes->get('room');
+        $campaign = Campaign::where('id', $validated['campaign_id'])->where('room_id', $room->id)->firstOrFail();
+
+        return response()->json(['data' => $aggregator->forRoom($room->id, $campaign->id)]);
     }
 
     /**
@@ -946,11 +954,17 @@ class CampaignController extends Controller
      *
      * @param Request $request HTTP request containing campaign_id parameter.
      * @param \App\Services\Admin\OrderAggregationService $aggregator Order aggregation service.
-     * @return \Symfony\Component\HttpFoundation\StreamedResponse Excel download response.
+     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse Excel download response.
      */
-    public function exportAggregate(Request $request, \App\Services\Admin\OrderAggregationService $aggregator)
+    public function exportAggregate(Request $request, \App\Services\Admin\OrderAggregationService $aggregator): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
-        $rows = $aggregator->forRoom(request()->attributes->get('room')->id, $request->integer('campaign_id'));
+        $validated = $request->validate([
+            'campaign_id' => 'required|integer|exists:campaigns,id',
+        ]);
+        $room = request()->attributes->get('room');
+        $campaign = Campaign::where('id', $validated['campaign_id'])->where('room_id', $room->id)->firstOrFail();
+
+        $rows = $aggregator->forRoom($room->id, $campaign->id);
         return Excel::download(
             new CampaignAggregateExport($rows->toArray()),
             'drinkflow-aggregator.csv'

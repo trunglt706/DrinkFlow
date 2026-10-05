@@ -59,8 +59,8 @@ Route::middleware('auth:admin')->prefix('admin/profile')->group(function () {
     Route::get('/avatar', [\App\Http\Controllers\Admin\ProfileController::class, 'avatar'])->name('admin.profile.avatar.show');
     Route::patch('/', [\App\Http\Controllers\Admin\ProfileController::class, 'update'])->name('admin.profile.update');
     Route::post('/avatar', [\App\Http\Controllers\Admin\ProfileController::class, 'uploadAvatar'])->name('admin.profile.avatar');
-    Route::patch('/password', [\App\Http\Controllers\Admin\ProfileController::class, 'updatePassword'])->name('admin.profile.password');
-    Route::patch('/two-factor', [\App\Http\Controllers\Admin\ProfileController::class, 'updateTwoFactor'])->name('admin.profile.two-factor');
+    Route::patch('/password', [\App\Http\Controllers\Admin\ProfileController::class, 'updatePassword'])->middleware('throttle:5,1')->name('admin.profile.password');
+    Route::patch('/two-factor', [\App\Http\Controllers\Admin\ProfileController::class, 'updateTwoFactor'])->middleware('throttle:5,1')->name('admin.profile.two-factor');
 });
 
 // The Agent's own rooms (ownership + quota). Declared before /admin/{room}; these slugs are reserved (Room::RESERVED_SLUGS).

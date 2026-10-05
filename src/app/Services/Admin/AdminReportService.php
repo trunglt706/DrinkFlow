@@ -88,17 +88,16 @@ class AdminReportService
                 ->whereBetween('orders.created_at', [$from, $to])
                 ->whereNotIn('orders.status', [OrderStatus::Cancelled->value]);
 
-            $orderIds = (clone $orders)->pluck('id');
-
-            $payload['popular_drinks'] = $orderIds->isEmpty()
-                ? collect()
-                : OrderItem::query()
-                    ->whereIn('order_id', $orderIds)
-                    ->selectRaw('item_name, SUM(quantity) as quantity')
-                    ->groupBy('item_name')
-                    ->orderByDesc('quantity')
-                    ->limit(5)
-                    ->get();
+            $payload['popular_drinks'] = OrderItem::query()
+                ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                ->where('orders.room_id', $room->id)
+                ->whereBetween('orders.created_at', [$from, $to])
+                ->whereNotIn('orders.status', [OrderStatus::Cancelled->value])
+                ->selectRaw('order_items.item_name, SUM(order_items.quantity) as quantity')
+                ->groupBy('order_items.item_name')
+                ->orderByDesc('quantity')
+                ->limit(5)
+                ->get();
 
             $payload['popular_stores'] = (clone $orders)
                 ->join('campaigns', 'campaigns.id', '=', 'orders.campaign_id')
@@ -181,12 +180,21 @@ class AdminReportService
         $toInput = $request->input('date_to') ?: $request->input('to');
 
         if (!empty($fromInput) || !empty($toInput)) {
-            $start = !empty($fromInput)
-                ? Carbon::parse((string) $fromInput, $timezone)->startOfDay()
-                : Carbon::parse('2020-01-01', $timezone)->startOfDay();
-            $end = !empty($toInput)
-                ? Carbon::parse((string) $toInput, $timezone)->endOfDay()
-                : $now->copy()->endOfDay();
+            try {
+                $start = !empty($fromInput)
+                    ? Carbon::parse((string) $fromInput, $timezone)->startOfDay()
+                    : Carbon::parse('2020-01-01', $timezone)->startOfDay();
+            } catch (\Throwable) {
+                $start = $now->copy()->subDays(6)->startOfDay();
+            }
+
+            try {
+                $end = !empty($toInput)
+                    ? Carbon::parse((string) $toInput, $timezone)->endOfDay()
+                    : $now->copy()->endOfDay();
+            } catch (\Throwable) {
+                $end = $now->copy()->endOfDay();
+            }
 
             return [$start, $end];
         }

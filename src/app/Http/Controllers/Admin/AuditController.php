@@ -11,11 +11,13 @@ use App\Support\Helpers\DateRangeHelper;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class AuditController extends Controller
 {
     /**
      * Handle the index operation.
+     *
      * @param Request $request Parameter value.
      * @return JsonResponse Result of the operation.
      */
@@ -23,12 +25,26 @@ class AuditController extends Controller
     {
         $room = $request->attributes->get('room');
         $query = AuditLog::query()->where('room_id', $room->id)->latest('created_at');
-        if ($request->filled('event')) $query->where('event', $request->string('event')->toString());
-        if ($request->filled('target_type')) $query->where('target_type', $request->string('target_type')->toString());
-        $dateFrom = $request->input('date_from', $request->input('from'));
-        $dateTo = $request->input('date_to', $request->input('to'));
-        if ($dateFrom) $query->whereDate('created_at', '>=', $dateFrom);
-        if ($dateTo) $query->whereDate('created_at', '<=', $dateTo);
+
+        if ($request->filled('event')) {
+            $query->where('event', $request->string('event')->toString());
+        }
+
+        if ($request->filled('target_type')) {
+            $query->where('target_type', $request->string('target_type')->toString());
+        }
+
+        $dateFrom = DateRangeHelper::parseCarbonSafe((string) $request->input('date_from', $request->input('from')));
+        $dateTo = DateRangeHelper::parseCarbonSafe((string) $request->input('date_to', $request->input('to')));
+
+        if ($dateFrom) {
+            $query->where('created_at', '>=', $dateFrom->startOfDay());
+        }
+
+        if ($dateTo) {
+            $query->where('created_at', '<=', $dateTo->endOfDay());
+        }
+
         return response()->json(['data' => $query->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE)]);
     }
 
@@ -65,30 +81,50 @@ class AuditController extends Controller
 
         // No date parameter at all (first visit) → last 7 days. An explicitly empty range ("Tất cả") shows everything.
         if (! $request->hasAny(['date_from', 'date_to', 'from', 'to'])) {
-            [$dateFrom, $dateTo] = DateRangeHelper::lastDays();
+            [$defaultFrom, $defaultTo] = DateRangeHelper::lastDays();
+            $dateFromStr = $defaultFrom;
+            $dateToStr = $defaultTo;
+            $dateFrom = DateRangeHelper::parseCarbonSafe($defaultFrom);
+            $dateTo = DateRangeHelper::parseCarbonSafe($defaultTo);
         } else {
-            $dateFrom = $request->input('date_from', $request->input('from'));
-            $dateTo = $request->input('date_to', $request->input('to'));
+            $dateFromStr = (string) $request->input('date_from', $request->input('from', ''));
+            $dateToStr = (string) $request->input('date_to', $request->input('to', ''));
+            $dateFrom = DateRangeHelper::parseCarbonSafe($dateFromStr);
+            $dateTo = DateRangeHelper::parseCarbonSafe($dateToStr);
         }
-        if ($dateFrom) $query->whereDate('created_at', '>=', $dateFrom);
-        if ($dateTo) $query->whereDate('created_at', '<=', $dateTo);
+
+        if ($dateFrom) {
+            $query->where('created_at', '>=', $dateFrom->startOfDay());
+        }
+
+        if ($dateTo) {
+            $query->where('created_at', '<=', $dateTo->endOfDay());
+        }
 
         $logs = $query->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE)->withQueryString();
 
-        $events = AuditLog::where('room_id', $room->id)->distinct()->pluck('event')->filter()->values();
-        $targetTypes = AuditLog::where('room_id', $room->id)->distinct()->pluck('target_type')->filter()->values();
+        $cachedFilterData = Cache::remember(
+            "audit:room:{$room->id}:dropdown_filters",
+            600,
+            static function () use ($room): array {
+                return [
+                    'events' => AuditLog::where('room_id', $room->id)->distinct()->pluck('event')->filter()->values(),
+                    'targetTypes' => AuditLog::where('room_id', $room->id)->distinct()->pluck('target_type')->filter()->values(),
+                ];
+            }
+        );
 
         return view('admin.audit', [
             'room' => $room,
             'logs' => $logs,
-            'events' => $events,
-            'targetTypes' => $targetTypes,
+            'events' => $cachedFilterData['events'],
+            'targetTypes' => $cachedFilterData['targetTypes'],
             'filters' => [
                 'event' => $request->input('event', ''),
                 'target_type' => $request->input('target_type', ''),
                 'actor' => $request->input('actor', ''),
-                'date_from' => $dateFrom ?? '',
-                'date_to' => $dateTo ?? '',
+                'date_from' => $dateFromStr,
+                'date_to' => $dateToStr,
             ],
         ]);
     }

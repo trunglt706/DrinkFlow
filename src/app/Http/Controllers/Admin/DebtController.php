@@ -42,9 +42,12 @@ class DebtController extends Controller
         if ($request->filled('status')) $query->where('status', $request->string('status')->toString());
         if ($request->filled('campaign_id')) $query->where('campaign_id', $request->integer('campaign_id'));
         $ledger = Debt::query()->where('room_id', $room->id);
+        $summaryDays = $request->integer('summary_days', 30);
+        $summaryFrom = now()->subDays($summaryDays)->startOfDay();
+
         return response()->json(['data' => $query->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE), 'summary' => [
             'by_user' => (clone $ledger)->selectRaw('room_user_id, SUM(remaining_amount) as remaining_amount, COUNT(*) as debt_count')->groupBy('room_user_id')->with('roomUser.globalUser:id,name,email')->get(),
-            'by_day' => (clone $ledger)->selectRaw('DATE(created_at) as date, SUM(original_amount) as original_amount, SUM(remaining_amount) as remaining_amount, COUNT(*) as debt_count')->groupByRaw('DATE(created_at)')->orderBy('date')->get(),
+            'by_day' => (clone $ledger)->where('created_at', '>=', $summaryFrom)->selectRaw('DATE(created_at) as date, SUM(original_amount) as original_amount, SUM(remaining_amount) as remaining_amount, COUNT(*) as debt_count')->groupByRaw('DATE(created_at)')->orderBy('date')->get(),
         ]]);
     }
 
