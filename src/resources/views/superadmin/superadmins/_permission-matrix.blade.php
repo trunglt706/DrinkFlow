@@ -8,7 +8,7 @@
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <label class="flex items-center gap-2 text-xs text-on-surface cursor-pointer">
                             <input type="checkbox" name="permissions[]" value="{{ $permission->value }}" @checked(array_key_exists($permission->value, $grants))>
-                            <span>{{ $permission->label() }} <code class="text-[10px] text-outline">{{ $permission->value }}</code></span>
+                            <span>{{ $permission->label() }} <code class="text-xs text-outline">{{ $permission->value }}</code></span>
                         </label>
                         @if ($permission->supportsScope())
                             <select name="scopes[{{ $permission->value }}]" class="sa-input !min-w-0 !py-1 text-xs" aria-label="{{ __('superadmin.superadmins.scope') }}">

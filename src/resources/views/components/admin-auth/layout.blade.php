@@ -3,6 +3,8 @@
     'brandHero' => null,
     // Single centered card on a full-width stage (no brand column), used by the wide registration form.
     'centered' => false,
+    // Superadmin sign-in: graphite brand column and the indigo accent of the superadmin console (admin.css .sa-auth).
+    'superadmin' => false,
 ])
 
 @php
@@ -33,9 +35,28 @@
 </head>
 
 <body data-submit-loading-text="{{ __('global.common.loading') }}"
-    class="admin-shell h-full bg-surface text-on-surface font-sans antialiased overflow-hidden selection:bg-primary/20">
+    class="admin-shell {{ $superadmin ? 'sa-auth' : '' }} h-full bg-surface text-on-surface font-sans antialiased overflow-hidden selection:bg-primary/20">
     <div class="h-screen overflow-hidden flex flex-col lg:flex-row">
-        @unless ($centered)
+        @if ($superadmin && ! $centered)
+        <aside class="sa-auth-aside lg:w-5/12 xl:w-1/2 hidden md:flex flex-col justify-between p-6 lg:py-8 lg:px-10 relative overflow-hidden select-none shrink-0">
+            <div class="sa-auth-grid" aria-hidden="true"></div>
+            <div class="sa-auth-glow" aria-hidden="true"></div>
+            <div class="relative z-10 flex items-center gap-3">
+                <span class="sa-auth-logo" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z" /></svg>
+                </span>
+                <span class="leading-tight">
+                    <span class="block text-lg font-bold tracking-tight text-white">DrinkFlow</span>
+                    <span class="block text-xs text-zinc-400">{{ __('superadmin.layout.enterprise_superadmin') }}</span>
+                </span>
+            </div>
+            <div class="relative z-10 my-auto max-w-lg space-y-6">
+                {{ $brandHero }}
+            </div>
+            <p class="relative z-10 text-xs text-zinc-500">© {{ date('Y') }} DrinkFlow</p>
+        </aside>
+        @endif
+        @unless ($centered || $superadmin)
         <!-- LEFT COLUMN: Brand & Operations Engine (~46% width) -->
         <aside
             class="lg:w-5/12 xl:w-1/2 bg-gradient-to-br from-emerald-50 via-white to-emerald-100/70 text-on-surface hidden md:flex flex-col p-6 lg:py-8 lg:px-10 relative overflow-hidden border-b lg:border-b-0 lg:border-r border-emerald-100 justify-between select-none shrink-0">

@@ -1,3 +1,5 @@
+import { dfApi } from './shared';
+import { openSuperadminConfirm } from './modal';
 import { renderSubmitLoading } from '../shared/submit-loading';
 
 /**
@@ -130,7 +132,7 @@ export function initSuperadminVersions() {
 
         showTemplate('tpl-preview-loading');
         try {
-            const { data } = await window.dfApi(form.dataset.previewUrl, { method: 'POST', body: { changelog: source } });
+            const { data } = await dfApi(form.dataset.previewUrl, { method: 'POST', body: { changelog: source } });
             // Server-rendered with raw HTML escaped and unsafe links removed (Version::renderMarkdown()).
             preview.innerHTML = data.html;
             previewedSource = source;
@@ -168,6 +170,12 @@ export function initSuperadminVersions() {
         previewedSource = null;
 
         if (modalTitle) modalTitle.textContent = release ? i18n.edit_release : i18n.new_release;
+        // Header icon follows the dialog kind: create (new release) vs edit (existing release).
+        const modalIcon = document.querySelector('#version-modal [data-modal-icon]');
+        if (modalIcon) {
+            modalIcon.className = `sa-modal-icon is-${release ? 'edit' : 'create'}`;
+            modalIcon.querySelector('.material-symbols-outlined').textContent = release ? 'edit_note' : 'new_releases';
+        }
         if (modalDescription) modalDescription.textContent = release ? i18n.edit_description : i18n.create_description;
         submitButton.innerHTML = submitHtml;
         submitButton.disabled = false;
@@ -236,9 +244,9 @@ export function initSuperadminVersions() {
 
         try {
             if (mode === 'edit') {
-                await window.dfApi(updateUrl, { method: 'PUT', body });
+                await dfApi(updateUrl, { method: 'PUT', body });
             } else {
-                await window.dfApi(form.dataset.storeUrl, { method: 'POST', body });
+                await dfApi(form.dataset.storeUrl, { method: 'POST', body });
             }
             window.closeSuperadminModal('version-modal');
             notice(mode === 'edit' ? i18n.updated : i18n.created);
@@ -264,11 +272,13 @@ export function initSuperadminVersions() {
 
         const deleteButton = event.target.closest('[data-action="delete-release"]');
         if (deleteButton) {
-            window.openSuperadminConfirm({
+            openSuperadminConfirm({
                 message: trans(i18n.confirm_delete, { version: deleteButton.dataset.version }),
                 description: i18n.delete_description,
+                tone: 'danger',
+                irreversible: true,
                 onConfirm: async () => {
-                    await window.dfApi(deleteButton.dataset.deleteUrl, { method: 'DELETE' });
+                    await dfApi(deleteButton.dataset.deleteUrl, { method: 'DELETE' });
                     notice(i18n.deleted);
                     window.setTimeout(() => window.location.reload(), 500);
                 },

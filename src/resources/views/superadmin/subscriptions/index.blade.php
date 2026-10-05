@@ -1,12 +1,6 @@
 @extends('superadmin.layout', ['title' => __('platform.subscriptions.admin_title'), 'active' => 'subscriptions'])
 @section('content')
-    <div class="superadmin-heading">
-        <div>
-            <p class="superadmin-eyebrow">{{ __('platform.nav.agents') }}</p>
-            <h1>{{ __('platform.subscriptions.admin_title') }}</h1>
-            <p>{{ __('platform.subscriptions.admin_description') }}</p>
-        </div>
-    </div>
+    <x-superadmin.page-header :eyebrow="__('platform.nav.agents')" :title="__('platform.subscriptions.admin_title')" :description="__('platform.subscriptions.admin_description')" />
     <x-superadmin.flash />
     <section class="sa-card sa-section">
         <div class="sa-section-header">
@@ -35,33 +29,33 @@
             <table class="sa-table">
                 <thead>
                     <tr>
-                        <th>{{ __('platform.subscriptions.agent') }}</th>
+                        <th class="col-primary">{{ __('platform.subscriptions.agent') }}</th>
                         <th>{{ __('platform.packages.package') }}</th>
-                        <th class="text-right">{{ __('platform.subscriptions.price') }}</th>
-                        <th class="text-right">{{ __('platform.subscriptions.room_limit') }}</th>
-                        <th>{{ __('superadmin.common.status') }}</th>
-                        <th>{{ __('platform.subscriptions.period') }}</th>
-                        <th class="text-right">{{ __('superadmin.common.actions') }}</th>
+                        <th class="text-right num">{{ __('platform.subscriptions.price') }}</th>
+                        <th class="text-right num">{{ __('platform.subscriptions.room_limit') }}</th>
+                        <th class="col-status">{{ __('superadmin.common.status') }}</th>
+                        <th class="col-date">{{ __('platform.subscriptions.period') }}</th>
+                        <th class="text-right col-actions">{{ __('superadmin.common.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($subscriptions as $subscription)
                         <tr>
-                            <td>
+                            <td class="col-primary">
                                 <strong class="block truncate">{{ $subscription->admin?->name }}</strong>
                                 <small class="block truncate text-outline">{{ $subscription->admin?->email }}</small>
                             </td>
                             <td>{{ $subscription->package?->name }}</td>
-                            <td class="text-right whitespace-nowrap">{{ \App\Support\Helpers\FormatHelper::formatCurrency($subscription->price_snapshot) }}</td>
-                            <td class="text-right">{{ $subscription->room_limit_snapshot }}</td>
-                            <td>
+                            <td class="text-right whitespace-nowrap num">{{ \App\Support\Helpers\FormatHelper::formatCurrency($subscription->price_snapshot) }}</td>
+                            <td class="text-right num">{{ $subscription->room_limit_snapshot }}</td>
+                            <td class="col-status">
                                 <span class="status-pill status-{{ $subscription->status->value === 'active' ? 'active' : 'inactive' }}"><span class="status-dot"></span>{{ __('platform.subscriptions.status.'.$subscription->status->value) }}</span>
                                 @if ($subscription->cancel_at_period_end)
                                     <small class="block text-outline">{{ __('platform.subscriptions.ending') }}</small>
                                 @endif
                             </td>
-                            <td class="whitespace-nowrap">{{ $subscription->starts_at->toAppDate() }} → {{ ($subscription->ended_at ?? $subscription->expires_at)?->toAppDate() ?? '—' }}</td>
-                            <td class="text-right">
+                            <td class="whitespace-nowrap col-date">{{ $subscription->starts_at->toAppDate() }} → {{ ($subscription->ended_at ?? $subscription->expires_at)?->toAppDate() ?? '—' }}</td>
+                            <td class="text-right col-actions">
                                 <a class="sa-button secondary" href="{{ route('superadmin.subscriptions.show', $subscription->admin_id) }}"><span class="material-symbols-outlined text-[16px]">visibility</span>{{ __('superadmin.common.details') }}</a>
                             </td>
                         </tr>
@@ -74,7 +68,7 @@
             </table>
         </div>
         @if ($subscriptions->hasPages())
-            <div class="mt-4">{{ $subscriptions->links() }}</div>
+            {{ $subscriptions->links('components.superadmin.pagination') }}
         @endif
     </section>
 @endsection

@@ -1,12 +1,6 @@
 @extends('superadmin.layout', ['title' => __('superadmin.campaigns.title'), 'active' => 'campaigns'])
 @section('content')
-    <div class="superadmin-heading">
-        <div>
-            <p class="superadmin-eyebrow">{{ __('superadmin.common.platform_data') }}</p>
-            <h1>{{ __('superadmin.campaigns.title') }}</h1>
-            <p>{{ __('superadmin.campaigns.description') }}</p>
-        </div>
-    </div>
+    <x-superadmin.page-header :eyebrow="__('superadmin.common.platform_data')" :title="__('superadmin.campaigns.title')" :description="__('superadmin.campaigns.description')" />
     <div id="notice" class="sa-notice"></div>
     <section class="sa-card sa-section">
         <div class="sa-section-header">
@@ -35,11 +29,11 @@
             <table class="sa-table">
                 <thead>
                     <tr>
-                        <th>{{ __('superadmin.common.campaign') }}</th>
+                        <th class="col-primary">{{ __('superadmin.common.campaign') }}</th>
                         <th>{{ __('superadmin.common.room') }}</th>
-                        <th class="whitespace-nowrap">{{ __('superadmin.campaigns.orders') }}</th>
-                        <th>{{ __('superadmin.common.status') }}</th>
-                        <th class="text-right">{{ __('superadmin.common.actions') }}</th>
+                        <th class="whitespace-nowrap num">{{ __('superadmin.campaigns.orders') }}</th>
+                        <th class="col-status">{{ __('superadmin.common.status') }}</th>
+                        <th class="text-right col-actions">{{ __('superadmin.common.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -51,7 +45,7 @@
                             $canForceCancel = in_array($status, \App\Actions\Superadmin\ForceArchiveCampaignAction::ARCHIVABLE_STATUSES, true);
                         @endphp
                         <tr>
-                            <td>
+                            <td class="col-primary">
                                 <strong class="block">{{ $campaign->name }}</strong>
                                 <small class="block text-outline">{{ $campaign->restaurant }}</small>
                             </td>
@@ -59,26 +53,29 @@
                                 <strong class="block">{{ $campaign->room?->name ?? '—' }}</strong>
                                 @if($campaign->room)<small class="block text-outline">{{ $campaign->room->slug }}</small>@endif
                             </td>
-                            <td class="whitespace-nowrap">{{ $campaign->orders_count }}</td>
-                            <td>
+                            <td class="whitespace-nowrap num">{{ $campaign->orders_count }}</td>
+                            <td class="col-status">
                                 @if($status)
                                     <span class="status-pill status-{{ $status->value }}"><span class="status-dot"></span>{{ $status->label() }}</span>
                                 @else
                                     {{ (string) $campaign->status }}
                                 @endif
                             </td>
-                            <td>
-                                <div class="flex items-center justify-end gap-2 whitespace-nowrap">
-                                    @if($canForceClose)
-                                        <button class="sa-button warning" type="button" data-action="force-close" data-campaign-id="{{ $campaign->id }}" data-campaign-name="{{ $campaign->name }}"><span class="material-symbols-outlined text-[16px]">stop_circle</span>{{ __('superadmin.campaigns.force_close') }}</button>
-                                    @endif
-                                    @if($canForceCancel)
-                                        <button class="sa-button danger" type="button" data-action="force-cancel" data-campaign-id="{{ $campaign->id }}" data-campaign-name="{{ $campaign->name }}"><span class="material-symbols-outlined text-[16px]">cancel</span>{{ __('superadmin.campaigns.force_cancel') }}</button>
-                                    @endif
-                                    @if(! $canForceClose && ! $canForceCancel)
-                                        <span class="text-outline">—</span>
-                                    @endif
-                                </div>
+                            <td class="col-actions">
+                                @if($canForceClose || $canForceCancel)
+                                    <x-superadmin.row-actions>
+                                        <x-slot:menu>
+                                            @if($canForceClose)
+                                                <button class="sa-menu-item is-warning" type="button" data-action="force-close" data-campaign-id="{{ $campaign->id }}" data-campaign-name="{{ $campaign->name }}" role="menuitem"><span class="material-symbols-outlined">stop_circle</span>{{ __('superadmin.campaigns.force_close') }}</button>
+                                            @endif
+                                            @if($canForceCancel)
+                                                <button class="sa-menu-item is-danger" type="button" data-action="force-cancel" data-campaign-id="{{ $campaign->id }}" data-campaign-name="{{ $campaign->name }}" role="menuitem"><span class="material-symbols-outlined">cancel</span>{{ __('superadmin.campaigns.force_cancel') }}</button>
+                                            @endif
+                                        </x-slot:menu>
+                                    </x-superadmin.row-actions>
+                                @else
+                                    <div class="text-right text-outline">—</div>
+                                @endif
                             </td>
                         </tr>
                     @empty
@@ -96,50 +93,14 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-4">{{ $campaigns->links() }}</div>
+        {{ $campaigns->links('components.superadmin.pagination') }}
     </section>
 @endsection
 @push('scripts')
-    <script>
-        const campaignNotice = (message, type = 'success') => {
-            const n = document.querySelector('#notice');
-            n.textContent = message;
-            n.className = `sa-notice ${type} is-visible`;
-        };
-        const campaignActions = {
-            'force-close': {
-                endpoint: 'force-close',
-                message: @js(__('superadmin.campaigns.confirm_force_close')),
-                description: @js(__('superadmin.campaigns.force_close_description')),
-                confirmLabel: @js(__('superadmin.campaigns.force_close')),
-                confirmIcon: 'stop_circle',
-                done: @js(__('superadmin.campaigns.force_closed')),
-            },
-            'force-cancel': {
-                endpoint: 'force-cancel',
-                message: @js(__('superadmin.campaigns.confirm_force_cancel')),
-                description: @js(__('superadmin.campaigns.force_cancel_description')),
-                confirmLabel: @js(__('superadmin.campaigns.force_cancel')),
-                confirmIcon: 'cancel',
-                done: @js(__('superadmin.campaigns.force_cancelled')),
-            },
-        };
-
-        document.addEventListener('click', (event) => {
-            const button = event.target.closest('[data-action="force-close"], [data-action="force-cancel"]');
-            if (!button) return;
-            const action = campaignActions[button.dataset.action];
-            openSuperadminConfirm({
-                message: action.message.replace(':name', button.dataset.campaignName),
-                description: action.description,
-                confirmLabel: action.confirmLabel,
-                confirmIcon: action.confirmIcon,
-                onConfirm: async () => {
-                    await dfApi(`/superadmin/campaigns/${button.dataset.campaignId}/${action.endpoint}`, { method: 'POST' });
-                    campaignNotice(action.done);
-                    window.setTimeout(() => window.location.reload(), 500);
-                },
-            });
-        });
-    </script>
+    <x-superadmin.page-script name="campaigns" :i18n="[
+        'confirm_force_close' => __('superadmin.campaigns.confirm_force_close'), 'force_close_description' => __('superadmin.campaigns.force_close_description'),
+        'force_close' => __('superadmin.campaigns.force_close'), 'force_closed' => __('superadmin.campaigns.force_closed'),
+        'confirm_force_cancel' => __('superadmin.campaigns.confirm_force_cancel'), 'force_cancel_description' => __('superadmin.campaigns.force_cancel_description'),
+        'force_cancel' => __('superadmin.campaigns.force_cancel'), 'force_cancelled' => __('superadmin.campaigns.force_cancelled'),
+    ]" />
 @endpush

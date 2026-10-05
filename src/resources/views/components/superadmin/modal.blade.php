@@ -1,32 +1,38 @@
+{{-- Superadmin dialog. Opened by [data-modal-open="id"] / window.openSuperadminModal(id) and closed by [data-modal-close],
+     the backdrop or Escape (resources/js/superadmin/modal.js).
+     `tone` colours the header icon by the kind of dialog: create | edit | info | warning | danger | security | success.
+     Put a <x-superadmin.modal-guide> first in the body for instructions, and wrap the buttons in .sa-modal-footer. --}}
 @props([
     'id',
     'icon' => 'info',
     'title',
     'description' => null,
+    'tone' => 'info',
     'maxWidth' => 'max-w-lg',
 ])
 
-<div id="{{ $id }}" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
-     role="dialog" aria-modal="true" aria-labelledby="{{ $id }}-title" data-modal>
-    <div class="absolute inset-0" data-modal-close></div>
-    <div class="relative z-10 w-full {{ $maxWidth }} bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div class="flex items-start justify-between pb-3 border-b border-outline-variant mb-4">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shrink-0">
-                    <span class="material-symbols-outlined text-[22px]">{{ $icon }}</span>
-                </div>
-                <div>
-                    <h3 class="font-bold text-base text-on-surface" id="{{ $id }}-title">{{ $title }}</h3>
-                    @if($description)
-                        <p class="text-xs text-outline mt-0.5">{{ $description }}</p>
-                    @endif
-                </div>
+<div id="{{ $id }}" class="sa-modal fixed inset-0 z-50 hidden items-center justify-center p-4"
+     role="dialog" aria-modal="true" aria-labelledby="{{ $id }}-title" @if ($description) aria-describedby="{{ $id }}-description" @endif
+     data-modal data-modal-tone="{{ $tone }}">
+    <div class="sa-modal-backdrop" data-modal-close></div>
+    <div class="sa-modal-panel relative z-10 w-full {{ $maxWidth }}">
+        <div class="sa-modal-head">
+            <span class="sa-modal-icon is-{{ $tone }}" data-modal-icon aria-hidden="true">
+                <span class="material-symbols-outlined">{{ $icon }}</span>
+            </span>
+            <div class="min-w-0 flex-1">
+                <h3 class="sa-modal-title" id="{{ $id }}-title">{{ $title }}</h3>
+                @if ($description)
+                    <p class="sa-modal-desc" id="{{ $id }}-description">{{ $description }}</p>
+                @endif
             </div>
-            <button type="button" class="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container transition-colors cursor-pointer" data-modal-close aria-label="{{ __('superadmin.common.cancel') }}">
-                <span class="material-symbols-outlined text-[20px]">close</span>
+            <button type="button" class="sa-icon-btn sa-modal-close" data-modal-close aria-label="{{ __('superadmin.common.cancel') }}">
+                <span class="material-symbols-outlined">close</span>
             </button>
         </div>
-        <div id="{{ $id }}-error" class="hidden mb-4 rounded-xl p-3 bg-error-container/60 border border-error/30 text-error text-xs leading-relaxed"></div>
-        {{ $slot }}
+        <div class="sa-modal-body">
+            <div id="{{ $id }}-error" class="hidden sa-modal-alert is-danger" role="alert"></div>
+            {{ $slot }}
+        </div>
     </div>
 </div>

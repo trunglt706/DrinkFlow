@@ -19,23 +19,16 @@ import { initGlobalLoading } from './global/loading';
 import { initGlobalGoToTop } from './global/go-to-top';
 
 import { initSuperadminLoading, initSuperadminReloadButtons } from './superadmin/loading';
-import { exposeSuperadminGlobals } from './superadmin/shared';
-import { initSuperadminModals, openSuperadminConfirm } from './superadmin/modal';
+import { initSuperadminModals } from './superadmin/modal';
 import { initSuperadminSearchClear } from './superadmin/search-clear';
 import { initSuperadminNotifications } from './superadmin/notifications';
 import { initSuperadminRealtime } from './superadmin/realtime';
 import { initSuperadminSidebar } from './superadmin/sidebar';
+import { initSuperadminShell } from './superadmin/shell';
 import { initSuperadminVersions } from './superadmin/versions';
 import { initSuperadminDashboard } from './superadmin/dashboard';
+import { initSuperadminPages } from './superadmin/pages';
 import { initDateRangePickers } from './admin/ui-enhancements';
-import { renderSubmitLoading } from './shared/submit-loading';
-
-// Runs before DOMContentLoaded: the inline @push('scripts') blocks in superadmin/*.blade.php
-// call window.dfApi/escapeHtml/statusPill/money/openSuperadminConfirm synchronously as soon as
-// the page script runs (see resources/views/superadmin/layout.blade.php's shim for why).
-exposeSuperadminGlobals();
-window.openSuperadminConfirm = openSuperadminConfirm;
-window.renderSubmitLoading = renderSubmitLoading;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Public Components & Pages
@@ -60,8 +53,10 @@ document.addEventListener('DOMContentLoaded', () => {
     initSuperadminSearchClear();
     initSuperadminNotifications();
     initSuperadminRealtime();
+    initSuperadminShell();
     initSuperadminSidebar();
     initSuperadminVersions();
     initSuperadminDashboard();
+    initSuperadminPages();
     initDateRangePickers();
 });

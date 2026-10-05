@@ -1,12 +1,6 @@
 @extends('superadmin.layout', ['title' => __('superadmin.users.title'), 'active' => 'users'])
 @section('content')
-    <div class="superadmin-heading">
-        <div>
-            <p class="superadmin-eyebrow">{{ __('superadmin.common.identity_layer') }}</p>
-            <h1>{{ __('superadmin.users.title') }}</h1>
-            <p>{{ __('superadmin.users.description') }}</p>
-        </div>
-    </div>
+    <x-superadmin.page-header :eyebrow="__('superadmin.common.identity_layer')" :title="__('superadmin.users.title')" :description="__('superadmin.users.description')" />
     <div id="notice" class="sa-notice"></div>
     <section class="sa-card sa-section">
         <div class="sa-section-header">
@@ -29,11 +23,11 @@
             <table class="sa-table">
                 <thead>
                     <tr>
-                        <th>{{ __('superadmin.common.user') }}</th>
+                        <th class="col-primary">{{ __('superadmin.common.user') }}</th>
                         <th class="whitespace-nowrap">{{ __('superadmin.users.oauth') }}</th>
-                        <th class="whitespace-nowrap">{{ __('superadmin.users.memberships') }}</th>
-                        <th>{{ __('superadmin.common.status') }}</th>
-                        <th class="text-right">{{ __('superadmin.common.actions') }}</th>
+                        <th class="whitespace-nowrap num">{{ __('superadmin.users.memberships') }}</th>
+                        <th class="col-status">{{ __('superadmin.common.status') }}</th>
+                        <th class="text-right col-actions">{{ __('superadmin.common.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -44,7 +38,7 @@
                             $isDeleted = $statusValue === \App\Enums\GlobalUserStatus::Deleted->value;
                         @endphp
                         <tr>
-                            <td>
+                            <td class="col-primary">
                                 <div class="flex items-center gap-3">
                                     <span class="superadmin-avatar shrink-0">{{ mb_strtoupper(mb_substr($user->name, 0, 1)) }}</span>
                                     <span class="min-w-0">
@@ -54,18 +48,21 @@
                                 </div>
                             </td>
                             <td class="whitespace-nowrap">{{ $user->oauthIdentities->pluck('provider')->join(', ') ?: '—' }}</td>
-                            <td class="whitespace-nowrap">{{ $user->room_users_count }}</td>
-                            <td><x-superadmin.status-pill :status="$statusValue" /></td>
-                            <td>
-                                <div class="flex items-center justify-end gap-2 whitespace-nowrap">
+                            <td class="whitespace-nowrap num">{{ $user->room_users_count }}</td>
+                            <td class="col-status"><x-superadmin.status-pill :status="$statusValue" /></td>
+                            <td class="col-actions">
+                                <x-superadmin.row-actions>
                                     <a class="sa-button secondary" href="{{ route('superadmin.global-users.detail.page', $user) }}"><span class="material-symbols-outlined text-[16px]">visibility</span>{{ __('superadmin.common.details') }}</a>
                                     @unless ($isDeleted)
-                                    <button class="sa-button {{ $isBlocked ? '' : 'warning' }}" type="button" data-action="toggle-user-status" data-user-id="{{ $user->id }}" data-user-name="{{ $user->name }}" data-current-status="{{ $statusValue }}">
-                                        <span class="material-symbols-outlined text-[16px]">{{ $isBlocked ? 'lock_open' : 'lock' }}</span>{{ $isBlocked ? __('superadmin.common.unblock') : __('superadmin.common.block') }}
-                                    </button>
-                                    <button class="sa-button danger" type="button" data-action="delete-user" data-user-id="{{ $user->id }}" data-user-name="{{ $user->name }}"><span class="material-symbols-outlined text-[16px]">delete</span>{{ __('superadmin.common.delete') }}</button>
+                                    <x-slot:menu>
+                                        <button class="sa-menu-item {{ $isBlocked ? '' : 'is-warning' }}" type="button" data-action="toggle-user-status" data-user-id="{{ $user->id }}" data-user-name="{{ $user->name }}" data-current-status="{{ $statusValue }}" role="menuitem">
+                                            <span class="material-symbols-outlined">{{ $isBlocked ? 'lock_open' : 'lock' }}</span>{{ $isBlocked ? __('superadmin.common.unblock') : __('superadmin.common.block') }}
+                                        </button>
+                                        <div class="sa-menu-sep"></div>
+                                        <button class="sa-menu-item is-danger" type="button" data-action="delete-user" data-user-id="{{ $user->id }}" data-user-name="{{ $user->name }}" role="menuitem"><span class="material-symbols-outlined">delete</span>{{ __('superadmin.common.delete') }}</button>
+                                    </x-slot:menu>
                                     @endunless
-                                </div>
+                                </x-superadmin.row-actions>
                             </td>
                         </tr>
                     @empty
@@ -78,47 +75,16 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-4">{{ $users->withQueryString()->links() }}</div>
+        {{ $users->withQueryString()->links('components.superadmin.pagination') }}
     </section>
 @endsection
 @push('scripts')
-    <script>
-        const userNotice = (message, type = 'success') => {
-            const n = document.querySelector('#notice');
-            n.textContent = message;
-            n.className = `sa-notice ${type} is-visible`;
-        };
-
-        document.addEventListener('click', (event) => {
-            const toggleBtn = event.target.closest('[data-action="toggle-user-status"]');
-            if (toggleBtn) {
-                const isBlocked = toggleBtn.dataset.currentStatus === 'blocked';
-                const nextStatus = isBlocked ? 'active' : 'blocked';
-                openSuperadminConfirm({
-                    message: (isBlocked ? @js(__('superadmin.users.confirm_unblock')) : @js(__('superadmin.users.confirm_block'))).replace(':name', toggleBtn.dataset.userName),
-                    description: isBlocked ? @js(__('superadmin.users.unblock_description')) : @js(__('superadmin.users.block_description')),
-                    confirmIcon: isBlocked ? 'lock_open' : 'lock',
-                    confirmLabel: isBlocked ? @js(__('superadmin.common.unblock')) : @js(__('superadmin.common.block')),
-                    onConfirm: async () => {
-                        await dfApi(`/superadmin/global-users/${toggleBtn.dataset.userId}/status`, { method: 'PATCH', body: { status: nextStatus } });
-                        userNotice(@js(__('superadmin.users.status_updated')));
-                        window.setTimeout(() => window.location.reload(), 500);
-                    },
-                });
-                return;
-            }
-
-            const deleteBtn = event.target.closest('[data-action="delete-user"]');
-            if (!deleteBtn) return;
-            openSuperadminConfirm({
-                message: @js(__('superadmin.users.confirm_delete')),
-                confirmLabel: @js(__('superadmin.common.delete')),
-                onConfirm: async () => {
-                    await dfApi(`/superadmin/global-users/${deleteBtn.dataset.userId}`, { method: 'DELETE' });
-                    userNotice(@js(__('superadmin.users.deleted')));
-                    window.setTimeout(() => window.location.reload(), 500);
-                },
-            });
-        });
-    </script>
+    <x-superadmin.page-script name="users" :i18n="[
+        'confirm_block' => __('superadmin.users.confirm_block'), 'confirm_unblock' => __('superadmin.users.confirm_unblock'),
+        'block_description' => __('superadmin.users.block_description'), 'unblock_description' => __('superadmin.users.unblock_description'),
+        'block' => __('superadmin.common.block'), 'unblock' => __('superadmin.common.unblock'),
+        'status_updated' => __('superadmin.users.status_updated'), 'confirm_delete' => __('superadmin.users.confirm_delete'),
+        'delete' => __('superadmin.common.delete'), 'deleted' => __('superadmin.users.deleted'),
+        'delete_description' => __('superadmin.modals.confirm.user_delete'),
+    ]" />
 @endpush

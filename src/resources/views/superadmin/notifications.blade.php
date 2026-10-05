@@ -1,14 +1,10 @@
 @extends('superadmin.layout', ['title' => __('superadmin.notifications.title'), 'active' => 'notifications'])
 @section('content')
-    <div class="superadmin-heading">
-        <div>
-            <p class="superadmin-eyebrow">{{ __('superadmin.common.system_messaging') }}</p>
-            <h1>{{ __('superadmin.notifications.title') }}</h1>
-        </div>
-        <button class="sa-button" type="button" data-modal-open="create-channel-modal">
-            <span class="material-symbols-outlined text-[16px]">add_alert</span>{{ __('superadmin.notifications.add_channel') }}
-        </button>
-    </div>
+    <x-superadmin.page-header :eyebrow="__('superadmin.common.system_messaging')" :title="__('superadmin.notifications.title')">
+            <button class="sa-button" type="button" data-modal-open="create-channel-modal">
+                <span class="material-symbols-outlined text-[16px]">add_alert</span>{{ __('superadmin.notifications.add_channel') }}
+            </button>
+    </x-superadmin.page-header>
     <div id="notice" class="sa-notice"></div>
     {{-- Inbox: only notifications addressed to the signed-in admin account (PageController::notifications). --}}
     <section id="inbox" class="sa-card sa-section" data-sa-inbox>
@@ -60,7 +56,7 @@
                 @endif
             @endforelse
         </div>
-        <div class="mt-4">{{ $inbox->fragment('inbox')->links() }}</div>
+        {{ $inbox->fragment('inbox')->links('components.superadmin.pagination') }}
     </section>
     <section class="sa-card sa-section">
         <div class="sa-section-header">
@@ -79,21 +75,27 @@
             <table class="sa-table">
                 <thead>
                     <tr>
-                        <th>{{ __('superadmin.notifications.channel') }}</th>
+                        <th class="col-primary">{{ __('superadmin.notifications.channel') }}</th>
                         <th>{{ __('superadmin.common.type') }}</th>
-                        <th>{{ __('superadmin.common.status') }}</th>
-                        <th>{{ __('superadmin.notifications.credential') }}</th>
-                        <th>{{ __('superadmin.common.actions') }}</th>
+                        <th class="col-status">{{ __('superadmin.common.status') }}</th>
+                        <th class="col-mono">{{ __('superadmin.notifications.credential') }}</th>
+                        <th class="text-right col-actions">{{ __('superadmin.common.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($channels as $channel)
                         <tr>
-                            <td><strong>{{ $channel->name }}</strong></td>
+                            <td class="col-primary"><strong>{{ $channel->name }}</strong></td>
                             <td>{{ $channel->type }}</td>
-                            <td><x-superadmin.status-pill :status="$channel->status" /></td>
-                            <td>••••••••</td>
-                            <td><button class="sa-button danger" type="button" data-action="delete-channel" data-channel-id="{{ $channel->id }}">{{ __('superadmin.common.delete') }}</button></td>
+                            <td class="col-status"><x-superadmin.status-pill :status="$channel->status" /></td>
+                            <td class="col-mono">••••••••</td>
+                            <td class="col-actions">
+                                <x-superadmin.row-actions>
+                                    <x-slot:menu>
+                                        <button class="sa-menu-item is-danger" type="button" data-action="delete-channel" data-channel-id="{{ $channel->id }}" role="menuitem"><span class="material-symbols-outlined">delete</span>{{ __('superadmin.common.delete') }}</button>
+                                    </x-slot:menu>
+                                </x-superadmin.row-actions>
+                            </td>
                         </tr>
                     @empty
                         <tr><td colspan="5">
@@ -107,32 +109,80 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-4">{{ $channels->links() }}</div>
+        {{ $channels->links('components.superadmin.pagination') }}
     </section>
 
-    <x-superadmin.modal id="create-channel-modal" icon="add_alert" :title="__('superadmin.notifications.add_channel')" :description="__('superadmin.notifications.credential_description')">
+    <x-superadmin.modal id="create-channel-modal" icon="add_alert" tone="create" :title="__('superadmin.notifications.add_channel')" :description="__('superadmin.modals.channel.description')">
         <form id="create-channel-form" class="space-y-4">
             @csrf
-            <div>
-                <label for="create-channel-name" class="block text-xs font-semibold text-on-surface mb-1">{{ __('superadmin.notifications.prompt_name') }} <span class="text-error">*</span></label>
-                <input type="text" id="create-channel-name" name="name" required class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary">
+            <x-superadmin.modal-guide :title="__('superadmin.modals.channel.guide_title')">
+                <li>{{ __('superadmin.modals.channel.guide_type') }}</li>
+                <li>{{ __('superadmin.modals.channel.guide_secret') }}</li>
+                <li>{{ __('superadmin.modals.channel.guide_test') }}</li>
+            </x-superadmin.modal-guide>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label for="create-channel-name" class="sa-label">{{ __('superadmin.notifications.prompt_name') }} <span class="text-error">*</span></label>
+                    <input type="text" id="create-channel-name" name="name" required maxlength="255" class="sa-field">
+                    <p class="sa-hint">{{ __('superadmin.modals.channel.name_hint') }}</p>
+                </div>
+                <div>
+                    <label for="create-channel-type" class="sa-label">{{ __('superadmin.common.type') }} <span class="text-error">*</span></label>
+                    <select id="create-channel-type" name="type" required class="sa-field" data-channel-type>
+                        <option value="slack">Slack</option>
+                        <option value="telegram">Telegram</option>
+                        <option value="chatwork">Chatwork</option>
+                        <option value="webhook">Webhook</option>
+                    </select>
+                </div>
             </div>
-            <div>
-                <label for="create-channel-type" class="block text-xs font-semibold text-on-surface mb-1">{{ __('superadmin.common.type') }} <span class="text-error">*</span></label>
-                <select id="create-channel-type" name="type" required class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary">
-                    <option value="slack">Slack</option>
-                    <option value="telegram">Telegram</option>
-                    <option value="chatwork">Chatwork</option>
-                    <option value="webhook">Webhook</option>
-                </select>
+            {{-- Credential fields per channel type; resources/js/superadmin/pages/notifications.js shows the matching group. --}}
+            <div class="space-y-4" data-channel-fields="slack">
+                <div>
+                    <label for="channel-slack-webhook-url" class="sa-label">{{ __('superadmin.modals.channel.webhook_url') }} <span class="text-error">*</span></label>
+                    <input type="url" id="channel-slack-webhook-url" name="config[webhook_url]" autocomplete="off" class="sa-field font-mono" data-channel-required="1">
+                    <p class="sa-hint">{{ __('superadmin.modals.channel.slack_webhook_hint') }}</p>
+                </div>
             </div>
-            <div>
-                <label for="create-channel-config" class="block text-xs font-semibold text-on-surface mb-1">{{ __('superadmin.notifications.prompt_credential') }} <span class="text-error">*</span></label>
-                <textarea id="create-channel-config" name="config" required rows="3" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary"></textarea>
+            <div class="space-y-4" data-channel-fields="telegram" hidden>
+                <div>
+                    <label for="channel-bot-token" class="sa-label">{{ __('superadmin.modals.channel.bot_token') }} <span class="text-error">*</span></label>
+                    <x-superadmin.password-input id="channel-bot-token" name="config[bot_token]" autocomplete="off" data-channel-required="1" />
+                    <p class="sa-hint">{{ __('superadmin.modals.channel.bot_token_hint') }}</p>
+                </div>
+                <div>
+                    <label for="channel-chat-id" class="sa-label">{{ __('superadmin.modals.channel.chat_id') }} <span class="text-error">*</span></label>
+                    <input type="text" id="channel-chat-id" name="config[chat_id]" autocomplete="off" class="sa-field font-mono" data-channel-required="1">
+                    <p class="sa-hint">{{ __('superadmin.modals.channel.chat_id_hint') }}</p>
+                </div>
             </div>
-            <div class="pt-2 flex items-center justify-end gap-2.5 border-t border-outline-variant">
-                <button type="button" class="px-4 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors" data-modal-close>{{ __('superadmin.common.cancel') }}</button>
-                <button type="submit" class="px-4 py-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer">
+            <div class="space-y-4" data-channel-fields="chatwork" hidden>
+                <div>
+                    <label for="channel-api-token" class="sa-label">{{ __('superadmin.modals.channel.api_token') }} <span class="text-error">*</span></label>
+                    <x-superadmin.password-input id="channel-api-token" name="config[api_token]" autocomplete="off" data-channel-required="1" />
+                    <p class="sa-hint">{{ __('superadmin.modals.channel.api_token_hint') }}</p>
+                </div>
+                <div>
+                    <label for="channel-room-id" class="sa-label">{{ __('superadmin.modals.channel.room_id') }} <span class="text-error">*</span></label>
+                    <input type="text" id="channel-room-id" name="config[room_id]" autocomplete="off" class="sa-field font-mono" data-channel-required="1">
+                    <p class="sa-hint">{{ __('superadmin.modals.channel.room_id_hint') }}</p>
+                </div>
+            </div>
+            <div class="space-y-4" data-channel-fields="webhook" hidden>
+                <div>
+                    <label for="channel-webhook-url" class="sa-label">{{ __('superadmin.modals.channel.webhook_url') }} <span class="text-error">*</span></label>
+                    <input type="url" id="channel-webhook-url" name="config[webhook_url]" autocomplete="off" class="sa-field font-mono" data-channel-required="1">
+                    <p class="sa-hint">{{ __('superadmin.modals.channel.endpoint_hint') }}</p>
+                </div>
+                <div>
+                    <label for="channel-secret-token" class="sa-label">{{ __('superadmin.modals.channel.secret_token') }}</label>
+                    <x-superadmin.password-input id="channel-secret-token" name="config[secret_token]" autocomplete="off" data-channel-required="0" />
+                    <p class="sa-hint">{{ __('superadmin.modals.channel.secret_token_hint') }}</p>
+                </div>
+            </div>
+            <div class="sa-modal-footer">
+                <button type="button" class="sa-button secondary" data-modal-close>{{ __('superadmin.common.cancel') }}</button>
+                <button type="submit" class="sa-button">
                     <span class="material-symbols-outlined text-[16px]">add_alert</span>{{ __('superadmin.notifications.add_channel') }}
                 </button>
             </div>
@@ -140,46 +190,7 @@
     </x-superadmin.modal>
 @endsection
 @push('scripts')
-    <script>
-        const notifNotice = (message, type = 'success') => {
-            const n = document.querySelector('#notice');
-            n.textContent = message;
-            n.className = `sa-notice ${type} is-visible`;
-        };
-
-        document.querySelector('#create-channel-form')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const form = e.target;
-            const errorBox = document.querySelector('#create-channel-modal-error');
-            errorBox?.classList.add('hidden');
-            try {
-                await dfApi('{{ route('superadmin.notifications.store') }}', {
-                    method: 'POST',
-                    body: { name: form.name.value, type: form.type.value, config: form.config.value, status: 'active' },
-                });
-                window.location.reload();
-            } catch (error) {
-                if (errorBox) { errorBox.textContent = error.message; errorBox.classList.remove('hidden'); }
-                const button = form.querySelector('button[type="submit"]');
-                if (button) {
-                    button.disabled = false;
-                    button.classList.remove('opacity-75', 'cursor-wait');
-                    if (button.dataset.originalHtml) button.innerHTML = button.dataset.originalHtml;
-                }
-            }
-        });
-
-        document.addEventListener('click', (event) => {
-            const deleteBtn = event.target.closest('[data-action="delete-channel"]');
-            if (!deleteBtn) return;
-            openSuperadminConfirm({
-                message: @js(__('superadmin.notifications.confirm_delete')),
-                onConfirm: async () => {
-                    await dfApi(`/superadmin/notifications/${deleteBtn.dataset.channelId}`, { method: 'DELETE' });
-                    notifNotice(@js(__('superadmin.common.delete')));
-                    window.setTimeout(() => window.location.reload(), 500);
-                },
-            });
-        });
-    </script>
+    <x-superadmin.page-script name="notifications"
+        :i18n="['confirm_delete' => __('superadmin.notifications.confirm_delete'), 'deleted' => __('superadmin.common.delete'), 'delete_description' => __('superadmin.modals.confirm.channel_delete')]"
+        :urls="['store' => route('superadmin.notifications.store')]" />
 @endpush

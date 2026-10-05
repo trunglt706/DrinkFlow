@@ -1,11 +1,6 @@
 @extends('superadmin.layout', ['title' => __('superadmin.security.title'), 'active' => 'security'])
 @section('content')
-    <div class="superadmin-heading">
-        <div>
-            <p class="superadmin-eyebrow">{{ __('superadmin.common.infra_security') }}</p>
-            <h1>{{ __('superadmin.security.title') }}</h1>
-        </div>
-    </div>
+    <x-superadmin.page-header :eyebrow="__('superadmin.common.infra_security')" :title="__('superadmin.security.title')" />
     <section class="sa-card sa-section">
         <div class="sa-section-header">
             <div>
@@ -42,11 +37,11 @@
             <table class="sa-table">
                 <thead>
                     <tr>
-                        <th>{{ __('superadmin.common.time') }}</th>
+                        <th class="col-date">{{ __('superadmin.common.time') }}</th>
                         <th>{{ __('superadmin.common.type') }}</th>
-                        <th>{{ __('superadmin.security.severity') }}</th>
-                        <th>IP</th>
-                        <th>{{ __('superadmin.security.metadata') }}</th>
+                        <th class="col-status">{{ __('superadmin.security.severity') }}</th>
+                        <th class="col-mono">IP</th>
+                        <th class="col-wrap">{{ __('superadmin.security.metadata') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -56,15 +51,15 @@
                             $typeLabel = __($typeKey) === $typeKey ? $event->type : __($typeKey);
                         @endphp
                         <tr>
-                            <td class="whitespace-nowrap">{{ $event->created_at }}</td>
+                            <td class="whitespace-nowrap col-date">{{ $event->created_at }}</td>
                             <td class="whitespace-nowrap">
                                 <span class="inline-flex items-center gap-1 font-semibold">
                                     <span class="material-symbols-outlined text-[16px]">{{ $securityTypeIcons[$event->type] ?? 'shield_question' }}</span>{{ $typeLabel }}
                                 </span>
                             </td>
-                            <td><x-superadmin.status-pill :status="$event->severity" /></td>
-                            <td class="whitespace-nowrap">{{ $event->ip_address ?: '—' }}</td>
-                            <td><small>{{ json_encode($event->metadata ?? []) }}</small></td>
+                            <td class="col-status"><x-superadmin.status-pill :status="$event->severity" /></td>
+                            <td class="whitespace-nowrap col-mono">{{ $event->ip_address ?: '—' }}</td>
+                            <td class="col-wrap"><small>{{ json_encode($event->metadata ?? []) }}</small></td>
                         </tr>
                     @empty
                         <tr>
@@ -76,6 +71,6 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-4">{{ $events->links() }}</div>
+        {{ $events->links('components.superadmin.pagination') }}
     </section>
 @endsection

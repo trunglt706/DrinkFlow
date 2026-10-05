@@ -1,23 +1,18 @@
 @extends('superadmin.layout', ['title' => $role?->name ?? __('platform.roles.create'), 'active' => 'roles'])
 @section('content')
     @php
-        $fieldLabel = 'flex flex-col gap-1 text-xs font-semibold';
-        $fieldInput = 'sa-input !min-w-0 w-full !py-2';
+        $fieldLabel = 'flex flex-col gap-1.5 text-[13px] font-semibold text-on-surface';
+        $fieldInput = 'sa-input !min-w-0 w-full';
     @endphp
-    <div class="superadmin-heading">
-        <div>
-            <a class="sa-back-link" href="{{ route('superadmin.roles.index') }}">← {{ __('platform.roles.title') }}</a>
-            <h1>{{ $role?->name ?? __('platform.roles.create') }}</h1>
-            <p>{{ __('platform.roles.form_hint') }}</p>
-        </div>
-        @if ($role && $canManage)
-            <form method="POST" action="{{ route('superadmin.roles.destroy', $role) }}" data-confirm="{{ __('platform.roles.delete_confirm', ['name' => $role->name]) }}">
-                @csrf
-                @method('DELETE')
-                <button class="sa-button danger" type="submit"><span class="material-symbols-outlined text-[16px]">delete</span>{{ __('superadmin.common.delete') }}</button>
-            </form>
-        @endif
-    </div>
+    <x-superadmin.page-header :back="route('superadmin.roles.index')" :back-label="__('platform.roles.title')" :title="$role?->name ?? __('platform.roles.create')" :description="__('platform.roles.form_hint')">
+            @if ($role && $canManage)
+                <form method="POST" action="{{ route('superadmin.roles.destroy', $role) }}" data-confirm-tone="danger" data-confirm-description="{{ __('superadmin.modals.confirm.delete_role') }}" data-confirm-irreversible="1" data-confirm="{{ __('platform.roles.delete_confirm', ['name' => $role->name]) }}">
+                    @csrf
+                    @method('DELETE')
+                    <button class="sa-button danger" type="submit"><span class="material-symbols-outlined text-[16px]">delete</span>{{ __('superadmin.common.delete') }}</button>
+                </form>
+            @endif
+    </x-superadmin.page-header>
     <x-superadmin.flash />
     <form method="POST" action="{{ $role ? route('superadmin.roles.update', $role) : route('superadmin.roles.store') }}" class="space-y-4">
         @csrf
@@ -42,7 +37,7 @@
             @include('superadmin.superadmins._permission-matrix')
         </section>
         @if ($canManage)
-            <div class="flex justify-end">
+            <div class="sa-form-actions is-sticky">
                 <button type="submit" class="sa-button"><span class="material-symbols-outlined text-[16px]">save</span>{{ __('superadmin.common.save') }}</button>
             </div>
         @endif

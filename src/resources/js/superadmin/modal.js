@@ -23,14 +23,20 @@ const setPasswordVisible = (button, visible) => {
  */
 export function initSuperadminModals() {
     const openModal = (modal) => {
+        if (modal.classList.contains('hidden')) modal.saReturnFocus = document.activeElement;
         modal.classList.remove('hidden');
         modal.classList.add('flex');
-        modal.querySelector('input, textarea, select, button[type="submit"]')?.focus();
+        document.body.classList.add('sa-no-scroll');
+        modal.querySelector('.sa-modal-body input:not([type="hidden"]), .sa-modal-body textarea, .sa-modal-body select, button[type="submit"]')?.focus();
     };
 
     const closeModal = (modal) => {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
+        if (!document.querySelector('[data-modal]:not(.hidden)')) document.body.classList.remove('sa-no-scroll');
+        // Give focus back to the control that opened the dialog.
+        modal.saReturnFocus?.focus?.();
+        modal.saReturnFocus = null;
         // Never leave a typed password visible for the next time the modal opens.
         modal.querySelectorAll('[data-password-toggle]').forEach((button) => setPasswordVisible(button, false));
     };
@@ -61,8 +67,9 @@ export function initSuperadminModals() {
         document.querySelectorAll('[data-modal]:not(.hidden)').forEach((modal) => closeModal(modal));
     });
 
-    // Server-rendered forms with data-confirm="message" (and optional data-confirm-description,
-    // data-confirm-label, data-confirm-icon) ask through the shared confirm modal before submitting.
+    // Server-rendered forms with data-confirm="message" (and optional data-confirm-tone, data-confirm-title,
+    // data-confirm-description, data-confirm-label, data-confirm-icon, data-confirm-irreversible) ask through the
+    // shared confirm modal before submitting.
     document.addEventListener('submit', (event) => {
         const form = event.target;
         if (!(form instanceof HTMLFormElement) || !form.dataset.confirm || form.dataset.confirmed === '1') return;
@@ -70,9 +77,12 @@ export function initSuperadminModals() {
         event.stopImmediatePropagation();
         openSuperadminConfirm({
             message: form.dataset.confirm,
+            tone: form.dataset.confirmTone,
+            title: form.dataset.confirmTitle,
             description: form.dataset.confirmDescription,
             confirmLabel: form.dataset.confirmLabel,
             confirmIcon: form.dataset.confirmIcon,
+            irreversible: form.dataset.confirmIrreversible === '1',
             onConfirm: () => {
                 form.dataset.confirmed = '1';
                 form.requestSubmit();
@@ -90,30 +100,57 @@ export function initSuperadminModals() {
     };
 }
 
+const CONFIRM_BUTTON_CLASS = { danger: 'sa-button danger', warning: 'sa-button warning-solid', info: 'sa-button', success: 'sa-button success' };
+
 /**
  * Show the shared #confirm-modal (see components/superadmin/confirm-modal.blade.php) in place of
  * a native confirm(), and run `onConfirm` when the user confirms.
  *
- * `description` adds a highlighted note explaining the consequences; `confirmLabel` / `confirmIcon`
- * override the default "Delete" button for this call only.
+ * `tone` (danger | warning | info | success, default danger) sets the header icon, default title and button colour;
+ * `description` adds a highlighted note explaining the consequences; `irreversible` adds a "cannot be undone" line;
+ * `title` / `icon` / `confirmLabel` / `confirmIcon` override the defaults for this call only.
  *
- * @param {{message: string, description?: string, confirmLabel?: string, confirmIcon?: string, onConfirm: () => Promise<void>|void}} options
+ * @param {{message: string, description?: string, tone?: 'danger'|'warning'|'info'|'success', title?: string, icon?: string,
+ *     confirmLabel?: string, confirmIcon?: string, irreversible?: boolean, onConfirm: () => Promise<void>|void}} options
  */
-export function openSuperadminConfirm({ message, description, confirmLabel, confirmIcon, onConfirm }) {
+export function openSuperadminConfirm({ message, description, tone, title, icon: headerIcon, confirmLabel, confirmIcon, irreversible = false, onConfirm }) {
     const modal = document.getElementById('confirm-modal');
     if (!modal) return;
+
+    let tones = {};
+    try {
+        tones = JSON.parse(modal.querySelector('[data-confirm-tones]')?.dataset.confirmTones || '{}');
+    } catch {
+        tones = {};
+    }
+    const activeTone = tones[tone] ? tone : 'danger';
+    const toneInfo = tones[activeTone] || {};
+    modal.dataset.modalTone = activeTone;
+    const iconTile = modal.querySelector('[data-modal-icon]');
+    if (iconTile) {
+        iconTile.className = `sa-modal-icon is-${activeTone}`;
+        iconTile.querySelector('.material-symbols-outlined').textContent = headerIcon || toneInfo.icon || 'help';
+    }
+    const heading = modal.querySelector('#confirm-modal-title');
+    if (heading) heading.textContent = title || toneInfo.title || heading.textContent;
 
     modal.querySelector('#confirm-modal-message').textContent = message;
     const descriptionBox = modal.querySelector('#confirm-modal-description');
     if (descriptionBox) {
         descriptionBox.querySelector('#confirm-modal-description-text').textContent = description || '';
         descriptionBox.classList.toggle('hidden', !description);
+        const alert = descriptionBox.querySelector('[data-confirm-description-box]');
+        if (alert) alert.className = `sa-modal-alert is-${activeTone === 'success' ? 'info' : activeTone}`;
+        const alertIcon = descriptionBox.querySelector('[data-confirm-description-icon]');
+        if (alertIcon) alertIcon.textContent = activeTone === 'danger' ? 'report' : (activeTone === 'warning' ? 'warning' : 'info');
     }
+    modal.querySelector('#confirm-modal-irreversible')?.classList.toggle('hidden', !irreversible);
     modal.querySelector('#confirm-modal-error')?.classList.add('hidden');
     const label = modal.querySelector('#confirm-modal-submit-label');
-    label.textContent = confirmLabel || label.dataset.default;
+    label.textContent = confirmLabel || toneInfo.label || label.dataset.default;
     const icon = modal.querySelector('#confirm-modal-submit-icon');
-    if (icon) icon.textContent = confirmIcon || icon.dataset.default;
+    if (icon) icon.textContent = confirmIcon || toneInfo.button_icon || icon.dataset.default;
+    modal.querySelector('#confirm-modal-submit').className = CONFIRM_BUTTON_CLASS[activeTone];
 
     const submitButton = modal.querySelector('#confirm-modal-submit');
     const freshButton = submitButton.cloneNode(true); // drop any previous page's listener
@@ -141,4 +178,6 @@ export function openSuperadminConfirm({ message, description, confirmLabel, conf
     });
 
     window.openSuperadminModal('confirm-modal');
+    // Destructive dialogs start on "Cancel" so a stray Enter never confirms them.
+    modal.querySelector(activeTone === 'danger' ? '[data-modal-close].sa-button' : '#confirm-modal-submit')?.focus();
 }

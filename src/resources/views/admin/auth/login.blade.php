@@ -2,7 +2,24 @@
 @php
     $superadminLogin = (bool) ($superadminLogin ?? false);
 @endphp
-<x-admin-auth.layout :title="$superadminLogin ? __('superadmin.auth.login_page_title') : __('admin.login_page_title')">
+<x-admin-auth.layout :title="$superadminLogin ? __('superadmin.auth.login_page_title') : __('admin.login_page_title')" :superadmin="$superadminLogin">
+    @if ($superadminLogin)
+        <x-slot:brandHero>
+            <span class="sa-auth-badge"><span class="material-symbols-outlined text-[16px]" aria-hidden="true">verified_user</span>{{ __('superadmin.auth.hero_badge') }}</span>
+            <div>
+                <h1 class="text-3xl font-bold leading-tight tracking-tight text-white mb-3">{{ __('superadmin.auth.hero_title') }}</h1>
+                <p class="text-sm leading-relaxed text-zinc-400">{{ __('superadmin.auth.hero_desc') }}</p>
+            </div>
+            <ul class="space-y-3">
+                @foreach (['agents' => 'storefront', 'security' => 'shield_locked', 'infra' => 'hub'] as $feature => $featureIcon)
+                    <li class="sa-auth-feature">
+                        <span class="material-symbols-outlined" aria-hidden="true">{{ $featureIcon }}</span>
+                        <span><strong>{{ __('superadmin.auth.feature_'.$feature) }}</strong><small>{{ __('superadmin.auth.feature_'.$feature.'_desc') }}</small></span>
+                    </li>
+                @endforeach
+            </ul>
+        </x-slot:brandHero>
+    @endif
     @php
         $googleTwoFactorPending = ! $superadminLogin && session()->has('admin_google_2fa_admin_id');
     @endphp

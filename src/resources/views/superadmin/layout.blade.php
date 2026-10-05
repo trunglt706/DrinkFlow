@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-theme="light">
 
 <head>
     <meta charset="utf-8">
@@ -16,11 +16,18 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400..700,0..1,-50..200&display=block"
         rel="stylesheet">
-    {{-- Apply the remembered collapsed sidebar before first paint (resources/js/superadmin/sidebar.js). --}}
+    {{-- Apply the remembered theme and collapsed sidebar before first paint (resources/js/superadmin/shell.js, sidebar.js). --}}
     <script>
-        try {
-            if (localStorage.getItem('df_superadmin_sidebar_collapsed') === 'true') document.documentElement.classList.add('sa-sidebar-collapsed');
-        } catch (e) {}
+        (function () {
+            var root = document.documentElement, pref = 'system';
+            try {
+                pref = localStorage.getItem('df_superadmin_theme') || 'system';
+                if (localStorage.getItem('df_superadmin_sidebar_collapsed') === 'true') root.classList.add('sa-sidebar-collapsed');
+            } catch (e) {}
+            var dark = pref === 'dark' || (pref === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            root.setAttribute('data-theme', dark ? 'dark' : 'light');
+            root.setAttribute('data-theme-pref', pref);
+        })();
     </script>
     @if (file_exists(public_path('build/manifest.json')))
         @vite(['resources/css/superadmin.css', 'resources/js/app.js'])
@@ -43,124 +50,171 @@
         'low' => __('superadmin.common.low'),
     ] + __('superadmin.health'), JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}" class="superadmin-shell">
     <x-superadmin.loading />
-    <aside class="superadmin-sidebar" id="superadmin-sidebar">
-        {{-- Same brand mark as the room admin console (components/admin/layout.blade.php). --}}
-        <a class="superadmin-brand" href="{{ route('superadmin.dashboard') }}" title="DrinkFlow">
-            <span class="superadmin-logo" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                    <path d="M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z" />
-                </svg>
-            </span>
-            <div class="superadmin-brand-text"><strong>DrinkFlow</strong><span>{{ __('superadmin.layout.enterprise_superadmin') }}</span></div>
-        </a>
-        @php
-            // Grouped as in the Navigation Target of documents/features/development_tasks_saas_extension.md.
-            $navSections = [
-                '' => [
-                    ['dashboard', 'superadmin.dashboard', 'monitoring', 'superadmin.layout.dashboard_health', null],
-                ],
-                __('platform.nav.agents') => [
-                    ['agents', 'superadmin.agents.index', 'storefront', 'platform.nav.agent_list', 'agent.view'],
-                    ['admins', 'superadmin.admins.page', 'admin_panel_settings', 'superadmin.layout.admin_assignments', 'agent.view'],
-                    ['registrations', 'superadmin.registrations.index', 'how_to_reg', 'platform.nav.registrations', 'agent.approve'],
-                    ['subscriptions', 'superadmin.subscriptions.index', 'workspace_premium', 'platform.nav.subscriptions', 'subscription.view'],
-                ],
-                __('platform.nav.plans') => [
-                    ['packages', 'superadmin.packages.index', 'inventory_2', 'platform.nav.packages', 'package.view'],
-                ],
-                __('platform.nav.platform_finance') => [
-                    ['revenue', 'superadmin.billing.revenue', 'payments', 'platform.nav.revenue', 'revenue.view'],
-                    ['outstanding', 'superadmin.billing.outstanding', 'request_quote', 'platform.nav.outstanding', 'debt.view'],
-                ],
-                __('platform.nav.system') => [
-                    ['rooms', 'superadmin.rooms.page', 'meeting_room', 'superadmin.layout.room_management', 'room.view'],
-                    ['users', 'superadmin.global-users.page', 'badge', 'superadmin.layout.global_users', 'global_user.view'],
-                    ['campaigns', 'superadmin.campaigns.page', 'campaign', 'superadmin.layout.global_campaigns', 'room.view'],
-                    ['feedbacks', 'superadmin.feedbacks.page', 'rate_review', 'superadmin.layout.feedbacks', 'feedback.view'],
-                ],
-                __('platform.nav.content') => [
-                    ['versions', 'superadmin.versions.page', 'new_releases', 'superadmin.layout.versions', 'version.view'],
-                    ['notifications', 'superadmin.notifications.page', 'notifications', 'superadmin.layout.global_notifications', 'settings.view'],
-                ],
-                __('platform.nav.governance') => [
-                    ['superadmins', 'superadmin.superadmins.index', 'manage_accounts', 'superadmin.layout.superadmins', 'superadmin.view'],
-                    ['roles', 'superadmin.roles.index', 'badge', 'platform.nav.roles', 'superadmin.view'],
-                    ['audit', 'superadmin.audit.page', 'history_toggle_off', 'superadmin.layout.audit_logs', 'audit.view'],
-                    ['security', 'superadmin.security.page', 'shield_locked', 'superadmin.layout.security_center', 'security.view'],
-                ],
-                __('platform.nav.infrastructure') => [
-                    ['socket', 'superadmin.socket.page', 'hub', 'superadmin.layout.socket_queue', 'queue.view'],
-                    ['system', 'superadmin.system.page', 'build_circle', 'superadmin.layout.system_settings', 'settings.view'],
-                ],
-            ];
-            // The menu follows the same Gates as the routes (the routes still enforce them).
-            $navGate = \Illuminate\Support\Facades\Gate::forUser(request()->user('superadmin'));
-            $navSections = array_filter(array_map(
-                static fn (array $links): array => array_values(array_filter($links, static fn (array $link): bool => $link[4] === null || $navGate->allows($link[4]))),
-                $navSections,
-            ));
-        @endphp
-        <nav class="superadmin-nav">
-            @foreach ($navSections as $sectionLabel => $links)
-                @if ($sectionLabel !== '')
-                    <span class="superadmin-nav-label">{{ $sectionLabel }}</span>
-                @endif
-                @foreach ($links as [$key, $routeName, $icon, $labelKey, $permission])
-                    <a class="{{ ($active ?? '') === $key ? 'is-active' : '' }}" href="{{ route($routeName) }}"
-                        aria-label="{{ __($labelKey) }}"><span class="material-symbols-outlined">{{ $icon }}</span><span
-                            class="superadmin-nav-text">{{ __($labelKey) }}</span><span class="superadmin-nav-tooltip"
-                            aria-hidden="true">{{ __($labelKey) }}</span></a>
-                @endforeach
+    @php
+        $viewer = request()->user('superadmin');
+        $viewerName = (string) ($viewer?->name ?? '');
+        $currentPath = '/'.ltrim(request()->path(), '/');
+    @endphp
+    <div class="sa-sidebar-backdrop" data-sa-drawer-close hidden></div>
+    <aside class="superadmin-sidebar" id="superadmin-sidebar" aria-label="{{ __('superadmin.layout.console') }}">
+        {{-- Brand mark (cup icon) shared with the room admin console (components/admin/layout.blade.php). --}}
+        <div class="superadmin-sidebar-head">
+            <a class="superadmin-brand" href="{{ route('superadmin.dashboard') }}" title="DrinkFlow">
+                <span class="superadmin-logo" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                        <path d="M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z" />
+                    </svg>
+                </span>
+                <div class="superadmin-brand-text"><strong>DrinkFlow</strong><span>{{ __('superadmin.layout.enterprise_superadmin') }}</span></div>
+            </a>
+            <button type="button" class="sa-icon-btn superadmin-drawer-close" data-sa-drawer-close aria-label="{{ __('superadmin.layout.close_menu') }}">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="superadmin-nav-filter">
+            <span class="material-symbols-outlined" aria-hidden="true">filter_list</span>
+            <input type="search" data-sa-nav-filter autocomplete="off" placeholder="{{ __('superadmin.layout.filter_menu') }}" aria-label="{{ __('superadmin.layout.filter_menu') }}">
+        </div>
+        <nav class="superadmin-nav" data-sa-nav>
+            @foreach ($navSections as $section)
+                <div class="superadmin-nav-group" data-sa-nav-group>
+                    @if ($section['label'] !== null)
+                        <span class="superadmin-nav-label">{{ $section['label'] }}</span>
+                    @endif
+                    @foreach ($section['links'] as $link)
+                        <a class="{{ ($active ?? '') === $link['key'] ? 'is-active' : '' }}" href="{{ $link['url'] }}"
+                            @if (($active ?? '') === $link['key']) aria-current="page" @endif
+                            aria-label="{{ $link['label'] }}" data-sa-nav-link><span class="material-symbols-outlined">{{ $link['icon'] }}</span><span
+                                class="superadmin-nav-text">{{ $link['label'] }}</span><span class="superadmin-nav-tooltip"
+                                aria-hidden="true">{{ $link['label'] }}</span></a>
+                    @endforeach
+                </div>
             @endforeach
+            <p class="superadmin-nav-empty" data-sa-nav-empty hidden>{{ __('superadmin.layout.command_empty') }}</p>
         </nav>
+        <div class="superadmin-sidebar-foot">
+            <span class="superadmin-clearance" title="{{ __('superadmin.layout.clearance') }}"><span class="material-symbols-outlined" aria-hidden="true">verified_user</span><span class="superadmin-nav-text">{{ __('superadmin.layout.clearance') }}</span></span>
+        </div>
     </aside>
     <div class="superadmin-main">
         <x-superadmin.maintenance-banner />
         <header class="superadmin-topbar">
-            <button type="button" class="superadmin-menu" aria-label="{{ __('superadmin.layout.toggle_sidebar') }}"
-                onclick="document.getElementById('superadmin-sidebar').classList.toggle('is-open')"><span
-                    class="material-symbols-outlined">menu</span></button>
-            <button type="button" class="superadmin-collapse-toggle" data-sidebar-toggle
+            <button type="button" class="sa-icon-btn superadmin-menu" data-sa-drawer-open aria-controls="superadmin-sidebar"
+                aria-label="{{ __('superadmin.layout.open_menu') }}"><span class="material-symbols-outlined">menu</span></button>
+            <button type="button" class="sa-icon-btn superadmin-collapse-toggle" data-sidebar-toggle
                 title="{{ __('superadmin.layout.toggle_sidebar') }}" aria-label="{{ __('superadmin.layout.toggle_sidebar') }}"><span
                     class="material-symbols-outlined" data-sidebar-toggle-icon>dock_to_left</span></button>
-            <div class="superadmin-clearance"><span class="material-symbols-outlined">verified</span>{{ __('superadmin.layout.clearance') }}</div>
+            <nav class="sa-breadcrumb" aria-label="Breadcrumb">
+                <a href="{{ route('superadmin.dashboard') }}">{{ __('superadmin.layout.console') }}</a>
+                @if ($navCurrent !== null)
+                    @if ($navCurrent['section'])
+                        <span class="sa-breadcrumb-sep" aria-hidden="true">/</span><span class="sa-breadcrumb-muted">{{ $navCurrent['section'] }}</span>
+                    @endif
+                    <span class="sa-breadcrumb-sep" aria-hidden="true">/</span>
+                    @if (($title ?? null) && $title !== $navCurrent['link']['label'])
+                        <a href="{{ $navCurrent['link']['url'] }}">{{ $navCurrent['link']['label'] }}</a>
+                        <span class="sa-breadcrumb-sep" aria-hidden="true">/</span><span aria-current="page">{{ $title }}</span>
+                    @else
+                        <span aria-current="page">{{ $navCurrent['link']['label'] }}</span>
+                    @endif
+                @elseif ($title ?? null)
+                    <span class="sa-breadcrumb-sep" aria-hidden="true">/</span><span aria-current="page">{{ $title }}</span>
+                @endif
+            </nav>
+            <button type="button" class="sa-command-trigger" data-sa-command-open aria-haspopup="dialog" aria-controls="sa-command">
+                <span class="material-symbols-outlined" aria-hidden="true">search</span>
+                <span class="sa-command-trigger-text">{{ __('superadmin.layout.search') }}</span>
+                <kbd data-sa-command-kbd>Ctrl K</kbd>
+            </button>
             <div class="superadmin-profile">
+                <div class="sa-dropdown" data-sa-dropdown>
+                    <button type="button" class="sa-icon-btn" data-sa-dropdown-toggle aria-haspopup="menu" aria-expanded="false"
+                        title="{{ __('superadmin.layout.theme') }}" aria-label="{{ __('superadmin.layout.theme') }}">
+                        <span class="material-symbols-outlined" data-sa-theme-icon>contrast</span>
+                    </button>
+                    <div class="sa-menu" role="menu" data-sa-dropdown-menu hidden>
+                        <p class="sa-menu-label">{{ __('superadmin.layout.theme') }}</p>
+                        @foreach (['light' => 'light_mode', 'dark' => 'dark_mode', 'system' => 'contrast'] as $themeKey => $themeIcon)
+                            <button type="button" class="sa-menu-item" role="menuitemradio" aria-checked="false" data-sa-theme="{{ $themeKey }}">
+                                <span class="material-symbols-outlined" aria-hidden="true">{{ $themeIcon }}</span>{{ __('superadmin.layout.theme_'.$themeKey) }}
+                                <span class="material-symbols-outlined sa-menu-check" aria-hidden="true">check</span>
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+                <div class="sa-dropdown" data-sa-dropdown>
+                    <button type="button" class="sa-icon-btn sa-lang-toggle" data-sa-dropdown-toggle aria-haspopup="menu" aria-expanded="false"
+                        title="{{ __('superadmin.layout.language') }}" aria-label="{{ __('superadmin.layout.language') }}">
+                        <span class="sa-lang-code">{{ $locales[app()->getLocale()]['code'] ?? strtoupper(app()->getLocale()) }}</span>
+                    </button>
+                    <div class="sa-menu" role="menu" data-sa-dropdown-menu hidden>
+                        <p class="sa-menu-label">{{ __('superadmin.layout.language') }}</p>
+                        @foreach ($locales as $localeCode => $localeInfo)
+                            <a class="sa-menu-item" role="menuitemradio" aria-checked="{{ app()->getLocale() === $localeCode ? 'true' : 'false' }}"
+                                href="{{ route('locale.switch', ['locale' => $localeCode, 'to' => $currentPath]) }}" lang="{{ $localeCode }}">
+                                <span class="sa-lang-code" aria-hidden="true">{{ $localeInfo['code'] }}</span>{{ $localeInfo['name'] }}
+                                <span class="material-symbols-outlined sa-menu-check" aria-hidden="true">check</span>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
                 <x-superadmin.notification-bell :notifications="$headerNotifications" :presentations="$headerNotificationPresentations" :unread-count="$headerUnreadCount" />
-                <div><strong>{{ request()->user('superadmin')->name }}</strong><small>{{ request()->user('superadmin')->email }}</small></div>
-                <div class="superadmin-avatar">{{ strtoupper(substr(request()->user('superadmin')->name, 0, 1)) }}</div>
-                <button type="button" title="{{ __('superadmin.layout.logout') }}" aria-label="{{ __('superadmin.layout.logout') }}"
-                    class="icon-button" data-modal-open="superadmin-logout-modal"><span class="material-symbols-outlined">logout</span></button>
+                <div class="sa-dropdown" data-sa-dropdown>
+                    <button type="button" class="sa-user-toggle" data-sa-dropdown-toggle aria-haspopup="menu" aria-expanded="false"
+                        aria-label="{{ __('superadmin.layout.account') }}">
+                        <span class="superadmin-avatar" aria-hidden="true">{{ mb_strtoupper(mb_substr($viewerName, 0, 1)) }}</span>
+                        <span class="sa-user-name">{{ $viewerName }}</span>
+                        <span class="material-symbols-outlined" aria-hidden="true">expand_more</span>
+                    </button>
+                    <div class="sa-menu sa-menu-account" role="menu" data-sa-dropdown-menu hidden>
+                        <div class="sa-menu-account-head">
+                            <span class="superadmin-avatar" aria-hidden="true">{{ mb_strtoupper(mb_substr($viewerName, 0, 1)) }}</span>
+                            <span><strong>{{ $viewerName }}</strong><small>{{ $viewer?->email }}</small></span>
+                        </div>
+                        <div class="sa-menu-sep"></div>
+                        <button type="button" role="menuitem" class="sa-menu-item is-danger" data-modal-open="superadmin-logout-modal">
+                            <span class="material-symbols-outlined" aria-hidden="true">logout</span>{{ __('superadmin.layout.logout') }}
+                        </button>
+                    </div>
+                </div>
             </div>
         </header>
         <main class="superadmin-content">@yield('content')</main>
     </div>
+
+    {{-- Command palette (Ctrl/⌘ K): jump to any menu page the account may open. resources/js/superadmin/shell.js --}}
+    <div class="sa-command" id="sa-command" role="dialog" aria-modal="true" aria-label="{{ __('superadmin.layout.command_title') }}" data-sa-command hidden>
+        <div class="sa-command-backdrop" data-sa-command-close></div>
+        <div class="sa-command-panel">
+            <div class="sa-command-search">
+                <span class="material-symbols-outlined" aria-hidden="true">search</span>
+                <input type="text" data-sa-command-input autocomplete="off" role="combobox" aria-expanded="true" aria-controls="sa-command-list"
+                    placeholder="{{ __('superadmin.layout.command_placeholder') }}" aria-label="{{ __('superadmin.layout.command_placeholder') }}">
+                <kbd>Esc</kbd>
+            </div>
+            <div class="sa-command-list" id="sa-command-list" role="listbox" data-sa-command-list>
+                @foreach ($navSections as $section)
+                    <div class="sa-command-group" data-sa-command-group>
+                        <p class="sa-command-group-label">{{ $section['label'] ?? __('superadmin.layout.console') }}</p>
+                        @foreach ($section['links'] as $link)
+                            <a class="sa-command-item" role="option" aria-selected="false" href="{{ $link['url'] }}" data-sa-command-item
+                                data-search="{{ mb_strtolower($link['label'].' '.($section['label'] ?? '')) }}">
+                                <span class="material-symbols-outlined" aria-hidden="true">{{ $link['icon'] }}</span>
+                                <span>{{ $link['label'] }}</span>
+                                <span class="material-symbols-outlined sa-command-enter" aria-hidden="true">keyboard_return</span>
+                            </a>
+                        @endforeach
+                    </div>
+                @endforeach
+                <p class="sa-command-empty" data-sa-command-empty hidden>{{ __('superadmin.layout.command_empty') }}</p>
+            </div>
+            <p class="sa-command-hint">{{ __('superadmin.layout.command_hint') }}</p>
+        </div>
+    </div>
+    <div class="sa-toast-region" data-sa-toasts aria-live="polite" aria-atomic="false"></div>
+
     <x-superadmin.confirm-modal />
     <x-superadmin.logout-modal />
-    {{-- Temporary compatibility shim: the deferred Vite module (resources/js/superadmin/shared.js) sets
-    window.dfApi/escapeHtml/statusPill/money too, but as a `type="module"` script it only runs right before
-    DOMContentLoaded — after the plain inline scripts below have already executed. Pages are migrated to
-    `import { dfApi, ... } from '../shared'` one at a time (see plan); once every page/@push('scripts') block
-    no longer calls these as bare globals, this shim and the matching window.* assignment in shared.js can
-    both be deleted. --}}
-    <script>
-        window.dfApi = window.dfApi || async function (url, options = {}) {
-            const headers = { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', ...(options.headers || {}) };
-            if (options.body && typeof options.body !== 'string') {
-                headers['Content-Type'] = 'application/json';
-                options.body = JSON.stringify(options.body);
-            }
-            headers['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]')?.content || '';
-            const response = await fetch(url, { ...options, headers });
-            if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || `HTTP ${response.status}`);
-            return response.json();
-        };
-        window.money = window.money || (value => new Intl.NumberFormat('vi-VN').format(value || 0) + 'đ');
-        window.escapeHtml = window.escapeHtml || (value => String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' }[c] || c)));
-        window.statusPill = window.statusPill || (value => {
-            const labels = JSON.parse(document.body.dataset.statusLabels || '{}');
-            return `<span class="status-pill status-${window.escapeHtml(value)}"><span class="status-dot"></span>${window.escapeHtml(labels[value] || value)}</span>`;
-        });
-    </script>
     {{-- Socket.IO client served by the realtime gateway (live inbox notifications, resources/js/superadmin/realtime.js). --}}
     @auth('superadmin')
         <script src="{{ rtrim((string) config('services.realtime.public_url', 'http://localhost:3001'), '/') }}/socket.io/socket.io.js" defer></script>

@@ -1,26 +1,22 @@
 @extends('superadmin.layout', ['title' => $superadmin->name, 'active' => 'superadmins'])
 @section('content')
     @php
-        $fieldLabel = 'flex flex-col gap-1 text-xs font-semibold';
-        $fieldInput = 'sa-input !min-w-0 w-full !py-2';
+        $fieldLabel = 'flex flex-col gap-1.5 text-[13px] font-semibold text-on-surface';
+        $fieldInput = 'sa-input !min-w-0 w-full';
         $canManage = \Illuminate\Support\Facades\Gate::allows('superadmin.manage');
         $isSelf = $superadmin->is(request()->user('superadmin'));
     @endphp
-    <div class="superadmin-heading">
-        <div>
-            <a class="sa-back-link" href="{{ route('superadmin.superadmins.index') }}">← {{ __('superadmin.superadmins.title') }}</a>
-            <h1>{{ $superadmin->name }}</h1>
-            <p>{{ $superadmin->email }} · <x-superadmin.status-pill :status="$superadmin->status" /></p>
-        </div>
-        @if ($canManage && ! $isSelf)
-            <form method="POST" action="{{ route('superadmin.superadmins.destroy', $superadmin) }}"
-                data-confirm="{{ __('superadmin.superadmins.delete_confirm', ['name' => $superadmin->name]) }}">
-                @csrf
-                @method('DELETE')
-                <button class="sa-button danger" type="submit"><span class="material-symbols-outlined text-[16px]">delete</span>{{ __('superadmin.common.delete') }}</button>
-            </form>
-        @endif
-    </div>
+    <x-superadmin.page-header :back="route('superadmin.superadmins.index')" :back-label="__('superadmin.superadmins.title')" :title="$superadmin->name">
+        <x-slot:meta><p class="sa-heading-meta">{{ $superadmin->email }} · <x-superadmin.status-pill :status="$superadmin->status" /></p></x-slot:meta>
+            @if ($canManage && ! $isSelf)
+                <form method="POST" action="{{ route('superadmin.superadmins.destroy', $superadmin) }}"
+                    data-confirm-tone="danger" data-confirm-description="{{ __('superadmin.modals.confirm.delete_superadmin') }}" data-confirm-irreversible="1" data-confirm="{{ __('superadmin.superadmins.delete_confirm', ['name' => $superadmin->name]) }}">
+                    @csrf
+                    @method('DELETE')
+                    <button class="sa-button danger" type="submit"><span class="material-symbols-outlined text-[16px]">delete</span>{{ __('superadmin.common.delete') }}</button>
+                </form>
+            @endif
+    </x-superadmin.page-header>
     <x-superadmin.flash />
 
     <div class="sa-split">
@@ -74,7 +70,7 @@
             @php($roles = \App\Models\SuperadminRole::query()->orderBy('name')->get(['id', 'name']))
             @if ($canManage && $roles->isNotEmpty())
                 <form method="POST" action="{{ route('superadmin.superadmins.role', $superadmin) }}" class="flex flex-wrap items-end gap-2 mb-4 pb-4 border-b border-outline-variant"
-                    data-confirm="{{ __('platform.roles.apply_confirm') }}">
+                    data-confirm-tone="info" data-confirm-description="{{ __('superadmin.modals.confirm.apply_role') }}" data-confirm-icon="badge" data-confirm="{{ __('platform.roles.apply_confirm') }}">
                     @csrf
                     <label class="flex flex-col gap-1 text-xs font-semibold flex-1 min-w-[200px]">{{ __('platform.roles.apply_label') }}
                         <select name="role_id" class="sa-input !min-w-0 w-full !py-2">

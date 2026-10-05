@@ -1,10 +1,7 @@
 /**
  * Superadmin shared helpers: fetch wrapper, formatting and status-pill rendering.
  *
- * Extracted from the inline <script> that used to live in resources/views/superadmin/layout.blade.php
- * so every superadmin page module can `import` them instead of relying on bare globals. They are also
- * attached to `window` so the still-inline @push('scripts') blocks in each superadmin/*.blade.php page
- * keep working unchanged while those pages are migrated to real modules one at a time.
+ * Imported by every superadmin module (resources/js/superadmin/*.js and pages/*.js).
  */
 
 /** Minimal JSON fetch wrapper with CSRF header and error normalization, used by every superadmin page. */
@@ -56,12 +53,4 @@ function statusLabels() {
 export function statusPill(value) {
     const labels = statusLabels();
     return `<span class="status-pill status-${escapeHtml(value)}"><span class="status-dot"></span>${escapeHtml(labels[value] || value)}</span>`;
-}
-
-/** Expose the helpers as globals for the inline @push('scripts') blocks still used by most superadmin pages. */
-export function exposeSuperadminGlobals() {
-    window.dfApi = dfApi;
-    window.money = money;
-    window.escapeHtml = escapeHtml;
-    window.statusPill = statusPill;
 }

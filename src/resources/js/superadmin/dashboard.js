@@ -255,8 +255,8 @@ function renderTrend(container, daily, metric, i18n, days) {
 }
 
 function renderTrendTable(tbody, daily) {
-    tbody.innerHTML = [...daily].reverse().map(point => `<tr><td>${escapeHtml(longDay(point.date))}</td>`
-        + `<td>${escapeHtml(number(point.orders))}</td><td>${escapeHtml(money(point.gmv))}</td></tr>`).join('');
+    tbody.innerHTML = [...daily].reverse().map(point => `<tr><td class="col-date">${escapeHtml(longDay(point.date))}</td>`
+        + `<td class="num">${escapeHtml(number(point.orders))}</td><td class="num">${escapeHtml(money(point.gmv))}</td></tr>`).join('');
 }
 
 /** Horizontal bars, one per age bucket, on an ordinal blue ramp (older = darker) with direct value labels. */
@@ -291,11 +291,11 @@ function renderStuck(tbody, campaigns, i18n, campaignsUrl) {
             : trans(i18n.overdue_hours, { hours: campaign.overdue_hours });
         const url = `${campaignsUrl}?q=${encodeURIComponent(campaign.name)}`;
         return `<tr><td><strong>${escapeHtml(campaign.name)}</strong><br><small class="sa-muted">${escapeHtml(campaign.code || '')} · ${escapeHtml(campaign.restaurant)}</small></td>`
-            + `<td>${escapeHtml(campaign.room || '—')}</td><td>${statusPill(campaign.status)}</td>`
-            + `<td>${escapeHtml(dateTime(campaign.deadline))}</td>`
-            + `<td><span class="sa-overdue"><span class="material-symbols-outlined" aria-hidden="true">schedule</span>${escapeHtml(overdue)}</span></td>`
+            + `<td>${escapeHtml(campaign.room || '—')}</td><td class="col-status">${statusPill(campaign.status)}</td>`
+            + `<td class="col-date">${escapeHtml(dateTime(campaign.deadline))}</td>`
+            + `<td class="col-date"><span class="sa-overdue"><span class="material-symbols-outlined" aria-hidden="true">schedule</span>${escapeHtml(overdue)}</span></td>`
             + `<td class="num">${escapeHtml(number(campaign.orders))}</td>`
-            + `<td><a class="sa-button secondary" href="${escapeHtml(url)}">${escapeHtml(i18n.handle)}</a></td></tr>`;
+            + `<td class="col-actions"><a class="sa-button secondary" href="${escapeHtml(url)}">${escapeHtml(i18n.handle)}</a></td></tr>`;
     }).join('');
 }
 
@@ -330,7 +330,7 @@ function renderRooms(tbody, rooms, i18n, roomUrl, thresholds) {
             + `<td class="num">${escapeHtml(money(room.gmv))}</td>`
             + `<td class="num">${room.debt_outstanding > 0 ? escapeHtml(money(room.debt_outstanding)) : '—'}</td>`
             + `<td class="num">${overdue}</td>`
-            + `<td>${room.last_activity_at ? escapeHtml(dateTime(room.last_activity_at)) : `<span class="sa-muted">${escapeHtml(i18n.never_active)}</span>`}</td>`
+            + `<td class="col-date">${room.last_activity_at ? escapeHtml(dateTime(room.last_activity_at)) : `<span class="sa-muted">${escapeHtml(i18n.never_active)}</span>`}</td>`
             + `<td><div class="sa-flags">${flags}</div></td></tr>`;
     }).join('');
 }
@@ -425,7 +425,7 @@ function renderSecurityChart(container, daily, i18n, days) {
 }
 
 function renderSecurityTable(tbody, daily) {
-    tbody.innerHTML = [...daily].reverse().map(day => `<tr><td>${escapeHtml(longDay(day.date))}</td>`
+    tbody.innerHTML = [...daily].reverse().map(day => `<tr><td class="col-date">${escapeHtml(longDay(day.date))}</td>`
         + SEVERITIES.map(severity => `<td class="num">${escapeHtml(number(day[severity]))}</td>`).join('') + '</tr>').join('');
 }
 
@@ -454,12 +454,12 @@ function renderIps(tbody, ips, i18n, securityUrl, hours) {
         const badge = ip.suspicious
             ? `<span class="sa-flag sa-flag-bad_debt"><span class="material-symbols-outlined" aria-hidden="true">gpp_bad</span>${escapeHtml(i18n.ip_suspicious)}</span>`
             : `<span class="sa-flag sa-flag-dormant"><span class="material-symbols-outlined" aria-hidden="true">visibility</span>${escapeHtml(i18n.ip_watch)}</span>`;
-        return `<tr><td><code class="sa-code">${escapeHtml(ip.ip_address)}</code></td>`
+        return `<tr><td class="col-mono"><code class="sa-code">${escapeHtml(ip.ip_address)}</code></td>`
             + `<td class="num">${escapeHtml(number(ip.events))}</td>`
             + `<td class="num">${escapeHtml(number(ip.failed_logins))}</td>`
             + `<td class="num">${escapeHtml(number(ip.high_events))}</td>`
-            + `<td>${escapeHtml(dateTime(ip.last_seen_at))}</td><td>${badge}</td>`
-            + `<td><a class="sa-button secondary" href="${escapeHtml(`${securityUrl}?q=${encodeURIComponent(ip.ip_address)}`)}">${escapeHtml(i18n.view_events)}</a></td></tr>`;
+            + `<td class="col-date">${escapeHtml(dateTime(ip.last_seen_at))}</td><td class="col-status">${badge}</td>`
+            + `<td class="col-actions"><a class="sa-button secondary" href="${escapeHtml(`${securityUrl}?q=${encodeURIComponent(ip.ip_address)}`)}">${escapeHtml(i18n.view_events)}</a></td></tr>`;
     }).join('');
 }
 
@@ -482,7 +482,7 @@ function renderAdmins(tbody, admins, i18n, adminUrl, staleDays) {
             + `<td class="num">${escapeHtml(number(admin.campaigns_created))}</td>`
             + `<td class="num">${escapeHtml(number(admin.payments_confirmed))}</td>`
             + `<td class="num">${escapeHtml(number(admin.audit_actions))}</td>`
-            + `<td>${admin.last_login_at ? escapeHtml(dateTime(admin.last_login_at)) : `<span class="sa-muted">${escapeHtml(i18n.never_logged_in)}</span>`}</td>`
+            + `<td class="col-date">${admin.last_login_at ? escapeHtml(dateTime(admin.last_login_at)) : `<span class="sa-muted">${escapeHtml(i18n.never_logged_in)}</span>`}</td>`
             + `<td><div class="sa-flags">${flags}</div></td></tr>`;
     }).join('');
 }

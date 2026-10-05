@@ -1,12 +1,6 @@
 @extends('superadmin.layout', ['title' => __('superadmin.feedbacks.title'), 'active' => 'feedbacks'])
 @section('content')
-    <div class="superadmin-heading">
-        <div>
-            <p class="superadmin-eyebrow">{{ __('superadmin.common.platform_data') }}</p>
-            <h1>{{ __('superadmin.feedbacks.title') }}</h1>
-            <p>{{ __('superadmin.feedbacks.description', ['rating' => \App\Models\Feedback::MIN_VISIBLE_RATING]) }}</p>
-        </div>
-    </div>
+    <x-superadmin.page-header :eyebrow="__('superadmin.common.platform_data')" :title="__('superadmin.feedbacks.title')" :description="__('superadmin.feedbacks.description', ['rating' => \App\Models\Feedback::MIN_VISIBLE_RATING])" />
     <div id="notice" class="sa-notice"></div>
     <section class="sa-card sa-section">
         <div class="sa-section-header">
@@ -34,12 +28,12 @@
             <table class="sa-table">
                 <thead>
                     <tr>
-                        <th>{{ __('superadmin.common.user') }}</th>
-                        <th class="whitespace-nowrap">{{ __('superadmin.feedbacks.rating') }}</th>
-                        <th>{{ __('superadmin.feedbacks.content') }}</th>
-                        <th class="whitespace-nowrap">{{ __('superadmin.common.time') }}</th>
-                        <th>{{ __('superadmin.common.status') }}</th>
-                        <th class="text-right">{{ __('superadmin.common.actions') }}</th>
+                        <th class="col-primary">{{ __('superadmin.common.user') }}</th>
+                        <th class="whitespace-nowrap col-status">{{ __('superadmin.feedbacks.rating') }}</th>
+                        <th class="col-wrap">{{ __('superadmin.feedbacks.content') }}</th>
+                        <th class="whitespace-nowrap col-date">{{ __('superadmin.common.time') }}</th>
+                        <th class="col-status">{{ __('superadmin.common.status') }}</th>
+                        <th class="text-right col-actions">{{ __('superadmin.common.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -51,7 +45,7 @@
                             $userMeta = collect([$feedback->globalUser?->email, $feedback->department_name])->filter()->join(' · ');
                         @endphp
                         <tr>
-                            <td>
+                            <td class="col-primary">
                                 <div class="flex items-center gap-3">
                                     <span class="superadmin-avatar shrink-0">{{ mb_strtoupper(mb_substr($displayName, 0, 1)) }}</span>
                                     <span class="min-w-0">
@@ -60,24 +54,24 @@
                                     </span>
                                 </div>
                             </td>
-                            <td class="whitespace-nowrap">
+                            <td class="whitespace-nowrap col-status">
                                 <span class="block text-[14px] leading-none tracking-wide" role="img" aria-label="{{ __('superadmin.feedbacks.rating_value', ['rating' => $feedback->rating]) }}">
                                     @for ($star = 1; $star <= 5; $star++)<span class="{{ $star <= $feedback->rating ? 'text-amber-500' : 'text-slate-300' }}" aria-hidden="true">★</span>@endfor
                                 </span>
                                 @if ($feedback->subsystem_label)<small class="block mt-1 text-outline">{{ $feedback->subsystem_label }}</small>@endif
                             </td>
-                            <td class="min-w-[16rem] max-w-md whitespace-pre-line break-words leading-relaxed">{{ $feedback->content }}</td>
-                            <td class="whitespace-nowrap">
+                            <td class="min-w-[16rem] max-w-md whitespace-pre-line break-words leading-relaxed col-wrap">{{ $feedback->content }}</td>
+                            <td class="whitespace-nowrap col-date">
                                 <span class="block">{{ $feedback->created_at?->format('d/m/Y') }}</span>
                                 <small class="block text-outline">{{ $feedback->created_at?->format('H:i') }}</small>
                             </td>
-                            <td>
+                            <td class="col-status">
                                 <span class="status-pill whitespace-nowrap {{ $isActive ? 'status-active' : 'status-pending' }}"><span class="status-dot"></span>{{ $isActive ? __('superadmin.feedbacks.status_active') : __('superadmin.feedbacks.status_inactive') }}</span>
                                 @if ($isActive && $belowMinimum)
                                     <small class="mt-1 flex items-center gap-1 text-outline"><span class="material-symbols-outlined text-[14px]" aria-hidden="true">visibility_off</span>{{ __('superadmin.feedbacks.hidden_low_rating', ['rating' => \App\Models\Feedback::MIN_VISIBLE_RATING]) }}</small>
                                 @endif
                             </td>
-                            <td>
+                            <td class="col-actions">
                                 <div class="flex items-center justify-end whitespace-nowrap">
                                     @if ($isActive)
                                         <button class="sa-button warning" type="button" data-action="feedback-status" data-feedback-id="{{ $feedback->id }}" data-status="inactive"><span class="material-symbols-outlined text-[16px]">unpublished</span>{{ __('superadmin.feedbacks.deactivate') }}</button>
@@ -102,32 +96,9 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-4">{{ $feedbacks->links() }}</div>
+        {{ $feedbacks->links('components.superadmin.pagination') }}
     </section>
 @endsection
 @push('scripts')
-    <script>
-        const feedbackNotice = (message, type = 'success') => {
-            const n = document.querySelector('#notice');
-            n.textContent = message;
-            n.className = `sa-notice ${type} is-visible`;
-        };
-
-        document.addEventListener('click', async (event) => {
-            const button = event.target.closest('[data-action="feedback-status"]');
-            if (!button || button.disabled) return;
-            const originalHtml = button.innerHTML;
-            button.disabled = true;
-            window.renderSubmitLoading(button);
-            try {
-                await dfApi(`/superadmin/feedbacks/${button.dataset.feedbackId}/status`, { method: 'PATCH', body: { status: button.dataset.status } });
-                feedbackNotice(@js(__('superadmin.feedbacks.status_updated')));
-                window.setTimeout(() => window.location.reload(), 500);
-            } catch (error) {
-                feedbackNotice(error.message, 'error');
-                button.disabled = false;
-                button.innerHTML = originalHtml;
-            }
-        });
-    </script>
+    <x-superadmin.page-script name="feedbacks" :i18n="['status_updated' => __('superadmin.feedbacks.status_updated')]" />
 @endpush

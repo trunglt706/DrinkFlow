@@ -295,7 +295,7 @@ class SuperadminFeatureTest extends TestCase
 
         $this->actingAs($root, 'superadmin')->get('/superadmin/global-users/page')
             ->assertOk()
-            ->assertSee('class="sa-button warning" type="button" data-action="toggle-user-status" data-user-id="'.$user->id.'"', false);
+            ->assertSee('class="sa-menu-item is-warning" type="button" data-action="toggle-user-status" data-user-id="'.$user->id.'"', false);
 
         $this->actingAs($root, 'superadmin')->get('/superadmin/global-users/page?q=no-such-user')
             ->assertOk()

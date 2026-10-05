@@ -1,15 +1,10 @@
 @extends('superadmin.layout', ['title' => __('superadmin.admins.title'), 'active' => 'admins'])
 @section('content')
-    <div class="superadmin-heading">
-        <div>
-            <p class="superadmin-eyebrow">{{ __('superadmin.common.core_system') }}</p>
-            <h1>{{ __('superadmin.admins.title') }}</h1>
-            <p>{{ __('superadmin.admins.description') }}</p>
-        </div>
-        <button class="sa-button" type="button" data-modal-open="create-admin-modal">
-            <span class="material-symbols-outlined text-[16px]">person_add</span>{{ __('superadmin.admins.create') }}
-        </button>
-    </div>
+    <x-superadmin.page-header :eyebrow="__('superadmin.common.core_system')" :title="__('superadmin.admins.title')" :description="__('superadmin.admins.description')">
+            <button class="sa-button" type="button" data-modal-open="create-admin-modal">
+                <span class="material-symbols-outlined text-[16px]">person_add</span>{{ __('superadmin.admins.create') }}
+            </button>
+    </x-superadmin.page-header>
     <div id="notice" class="sa-notice"></div>
     <section class="sa-card sa-section">
         <div class="sa-section-header">
@@ -32,10 +27,10 @@
             <table class="sa-table">
                 <thead>
                     <tr>
-                        <th>{{ __('superadmin.common.admin') }}</th>
-                        <th>{{ __('superadmin.common.status') }}</th>
-                        <th>{{ __('superadmin.admins.assigned_rooms') }}</th>
-                        <th class="text-right">{{ __('superadmin.common.actions') }}</th>
+                        <th class="col-primary">{{ __('superadmin.common.admin') }}</th>
+                        <th class="col-status">{{ __('superadmin.common.status') }}</th>
+                        <th class="num">{{ __('superadmin.admins.assigned_rooms') }}</th>
+                        <th class="text-right col-actions">{{ __('superadmin.common.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -44,7 +39,7 @@
                             $statusValue = $admin->status instanceof \BackedEnum ? $admin->status->value : (string) $admin->status;
                         @endphp
                         <tr>
-                            <td>
+                            <td class="col-primary">
                                 <div class="flex items-center gap-3">
                                     <span class="superadmin-avatar shrink-0">{{ mb_strtoupper(mb_substr($admin->name, 0, 1)) }}</span>
                                     <span class="min-w-0">
@@ -53,16 +48,19 @@
                                     </span>
                                 </div>
                             </td>
-                            <td><x-superadmin.status-pill :status="$statusValue" /></td>
-                            <td class="whitespace-nowrap">{{ __('superadmin.common.rooms_count', ['count' => $admin->rooms_count]) }}</td>
-                            <td>
-                                <div class="flex items-center justify-end gap-2 whitespace-nowrap">
+                            <td class="col-status"><x-superadmin.status-pill :status="$statusValue" /></td>
+                            <td class="whitespace-nowrap num">{{ __('superadmin.common.rooms_count', ['count' => $admin->rooms_count]) }}</td>
+                            <td class="col-actions">
+                                <x-superadmin.row-actions>
                                     <a class="sa-button secondary" href="{{ route('superadmin.admins.detail.page', $admin) }}"><span class="material-symbols-outlined text-[16px]">visibility</span>{{ __('superadmin.common.details') }}</a>
-                                    @if($statusValue === 'active')
-                                        <button class="sa-button warning" type="button" data-action="block-admin" data-admin-id="{{ $admin->id }}" data-admin-name="{{ $admin->name }}"><span class="material-symbols-outlined text-[16px]">lock</span>{{ __('superadmin.common.block') }}</button>
-                                    @endif
-                                    <button class="sa-button danger" type="button" data-action="delete-admin" data-admin-id="{{ $admin->id }}" data-admin-name="{{ $admin->name }}"><span class="material-symbols-outlined text-[16px]">delete</span>{{ __('superadmin.common.delete') }}</button>
-                                </div>
+                                    <x-slot:menu>
+                                        @if($statusValue === 'active')
+                                            <button class="sa-menu-item is-warning" type="button" data-action="block-admin" data-admin-id="{{ $admin->id }}" data-admin-name="{{ $admin->name }}" role="menuitem"><span class="material-symbols-outlined">lock</span>{{ __('superadmin.common.block') }}</button>
+                                            <div class="sa-menu-sep"></div>
+                                        @endif
+                                        <button class="sa-menu-item is-danger" type="button" data-action="delete-admin" data-admin-id="{{ $admin->id }}" data-admin-name="{{ $admin->name }}" role="menuitem"><span class="material-symbols-outlined">delete</span>{{ __('superadmin.common.delete') }}</button>
+                                    </x-slot:menu>
+                                </x-superadmin.row-actions>
                             </td>
                         </tr>
                     @empty
@@ -75,40 +73,47 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-4">{{ $admins->links() }}</div>
+        {{ $admins->links('components.superadmin.pagination') }}
     </section>
 
-    <x-superadmin.modal id="create-admin-modal" icon="person_add" :title="__('superadmin.admins.create')" :description="__('superadmin.admins.create_description')">
+    <x-superadmin.modal id="create-admin-modal" icon="person_add" tone="create" :title="__('superadmin.admins.create')" :description="__('superadmin.admins.create_description')">
         <form id="create-admin-form" class="space-y-4">
             @csrf
+            <x-superadmin.modal-guide :title="__('superadmin.modals.create_admin.guide_title')">
+                <li>{{ __('superadmin.modals.create_admin.guide_login') }}</li>
+                <li>{{ __('superadmin.modals.create_admin.guide_scope') }}</li>
+                <li>{{ __('superadmin.modals.create_admin.guide_share') }}</li>
+            </x-superadmin.modal-guide>
             <div>
-                <label for="create-admin-name" class="block text-xs font-semibold text-on-surface mb-1">{{ __('superadmin.admins.field_name') }} <span class="text-error">*</span></label>
-                <input type="text" id="create-admin-name" name="name" required maxlength="255" autocomplete="off" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary">
+                <label for="create-admin-name" class="sa-label">{{ __('superadmin.admins.field_name') }} <span class="text-error">*</span></label>
+                <input type="text" id="create-admin-name" name="name" required maxlength="255" autocomplete="off" class="sa-field">
             </div>
             <div>
-                <label for="create-admin-email" class="block text-xs font-semibold text-on-surface mb-1">{{ __('superadmin.admins.field_email') }} <span class="text-error">*</span></label>
-                <input type="email" id="create-admin-email" name="email" required maxlength="255" autocomplete="off" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary">
+                <label for="create-admin-email" class="sa-label">{{ __('superadmin.admins.field_email') }} <span class="text-error">*</span></label>
+                <input type="email" id="create-admin-email" name="email" required maxlength="255" autocomplete="off" class="sa-field">
+                <p class="sa-hint">{{ __('superadmin.modals.create_admin.email_hint') }}</p>
             </div>
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
-                    <label for="create-admin-password" class="block text-xs font-semibold text-on-surface mb-1">{{ __('superadmin.admins.field_password') }} <span class="text-error">*</span></label>
+                    <label for="create-admin-password" class="sa-label">{{ __('superadmin.admins.field_password') }} <span class="text-error">*</span></label>
                     <x-superadmin.password-input id="create-admin-password" name="password" required minlength="8" />
                 </div>
                 <div>
-                    <label for="create-admin-password-confirmation" class="block text-xs font-semibold text-on-surface mb-1">{{ __('superadmin.admins.field_password_confirmation') }} <span class="text-error">*</span></label>
+                    <label for="create-admin-password-confirmation" class="sa-label">{{ __('superadmin.admins.field_password_confirmation') }} <span class="text-error">*</span></label>
                     <x-superadmin.password-input id="create-admin-password-confirmation" name="password_confirmation" required minlength="8" />
                 </div>
-                <p class="sm:col-span-2 -mt-2 text-[11px] text-outline">{{ __('superadmin.admins.password_hint') }}</p>
+                <p class="sa-hint sm:col-span-2 !-mt-2">{{ __('superadmin.admins.password_hint') }}</p>
             </div>
             <div>
-                <label class="block text-xs font-semibold text-on-surface mb-1">{{ __('superadmin.admins.field_rooms') }}</label>
-                <div id="create-admin-room-options" class="max-h-40 overflow-y-auto space-y-1 border border-outline-variant rounded-lg p-2">
+                <label class="sa-label">{{ __('superadmin.admins.field_rooms') }}</label>
+                <div id="create-admin-room-options" class="sa-check-list space-y-1">
                     <x-superadmin.empty-state loading :bordered="false" class="!py-6" :title="__('superadmin.common.loading_title')" :description="__('superadmin.admins.loading_rooms')" />
                 </div>
+                <p class="sa-hint">{{ __('superadmin.modals.create_admin.rooms_hint') }}</p>
             </div>
-            <div class="pt-2 flex items-center justify-end gap-2.5 border-t border-outline-variant">
-                <button type="button" class="px-4 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors cursor-pointer" data-modal-close>{{ __('superadmin.common.cancel') }}</button>
-                <button type="submit" class="px-4 py-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer">
+            <div class="sa-modal-footer">
+                <button type="button" class="sa-button secondary" data-modal-close>{{ __('superadmin.common.cancel') }}</button>
+                <button type="submit" class="sa-button">
                     <span class="material-symbols-outlined text-[16px]">person_add</span>{{ __('superadmin.admins.create') }}
                 </button>
             </div>
@@ -120,109 +125,11 @@
     <template id="tpl-load-failed"><x-superadmin.empty-state icon="error" :bordered="false" class="!py-6" :title="__('superadmin.common.load_failed_title')" description="" /></template>
 @endsection
 @push('scripts')
-    <script>
-        const adminNotice = (message, type = 'success') => {
-            const n = document.querySelector('#notice');
-            n.textContent = message;
-            n.className = `sa-notice ${type} is-visible`;
-        };
-
-        // The shared submit-loading handler (resources/js/superadmin/loading.js) swaps the button for a
-        // spinner; restore it whenever the modal stays open (validation error).
-        const resetSubmitButton = (form) => {
-            const button = form.querySelector('button[type="submit"]');
-            if (!button) return;
-            button.disabled = false;
-            button.classList.remove('opacity-75', 'cursor-wait');
-            if (button.dataset.originalHtml) button.innerHTML = button.dataset.originalHtml;
-        };
-
-        async function loadCreateAdminRoomOptions() {
-            const container = document.querySelector('#create-admin-room-options');
-            if (!container) return;
-            try {
-                const rooms = [];
-                let nextPageUrl = @json(route('superadmin.rooms.index'));
-                while (nextPageUrl) {
-                    const { data: page } = await dfApi(nextPageUrl);
-                    rooms.push(...page.data);
-                    nextPageUrl = page.next_page_url;
-                }
-                if (rooms.length === 0) {
-                    container.innerHTML = document.getElementById('tpl-no-rooms').innerHTML;
-                    return;
-                }
-                container.innerHTML = rooms.map(room => `
-                    <label class="flex items-center gap-2 px-1 py-1 text-xs text-on-surface cursor-pointer">
-                        <input type="checkbox" name="room_ids[]" value="${room.id}">
-                        <span>${escapeHtml(room.name)} <span class="text-outline">(${escapeHtml(room.slug)})</span></span>
-                    </label>
-                `).join('');
-            } catch (error) {
-                container.innerHTML = document.getElementById('tpl-load-failed').innerHTML;
-                container.querySelector('[data-empty-description]').textContent = error.message;
-            }
-        }
-        loadCreateAdminRoomOptions();
-
-        // Let the browser block a mismatched confirmation before submit (and before the loading spinner).
-        const createAdminForm = document.querySelector('#create-admin-form');
-        const checkPasswordConfirmation = () => createAdminForm.password_confirmation.setCustomValidity(
-            createAdminForm.password.value === createAdminForm.password_confirmation.value ? '' : @js(__('superadmin.admins.password_mismatch')));
-        createAdminForm.password.addEventListener('input', checkPasswordConfirmation);
-        createAdminForm.password_confirmation.addEventListener('input', checkPasswordConfirmation);
-
-        createAdminForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const form = e.target;
-            const errorBox = document.querySelector('#create-admin-modal-error');
-            errorBox?.classList.add('hidden');
-            const showError = (message) => {
-                errorBox.textContent = message;
-                errorBox.classList.remove('hidden');
-                resetSubmitButton(form);
-            };
-            const roomIds = [...form.querySelectorAll('input[name="room_ids[]"]:checked')].map(input => Number(input.value));
-            try {
-                await dfApi(@json(route('superadmin.admins.store')), {
-                    method: 'POST',
-                    body: { name: form.name.value, email: form.email.value, password: form.password.value, room_ids: roomIds },
-                });
-                window.location.reload();
-            } catch (error) {
-                showError(error.message);
-            }
-        });
-
-        document.addEventListener('click', (event) => {
-            const deleteBtn = event.target.closest('[data-action="delete-admin"]');
-            if (!deleteBtn) return;
-            openSuperadminConfirm({
-                message: @js(__('superadmin.admins.confirm_delete')).replace(':name', deleteBtn.dataset.adminName),
-                description: @js(__('superadmin.admins.delete_description')),
-                confirmLabel: @js(__('superadmin.admins.delete_account')),
-                onConfirm: async () => {
-                    await dfApi(`/superadmin/admins/${deleteBtn.dataset.adminId}`, { method: 'DELETE' });
-                    adminNotice(@js(__('superadmin.admins.deleted')));
-                    window.setTimeout(() => window.location.reload(), 500);
-                },
-            });
-        });
-
-        document.addEventListener('click', (event) => {
-            const blockBtn = event.target.closest('[data-action="block-admin"]');
-            if (!blockBtn) return;
-            openSuperadminConfirm({
-                message: @js(__('superadmin.admins.confirm_block')).replace(':name', blockBtn.dataset.adminName),
-                description: @js(__('superadmin.admins.block_description')),
-                confirmIcon: 'lock',
-                confirmLabel: @js(__('superadmin.admins.block_account')),
-                onConfirm: async () => {
-                    await dfApi(`/superadmin/admins/${blockBtn.dataset.adminId}/status`, { method: 'PATCH', body: { status: 'suspended' } });
-                    adminNotice(@js(__('superadmin.admins.updated')));
-                    window.setTimeout(() => window.location.reload(), 500);
-                },
-            });
-        });
-    </script>
+    <x-superadmin.page-script name="admins" :i18n="[
+        'password_mismatch' => __('superadmin.admins.password_mismatch'),
+        'confirm_delete' => __('superadmin.admins.confirm_delete'), 'delete_description' => __('superadmin.admins.delete_description'),
+        'delete_account' => __('superadmin.admins.delete_account'), 'deleted' => __('superadmin.admins.deleted'),
+        'confirm_block' => __('superadmin.admins.confirm_block'), 'block_description' => __('superadmin.admins.block_description'),
+        'block_account' => __('superadmin.admins.block_account'), 'updated' => __('superadmin.admins.updated'),
+    ]" :urls="['rooms' => route('superadmin.rooms.index'), 'store' => route('superadmin.admins.store')]" />
 @endpush

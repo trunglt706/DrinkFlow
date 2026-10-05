@@ -3,16 +3,11 @@
     @php
         $money = static fn (int $amount): string => \App\Support\Helpers\FormatHelper::formatCurrency($amount);
     @endphp
-    <div class="superadmin-heading">
-        <div>
-            <p class="superadmin-eyebrow">{{ __('platform.nav.agents') }}</p>
-            <h1>{{ __('platform.agents.title') }}</h1>
-            <p>{{ __('platform.agents.description') }}</p>
-        </div>
-        @can('agent.manage')
-            <a class="sa-button" href="{{ route('superadmin.agents.create') }}"><span class="material-symbols-outlined text-[16px]">person_add</span>{{ __('platform.agents.create_action') }}</a>
-        @endcan
-    </div>
+    <x-superadmin.page-header :eyebrow="__('platform.nav.agents')" :title="__('platform.agents.title')" :description="__('platform.agents.description')">
+            @can('agent.manage')
+                <a class="sa-button" href="{{ route('superadmin.agents.create') }}"><span class="material-symbols-outlined text-[16px]">person_add</span>{{ __('platform.agents.create_action') }}</a>
+            @endcan
+    </x-superadmin.page-header>
     <x-superadmin.flash />
     <section class="sa-card sa-section">
         <div class="sa-section-header">
@@ -41,13 +36,13 @@
             <table class="sa-table">
                 <thead>
                     <tr>
-                        <th>{{ __('platform.subscriptions.agent') }}</th>
-                        <th>{{ __('superadmin.common.status') }}</th>
+                        <th class="col-primary">{{ __('platform.subscriptions.agent') }}</th>
+                        <th class="col-status">{{ __('superadmin.common.status') }}</th>
                         <th>{{ __('platform.packages.package') }}</th>
-                        <th class="text-right">{{ __('platform.rooms.quota_title') }}</th>
-                        <th class="text-right">{{ __('platform.billing.remaining') }}</th>
+                        <th class="text-right num">{{ __('platform.rooms.quota_title') }}</th>
+                        <th class="text-right num">{{ __('platform.billing.remaining') }}</th>
                         <th>{{ __('platform.agents.primary_manager') }}</th>
-                        <th class="text-right">{{ __('superadmin.common.actions') }}</th>
+                        <th class="text-right col-actions">{{ __('superadmin.common.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -57,16 +52,16 @@
                             $primary = $agent->superadmins->first(static fn ($manager) => (bool) $manager->pivot->is_primary);
                         @endphp
                         <tr>
-                            <td>
+                            <td class="col-primary">
                                 <strong class="block truncate">{{ $agent->name }}</strong>
                                 <small class="block truncate text-outline">{{ $agent->email }}@if ($agent->company) · {{ $agent->company }}@endif</small>
                             </td>
-                            <td><x-superadmin.status-pill :status="$agent->status" /></td>
+                            <td class="col-status"><x-superadmin.status-pill :status="$agent->status" /></td>
                             <td>{{ $usage !== null ? ($agent->activeSubscription?->package?->name ?? '—') : '•••' }}</td>
-                            <td class="text-right whitespace-nowrap">{{ $usage !== null ? $usage['used'].' / '.$usage['limit'] : '•••' }}</td>
-                            <td class="text-right whitespace-nowrap">{{ array_key_exists($agent->id, $balances) ? $money($balances[$agent->id]) : '•••' }}</td>
+                            <td class="text-right whitespace-nowrap num">{{ $usage !== null ? $usage['used'].' / '.$usage['limit'] : '•••' }}</td>
+                            <td class="text-right whitespace-nowrap num">{{ array_key_exists($agent->id, $balances) ? $money($balances[$agent->id]) : '•••' }}</td>
                             <td>{{ $primary?->name ?? '—' }}</td>
-                            <td class="text-right"><a class="sa-button secondary" href="{{ route('superadmin.agents.show', $agent) }}"><span class="material-symbols-outlined text-[16px]">visibility</span>{{ __('superadmin.common.details') }}</a></td>
+                            <td class="text-right col-actions"><a class="sa-button secondary" href="{{ route('superadmin.agents.show', $agent) }}"><span class="material-symbols-outlined text-[16px]">visibility</span>{{ __('superadmin.common.details') }}</a></td>
                         </tr>
                     @empty
                         <tr><td colspan="7"><x-superadmin.empty-state icon="storefront" :title="__('platform.agents.empty')" /></td></tr>
@@ -74,9 +69,9 @@
                 </tbody>
             </table>
         </div>
-        <p class="mt-3 text-[11px] text-outline">{{ __('platform.agents.hidden_hint') }}</p>
+        <p class="mt-3 text-xs text-outline">{{ __('platform.agents.hidden_hint') }}</p>
         @if ($agents->hasPages())
-            <div class="mt-4">{{ $agents->links() }}</div>
+            {{ $agents->links('components.superadmin.pagination') }}
         @endif
     </section>
 @endsection

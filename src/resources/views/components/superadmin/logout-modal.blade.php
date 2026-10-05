@@ -1,12 +1,15 @@
-{{-- Logout confirmation for the superadmin console, opened by the topbar button via [data-modal-open="superadmin-logout-modal"]. --}}
-<x-superadmin.modal id="superadmin-logout-modal" icon="logout" :title="__('admin.logout_modal_title')" max-width="max-w-md">
-    <p class="text-xs text-on-surface-variant leading-relaxed mb-4">{{ __('admin.logout_modal_desc') }}</p>
-    <form method="POST" action="{{ route('superadmin.logout') }}" class="flex items-center justify-end gap-2.5 pt-2 border-t border-outline-variant">
+{{-- Logout confirmation for the superadmin console, opened by the account menu via [data-modal-open="superadmin-logout-modal"]. --}}
+<x-superadmin.modal id="superadmin-logout-modal" icon="logout" tone="info" :title="__('admin.logout_modal_title')" :description="__('admin.logout_modal_desc')" max-width="max-w-md">
+    <x-superadmin.modal-guide :title="__('superadmin.modals.logout.guide_title')">
+        <li>{{ __('superadmin.modals.logout.guide_session') }}</li>
+        <li>{{ __('superadmin.modals.logout.guide_unsaved') }}</li>
+    </x-superadmin.modal-guide>
+    <form method="POST" action="{{ route('superadmin.logout') }}" class="sa-modal-footer">
         @csrf
-        <button type="button" class="px-4 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors cursor-pointer" data-modal-close>
+        <button type="button" class="sa-button secondary" data-modal-close>
             {{ __('admin.logout_modal_cancel') }}
         </button>
-        <button type="submit" class="px-4 py-2 rounded-lg bg-error hover:opacity-90 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer">
+        <button type="submit" class="sa-button danger">
             <span class="material-symbols-outlined text-[16px]">logout</span>{{ __('admin.logout_modal_confirm') }}
         </button>
     </form>

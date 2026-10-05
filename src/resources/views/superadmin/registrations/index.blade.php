@@ -1,12 +1,6 @@
 @extends('superadmin.layout', ['title' => __('platform.registrations.title'), 'active' => 'registrations'])
 @section('content')
-    <div class="superadmin-heading">
-        <div>
-            <p class="superadmin-eyebrow">{{ __('platform.nav.agents') }}</p>
-            <h1>{{ __('platform.registrations.title') }}</h1>
-            <p>{{ __('platform.registrations.description') }}</p>
-        </div>
-    </div>
+    <x-superadmin.page-header :eyebrow="__('platform.nav.agents')" :title="__('platform.registrations.title')" :description="__('platform.registrations.description')" />
     <x-superadmin.flash />
     <section class="sa-card sa-section">
         <div class="sa-section-header">
@@ -28,30 +22,30 @@
             <table class="sa-table">
                 <thead>
                     <tr>
-                        <th>{{ __('platform.registrations.applicant') }}</th>
+                        <th class="col-primary">{{ __('platform.registrations.applicant') }}</th>
                         <th>{{ __('platform.registration.field_package') }}</th>
-                        <th>{{ __('platform.registrations.email_status') }}</th>
-                        <th>{{ __('platform.registrations.registered_at') }}</th>
-                        <th class="text-right">{{ __('superadmin.common.actions') }}</th>
+                        <th class="col-status">{{ __('platform.registrations.email_status') }}</th>
+                        <th class="col-date">{{ __('platform.registrations.registered_at') }}</th>
+                        <th class="text-right col-actions">{{ __('superadmin.common.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($registrations as $registration)
                         <tr>
-                            <td>
+                            <td class="col-primary">
                                 <strong class="block truncate">{{ $registration->name }}</strong>
                                 <small class="block truncate text-outline">{{ $registration->email }}@if ($registration->company) · {{ $registration->company }}@endif</small>
                             </td>
                             <td>{{ $registration->requestedPackage?->name ?? '—' }}</td>
-                            <td>
+                            <td class="col-status">
                                 @if ($registration->hasVerifiedEmail())
                                     <span class="status-pill status-active"><span class="status-dot"></span>{{ __('platform.registrations.email_verified') }}</span>
                                 @else
                                     <span class="status-pill status-pending"><span class="status-dot"></span>{{ __('platform.registrations.email_unverified') }}</span>
                                 @endif
                             </td>
-                            <td class="whitespace-nowrap">{{ $registration->registered_at?->toAppDateTime() }}</td>
-                            <td class="text-right">
+                            <td class="whitespace-nowrap col-date">{{ $registration->registered_at?->toAppDateTime() }}</td>
+                            <td class="text-right col-actions">
                                 <a class="sa-button secondary" href="{{ route('superadmin.registrations.show', $registration) }}"><span class="material-symbols-outlined text-[16px]">fact_check</span>{{ __('platform.registrations.review') }}</a>
                             </td>
                         </tr>
@@ -66,7 +60,7 @@
             </table>
         </div>
         @if ($registrations->hasPages())
-            <div class="mt-4">{{ $registrations->links() }}</div>
+            {{ $registrations->links('components.superadmin.pagination') }}
         @endif
     </section>
 @endsection

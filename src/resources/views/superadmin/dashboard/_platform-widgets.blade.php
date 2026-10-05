@@ -1,14 +1,14 @@
 {{-- SaaS platform widgets (PlatformDashboardService): each one is rendered only when permitted, with scoped figures. --}}
 @php
     $money = static fn (int $amount): string => \App\Support\Helpers\FormatHelper::formatCurrency($amount);
-    $stat = 'flex justify-between gap-3 text-sm';
+    $stat = 'flex justify-between gap-3 text-sm tabular-nums';
 @endphp
 @if (array_filter($widgets) !== [])
     <section class="sa-grid kpis kpis-3 mb-4" aria-label="{{ __('platform.dashboard.title') }}" data-platform-widgets>
         @if ($widgets['agents'])
             <article class="sa-card sa-section" data-widget="agents">
                 <div class="sa-section-header"><div><h2>{{ __('platform.dashboard.agents') }}</h2></div>
-                    @can('agent.view')<a class="sa-button secondary" href="{{ route('superadmin.agents.index') }}">{{ __('superadmin.common.details') }}</a>@endcan
+                    @can('agent.view')<a class="sa-button secondary sm" href="{{ route('superadmin.agents.index') }}">{{ __('superadmin.common.details') }}</a>@endcan
                 </div>
                 <dl class="space-y-2">
                     <div class="{{ $stat }}"><dt class="text-outline">{{ __('platform.dashboard.agents_total') }}</dt><dd class="font-semibold">{{ $widgets['agents']['total'] }}</dd></div>
@@ -22,7 +22,7 @@
         @if ($widgets['revenue'])
             <article class="sa-card sa-section" data-widget="revenue">
                 <div class="sa-section-header"><div><h2>{{ __('platform.dashboard.revenue') }}</h2></div>
-                    <a class="sa-button secondary" href="{{ route('superadmin.billing.revenue') }}">{{ __('superadmin.common.details') }}</a>
+                    <a class="sa-button secondary sm" href="{{ route('superadmin.billing.revenue') }}">{{ __('superadmin.common.details') }}</a>
                 </div>
                 <dl class="space-y-2">
                     <div class="{{ $stat }}"><dt class="text-outline">{{ __('platform.billing.kpi.mrr') }}</dt><dd class="font-semibold">{{ $money($widgets['revenue']['mrr']) }}</dd></div>
@@ -36,7 +36,7 @@
             <article class="sa-card sa-section" data-widget="registrations">
                 <div class="sa-section-header">
                     <div><h2>{{ __('platform.nav.registrations') }}</h2><p>{{ __('platform.dashboard.pending_count', ['count' => $widgets['registrations']['count'], 'verified' => $widgets['registrations']['verified']]) }}</p></div>
-                    <a class="sa-button secondary" href="{{ route('superadmin.registrations.index') }}">{{ __('platform.registrations.review') }}</a>
+                    <a class="sa-button secondary sm" href="{{ route('superadmin.registrations.index') }}">{{ __('platform.registrations.review') }}</a>
                 </div>
                 <ul class="space-y-2 text-sm">
                     @forelse ($widgets['registrations']['latest'] as $registration)
@@ -53,7 +53,7 @@
         @if ($widgets['rooms'])
             <article class="sa-card sa-section" data-widget="rooms">
                 <div class="sa-section-header"><div><h2>{{ __('platform.dashboard.rooms') }}</h2></div>
-                    <a class="sa-button secondary" href="{{ route('superadmin.rooms.page') }}">{{ __('superadmin.common.details') }}</a>
+                    <a class="sa-button secondary sm" href="{{ route('superadmin.rooms.page') }}">{{ __('superadmin.common.details') }}</a>
                 </div>
                 <dl class="space-y-2">
                     <div class="{{ $stat }}"><dt class="text-outline">{{ __('platform.rooms.status.active') }}</dt><dd class="font-semibold">{{ $widgets['rooms']['active'] }}</dd></div>
@@ -66,7 +66,7 @@
         @if ($widgets['campaigns'])
             <article class="sa-card sa-section" data-widget="campaigns">
                 <div class="sa-section-header"><div><h2>{{ __('platform.dashboard.campaigns') }}</h2></div>
-                    <a class="sa-button secondary" href="{{ route('superadmin.campaigns.page') }}">{{ __('superadmin.common.details') }}</a>
+                    <a class="sa-button secondary sm" href="{{ route('superadmin.campaigns.page') }}">{{ __('superadmin.common.details') }}</a>
                 </div>
                 <dl class="space-y-2">
                     <div class="{{ $stat }}"><dt class="text-outline">{{ __('platform.dashboard.running') }}</dt><dd class="font-semibold">{{ $widgets['campaigns']['running'] }}</dd></div>

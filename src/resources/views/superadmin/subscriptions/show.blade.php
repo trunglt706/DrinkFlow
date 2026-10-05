@@ -3,13 +3,9 @@
     @php
         $money = static fn (int $amount): string => \App\Support\Helpers\FormatHelper::formatCurrency($amount);
     @endphp
-    <div class="superadmin-heading">
-        <div>
-            <a class="sa-back-link" href="{{ route('superadmin.subscriptions.index') }}">← {{ __('platform.subscriptions.admin_title') }}</a>
-            <h1>{{ $agent->name }}</h1>
-            <p>{{ $agent->email }} · <x-superadmin.status-pill :status="$agent->status" /></p>
-        </div>
-    </div>
+    <x-superadmin.page-header :back="route('superadmin.subscriptions.index')" :back-label="__('platform.subscriptions.admin_title')" :title="$agent->name">
+        <x-slot:meta><p class="sa-heading-meta">{{ $agent->email }} · <x-superadmin.status-pill :status="$agent->status" /></p></x-slot:meta>
+    </x-superadmin.page-header>
     <x-superadmin.flash />
 
     <div class="sa-split">
@@ -48,7 +44,7 @@
                     </div>
                 </div>
                 <form method="POST" action="{{ route('superadmin.subscriptions.change', $agent) }}" class="space-y-3"
-                    data-confirm="{{ __('platform.subscriptions.superadmin_change_confirm', ['name' => $agent->name]) }}">
+                    data-confirm-tone="warning" data-confirm-description="{{ __('superadmin.modals.confirm.change_subscription') }}" data-confirm-icon="swap_horiz" data-confirm="{{ __('platform.subscriptions.superadmin_change_confirm', ['name' => $agent->name]) }}">
                     @csrf
                     <select name="package_id" class="sa-input !min-w-0 w-full !py-2" aria-label="{{ __('platform.packages.package') }}">
                         @foreach ($packages as $package)
@@ -61,7 +57,7 @@
                 </form>
                 @if ($subscription)
                     <form method="POST" action="{{ route('superadmin.subscriptions.cancel', $agent) }}" class="mt-4 pt-4 border-t border-outline-variant flex justify-end"
-                        data-confirm="{{ __('platform.subscriptions.cancel_now_confirm', ['name' => $agent->name]) }}">
+                        data-confirm-tone="danger" data-confirm-description="{{ __('superadmin.modals.confirm.cancel_subscription') }}" data-confirm-icon="cancel" data-confirm="{{ __('platform.subscriptions.cancel_now_confirm', ['name' => $agent->name]) }}">
                         @csrf
                         <button type="submit" class="sa-button danger"><span class="material-symbols-outlined text-[16px]">cancel</span>{{ __('platform.subscriptions.cancel_now') }}</button>
                     </form>
@@ -76,22 +72,22 @@
             <table class="sa-table">
                 <thead>
                     <tr>
-                        <th>{{ __('platform.packages.package') }}</th>
-                        <th class="text-right">{{ __('platform.subscriptions.price') }}</th>
-                        <th class="text-right">{{ __('platform.subscriptions.room_limit') }}</th>
-                        <th>{{ __('superadmin.common.status') }}</th>
-                        <th>{{ __('platform.subscriptions.period') }}</th>
+                        <th class="col-primary">{{ __('platform.packages.package') }}</th>
+                        <th class="text-right num">{{ __('platform.subscriptions.price') }}</th>
+                        <th class="text-right num">{{ __('platform.subscriptions.room_limit') }}</th>
+                        <th class="col-status">{{ __('superadmin.common.status') }}</th>
+                        <th class="col-date">{{ __('platform.subscriptions.period') }}</th>
                         <th>{{ __('platform.subscriptions.approved_by') }}</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($history as $row)
                         <tr>
-                            <td>{{ $row->package?->name }}</td>
-                            <td class="text-right whitespace-nowrap">{{ $money($row->price_snapshot) }}</td>
-                            <td class="text-right">{{ $row->room_limit_snapshot }}</td>
-                            <td>{{ __('platform.subscriptions.status.'.$row->status->value) }}</td>
-                            <td class="whitespace-nowrap">{{ $row->starts_at->toAppDate() }} → {{ ($row->ended_at ?? $row->expires_at)?->toAppDate() ?? '—' }}</td>
+                            <td class="col-primary">{{ $row->package?->name }}</td>
+                            <td class="text-right whitespace-nowrap num">{{ $money($row->price_snapshot) }}</td>
+                            <td class="text-right num">{{ $row->room_limit_snapshot }}</td>
+                            <td class="col-status">{{ __('platform.subscriptions.status.'.$row->status->value) }}</td>
+                            <td class="whitespace-nowrap col-date">{{ $row->starts_at->toAppDate() }} → {{ ($row->ended_at ?? $row->expires_at)?->toAppDate() ?? '—' }}</td>
                             <td>{{ $row->approvedBy?->name ?? '—' }}</td>
                         </tr>
                     @empty

@@ -1,13 +1,8 @@
 @extends('superadmin.layout', ['title' => __('superadmin.versions.title'), 'active' => 'versions'])
 @section('content')
-    <div class="superadmin-heading">
-        <div>
-            <p class="superadmin-eyebrow">{{ __('superadmin.common.release_operations') }}</p>
-            <h1>{{ __('superadmin.versions.title') }}</h1>
-            <p>{{ __('superadmin.versions.description') }}</p>
-        </div>
-        <button class="sa-button" type="button" data-action="create-release"><span class="material-symbols-outlined">add</span>{{ __('superadmin.versions.new_release') }}</button>
-    </div>
+    <x-superadmin.page-header :eyebrow="__('superadmin.common.release_operations')" :title="__('superadmin.versions.title')" :description="__('superadmin.versions.description')">
+            <button class="sa-button" type="button" data-action="create-release"><span class="material-symbols-outlined">add</span>{{ __('superadmin.versions.new_release') }}</button>
+    </x-superadmin.page-header>
     <div id="notice" class="sa-notice"></div>
     <section class="sa-card sa-section">
         <div class="sa-section-header">
@@ -24,19 +19,19 @@
             <table class="sa-table">
                 <thead>
                     <tr>
-                        <th>{{ __('superadmin.versions.version') }}</th>
-                        <th>{{ __('superadmin.versions.release_title') }}</th>
-                        <th>{{ __('superadmin.versions.release_date') }}</th>
+                        <th class="col-mono">{{ __('superadmin.versions.version') }}</th>
+                        <th class="col-primary">{{ __('superadmin.versions.release_title') }}</th>
+                        <th class="col-date">{{ __('superadmin.versions.release_date') }}</th>
                         <th>{{ __('superadmin.versions.flags') }}</th>
-                        <th class="text-right">{{ __('superadmin.common.actions') }}</th>
+                        <th class="text-right col-actions">{{ __('superadmin.common.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($versions as $version)
                         <tr>
-                            <td class="whitespace-nowrap"><strong>{{ $version->version }}</strong></td>
-                            <td>{{ $version->title }}</td>
-                            <td class="whitespace-nowrap">{{ $version->release_date?->format('Y-m-d') ?? '—' }}</td>
+                            <td class="whitespace-nowrap col-mono"><strong>{{ $version->version }}</strong></td>
+                            <td class="col-primary">{{ $version->title }}</td>
+                            <td class="whitespace-nowrap col-date">{{ $version->release_date?->format('Y-m-d') ?? '—' }}</td>
                             <td>
                                 <div class="flex flex-wrap items-center gap-1.5">
                                     @if($version->important)
@@ -50,8 +45,8 @@
                                     @endif
                                 </div>
                             </td>
-                            <td>
-                                <div class="flex items-center justify-end gap-2 whitespace-nowrap">
+                            <td class="col-actions">
+                                <x-superadmin.row-actions>
                                     <button class="sa-button secondary" type="button" data-action="edit-release"
                                         data-update-url="{{ route('superadmin.versions.update', $version) }}"
                                         data-release="{{ json_encode([
@@ -62,10 +57,12 @@
                                             'important' => (bool) $version->important,
                                             'force_refresh' => (bool) $version->force_refresh,
                                         ], JSON_UNESCAPED_UNICODE) }}"><span class="material-symbols-outlined text-[16px]">edit</span>{{ __('superadmin.common.edit') }}</button>
-                                    <button class="sa-button danger" type="button" data-action="delete-release"
-                                        data-delete-url="{{ route('superadmin.versions.destroy', $version) }}"
-                                        data-version="{{ $version->version }}"><span class="material-symbols-outlined text-[16px]">delete</span>{{ __('superadmin.common.delete') }}</button>
-                                </div>
+                                    <x-slot:menu>
+                                        <button class="sa-menu-item is-danger" type="button" data-action="delete-release"
+                                            data-delete-url="{{ route('superadmin.versions.destroy', $version) }}"
+                                            data-version="{{ $version->version }}" role="menuitem"><span class="material-symbols-outlined">delete</span>{{ __('superadmin.common.delete') }}</button>
+                                    </x-slot:menu>
+                                </x-superadmin.row-actions>
                             </td>
                         </tr>
                     @empty
@@ -82,44 +79,49 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-4">{{ $versions->links() }}</div>
+        {{ $versions->links('components.superadmin.pagination') }}
     </section>
 
-    <x-superadmin.modal id="version-modal" icon="new_releases" :title="__('superadmin.versions.new_release')" :description="__('superadmin.versions.create_description')" max-width="max-w-3xl">
+    <x-superadmin.modal id="version-modal" icon="new_releases" tone="create" :title="__('superadmin.versions.new_release')" :description="__('superadmin.versions.create_description')" max-width="max-w-3xl">
         <form id="version-form" class="space-y-4" data-no-loading
             data-store-url="{{ route('superadmin.versions.store') }}"
             data-preview-url="{{ route('superadmin.versions.preview') }}"
             data-max-length="{{ \App\Http\Requests\VersionRequest::CHANGELOG_MAX_LENGTH }}"
             data-max-upload-kb="100"
             data-i18n="{{ json_encode(__('superadmin.versions'), JSON_UNESCAPED_UNICODE) }}">
+        <x-superadmin.modal-guide :title="__('superadmin.modals.version.guide_title')">
+            <li>{{ __('superadmin.modals.version.guide_version') }}</li>
+            <li>{{ __('superadmin.modals.version.guide_notes') }}</li>
+            <li>{{ __('superadmin.modals.version.guide_flags') }}</li>
+        </x-superadmin.modal-guide>
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
-                    <label for="version-field-version" class="block text-xs font-semibold text-on-surface mb-1">{{ __('superadmin.versions.field_version') }} <span class="text-error">*</span></label>
-                    <input type="text" id="version-field-version" name="version" required maxlength="50" autocomplete="off" placeholder="{{ __('superadmin.versions.field_version_placeholder') }}" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary">
+                    <label for="version-field-version" class="sa-label">{{ __('superadmin.versions.field_version') }} <span class="text-error">*</span></label>
+                    <input type="text" id="version-field-version" name="version" required maxlength="50" autocomplete="off" placeholder="{{ __('superadmin.versions.field_version_placeholder') }}" class="sa-field">
                 </div>
                 <div>
-                    <label for="version-field-release-date" class="block text-xs font-semibold text-on-surface mb-1">{{ __('superadmin.versions.field_release_date') }}</label>
-                    <input type="date" id="version-field-release-date" name="release_date" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary">
+                    <label for="version-field-release-date" class="sa-label">{{ __('superadmin.versions.field_release_date') }}</label>
+                    <input type="date" id="version-field-release-date" name="release_date" class="sa-field">
                 </div>
             </div>
             <div>
-                <label for="version-field-title" class="block text-xs font-semibold text-on-surface mb-1">{{ __('superadmin.versions.field_title') }} <span class="text-error">*</span></label>
-                <input type="text" id="version-field-title" name="title" required maxlength="255" autocomplete="off" class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary">
+                <label for="version-field-title" class="sa-label">{{ __('superadmin.versions.field_title') }} <span class="text-error">*</span></label>
+                <input type="text" id="version-field-title" name="title" required maxlength="255" autocomplete="off" class="sa-field">
             </div>
             <div class="grid gap-3 sm:grid-cols-2">
                 <label class="flex items-start gap-2.5 rounded-lg border border-outline-variant p-3 cursor-pointer hover:bg-surface-container-low">
                     <input type="checkbox" name="important" class="mt-0.5 accent-primary">
-                    <span><span class="block text-xs font-semibold text-on-surface">{{ __('superadmin.versions.important') }}</span><span class="block text-[11px] text-outline mt-0.5">{{ __('superadmin.versions.important_hint') }}</span></span>
+                    <span><span class="sa-label mb-0">{{ __('superadmin.versions.important') }}</span><span class="block text-xs text-outline mt-0.5">{{ __('superadmin.versions.important_hint') }}</span></span>
                 </label>
                 <label class="flex items-start gap-2.5 rounded-lg border border-outline-variant p-3 cursor-pointer hover:bg-surface-container-low">
                     <input type="checkbox" name="force_refresh" class="mt-0.5 accent-primary">
-                    <span><span class="block text-xs font-semibold text-on-surface">{{ __('superadmin.versions.force_refresh') }}</span><span class="block text-[11px] text-outline mt-0.5">{{ __('superadmin.versions.force_refresh_hint') }}</span></span>
+                    <span><span class="sa-label mb-0">{{ __('superadmin.versions.force_refresh') }}</span><span class="block text-xs text-outline mt-0.5">{{ __('superadmin.versions.force_refresh_hint') }}</span></span>
                 </label>
             </div>
 
             <div>
                 <div class="flex flex-wrap items-end justify-between gap-2 mb-1.5">
-                    <label for="version-field-changelog" class="block text-xs font-semibold text-on-surface">{{ __('superadmin.versions.field_changelog') }}</label>
+                    <label for="version-field-changelog" class="sa-label mb-0">{{ __('superadmin.versions.field_changelog') }}</label>
                     <div class="flex items-center gap-2">
                         <span class="sa-md-badge"><span class="material-symbols-outlined text-[14px]">markdown</span>{{ __('superadmin.versions.markdown_supported') }}</span>
                         <label class="sa-button secondary !py-1.5 cursor-pointer" title="{{ __('superadmin.versions.upload_hint') }}">
@@ -148,15 +150,15 @@
                         placeholder="{{ __('superadmin.versions.markdown_placeholder') }}" class="sa-md-textarea"></textarea>
                     <div id="version-changelog-preview" class="sa-md-preview sa-markdown hidden" aria-live="polite"></div>
                 </div>
-                <div class="flex flex-wrap items-center justify-between gap-2 mt-1.5 text-[11px] text-outline">
+                <div class="flex flex-wrap items-center justify-between gap-2 mt-1.5 text-xs text-outline">
                     <span>{{ __('superadmin.versions.upload_hint') }}</span>
                     <span id="version-changelog-count"></span>
                 </div>
             </div>
 
-            <div class="pt-2 flex items-center justify-end gap-2.5 border-t border-outline-variant">
-                <button type="button" class="px-4 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors cursor-pointer" data-modal-close>{{ __('superadmin.common.cancel') }}</button>
-                <button type="submit" class="px-4 py-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer">
+            <div class="sa-modal-footer">
+                <button type="button" class="sa-button secondary" data-modal-close>{{ __('superadmin.common.cancel') }}</button>
+                <button type="submit" class="sa-button">
                     <span class="material-symbols-outlined text-[16px]">save</span><span data-submit-label>{{ __('superadmin.versions.save_release') }}</span>
                 </button>
             </div>

@@ -1,12 +1,6 @@
 @extends('superadmin.layout', ['title' => __('superadmin.system.title'), 'active' => 'system'])
 @section('content')
-    <div class="superadmin-heading">
-        <div>
-            <p class="superadmin-eyebrow">{{ __('superadmin.common.infra_security') }}</p>
-            <h1>{{ __('superadmin.system.title') }}</h1>
-            <p>{{ __('superadmin.system.description') }}</p>
-        </div>
-    </div>
+    <x-superadmin.page-header :eyebrow="__('superadmin.common.infra_security')" :title="__('superadmin.system.title')" :description="__('superadmin.system.description')" />
     <div id="notice" class="sa-notice"></div>
     <section class="sa-card sa-section">
         <div class="sa-section-header">
@@ -21,9 +15,9 @@
         </div>
     </section>
     @php
-        $fieldLabel = 'flex flex-col gap-1 text-xs font-semibold';
-        $fieldInput = 'sa-input !min-w-0 w-full !py-2';
-        $fieldHint = 'text-[11px] font-normal text-outline';
+        $fieldLabel = 'flex flex-col gap-1.5 text-[13px] font-semibold text-on-surface';
+        $fieldInput = 'sa-input !min-w-0 w-full';
+        $fieldHint = 'text-xs font-normal text-outline';
     @endphp
     {{-- Mail & storage overrides: a filled field wins, an empty field keeps the .env value. The page
          script fills values, placeholders and the per-field source hint ([data-config-hint]). --}}
@@ -82,7 +76,7 @@
                     <x-superadmin.password-input id="mail-config-password" name="password" autocomplete="new-password" maxlength="255"
                         placeholder="{{ __('superadmin.system.mail_config_password_keep') }}" />
                     <span class="{{ $fieldHint }}" data-config-hint="password"></span>
-                    <label class="hidden items-center gap-1.5 font-normal text-[11px] text-on-surface-variant" data-clear-secret="password">
+                    <label class="hidden items-center gap-1.5 font-normal text-xs text-on-surface-variant" data-clear-secret="password">
                         <input type="checkbox" name="clear_password" value="1">{{ __('superadmin.system.mail_config_password_clear') }}
                     </label>
                 </div>
@@ -96,7 +90,7 @@
                 </label>
             </div>
             <p class="hidden text-xs font-semibold text-error" data-config-error></p>
-            <div class="flex flex-wrap items-center gap-2">
+            <div class="sa-form-actions">
                 <button class="sa-button" type="submit"><span class="material-symbols-outlined text-[16px]">save</span>{{ __('superadmin.system.save_mail_config') }}</button>
                 <button class="sa-button secondary" type="button" data-modal-open="mail-test-modal"><span class="material-symbols-outlined text-[16px]">outgoing_mail</span>{{ __('superadmin.system.send_test_mail') }}</button>
             </div>
@@ -122,7 +116,7 @@
                 </label>
             </div>
             <p class="hidden text-xs font-semibold text-error" data-config-error></p>
-            <div>
+            <div class="sa-form-actions">
                 <button class="sa-button" type="submit"><span class="material-symbols-outlined text-[16px]">save</span>{{ __('superadmin.system.save_storage_config') }}</button>
             </div>
         </form>
@@ -149,7 +143,7 @@
                     <input id="maintenance-ends" class="sa-input !min-w-0 w-full !py-2" type="datetime-local">
                 </label>
             </div>
-            <div>
+            <div class="sa-form-actions">
                 <button class="sa-button" type="submit"><span class="material-symbols-outlined text-[16px]">construction</span>{{ __('superadmin.system.save_maintenance') }}</button>
             </div>
         </form>
@@ -164,49 +158,58 @@
         </div>
     </section>
 
-    <x-superadmin.modal id="mail-test-modal" icon="outgoing_mail" :title="__('superadmin.system.send_test_mail')" :description="__('superadmin.system.mail_test_modal_description', ['driver' => config('mail.default')])" max-width="max-w-md">
+    <x-superadmin.modal id="mail-test-modal" icon="outgoing_mail" tone="info" :title="__('superadmin.system.send_test_mail')" :description="__('superadmin.system.mail_test_modal_description', ['driver' => config('mail.default')])" max-width="max-w-md">
         <form id="mail-test-form" class="space-y-4">
             @csrf
+            <x-superadmin.modal-guide :title="__('superadmin.modals.mail_test.guide_title')">
+                <li>{{ __('superadmin.modals.mail_test.guide_send') }}</li>
+                <li>{{ __('superadmin.modals.mail_test.guide_check') }}</li>
+            </x-superadmin.modal-guide>
             <div>
-                <label for="mail-test-email" class="block text-xs font-semibold text-on-surface mb-1">{{ __('superadmin.system.mail_test_email') }} <span class="text-error">*</span></label>
+                <label for="mail-test-email" class="sa-label">{{ __('superadmin.system.mail_test_email') }} <span class="text-error">*</span></label>
                 <input type="email" id="mail-test-email" name="email" required maxlength="255" autocomplete="email" value="{{ request()->user('superadmin')->email }}"
-                    class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary">
+                    class="sa-field">
+                <p class="sa-hint">{{ __('superadmin.modals.mail_test.email_hint') }}</p>
             </div>
             <div>
-                <label for="mail-test-message" class="block text-xs font-semibold text-on-surface mb-1">{{ __('superadmin.system.mail_test_message') }}</label>
+                <label for="mail-test-message" class="sa-label">{{ __('superadmin.system.mail_test_message') }}</label>
                 <textarea id="mail-test-message" name="message" rows="5" maxlength="{{ \App\Http\Requests\SendTestMailRequest::MESSAGE_MAX_LENGTH }}"
                     placeholder="{{ __('superadmin.system.mail_test_body', ['app' => config('app.name')]) }}"
-                    class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary"></textarea>
-                <p class="mt-1 text-[11px] text-outline">{{ __('superadmin.system.mail_test_message_hint') }}</p>
+                    class="sa-field"></textarea>
+                <p class="sa-hint">{{ __('superadmin.system.mail_test_message_hint') }}</p>
             </div>
-            <div class="pt-2 flex items-center justify-end gap-2.5 border-t border-outline-variant">
-                <button type="button" class="px-4 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors cursor-pointer" data-modal-close>{{ __('superadmin.common.cancel') }}</button>
-                <button type="submit" class="px-4 py-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer">
+            <div class="sa-modal-footer">
+                <button type="button" class="sa-button secondary" data-modal-close>{{ __('superadmin.common.cancel') }}</button>
+                <button type="submit" class="sa-button">
                     <span class="material-symbols-outlined text-[16px]">send</span>{{ __('superadmin.system.mail_test_send') }}
                 </button>
             </div>
         </form>
     </x-superadmin.modal>
 
-    <x-superadmin.modal id="reset-system-modal" icon="restart_alt" :title="__('superadmin.system.reset')" :description="__('superadmin.system.reset_modal_description')" max-width="max-w-md">
+    <x-superadmin.modal id="reset-system-modal" icon="restart_alt" tone="danger" :title="__('superadmin.system.reset')" :description="__('superadmin.system.reset_modal_description')" max-width="max-w-md">
         <form id="reset-system-form" class="space-y-4">
             @csrf
-            <div class="flex items-start gap-2 rounded-lg p-2.5 bg-error-container/60 border border-error/30 text-error text-xs leading-relaxed">
-                <span class="material-symbols-outlined text-[16px] shrink-0" aria-hidden="true">warning</span>
+            <div class="sa-modal-alert is-danger">
+                <span class="material-symbols-outlined" aria-hidden="true">report</span>
                 <span>{{ __('superadmin.system.reset_warning') }}</span>
             </div>
+            <x-superadmin.modal-guide :title="__('superadmin.modals.reset_system.guide_title')" tone="warning">
+                <li>{{ __('superadmin.modals.reset_system.guide_backup') }}</li>
+                <li>{{ __('superadmin.modals.reset_system.guide_unlock') }}</li>
+            </x-superadmin.modal-guide>
             <div>
-                <label for="reset-system-password" class="block text-xs font-semibold text-on-surface mb-1">{{ __('superadmin.system.reset_password_label') }} <span class="text-error">*</span></label>
+                <label for="reset-system-password" class="sa-label">{{ __('superadmin.system.reset_password_label') }} <span class="text-error">*</span></label>
                 <x-superadmin.password-input id="reset-system-password" name="password" autocomplete="current-password" required />
             </div>
             <div>
-                <label for="reset-system-phrase" class="block text-xs font-semibold text-on-surface mb-1">{{ __('superadmin.system.reset_phrase_label', ['phrase' => $resetPhrase]) }} <span class="text-error">*</span></label>
+                <label for="reset-system-phrase" class="sa-label">{{ __('superadmin.system.reset_phrase_label', ['phrase' => $resetPhrase]) }} <span class="text-error">*</span></label>
                 <input type="text" id="reset-system-phrase" name="phrase" required autocomplete="off" spellcheck="false" placeholder="{{ $resetPhrase }}"
-                    class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs font-mono text-on-surface focus:outline-none focus:border-error">
+                    class="sa-field font-mono">
             </div>
-            <div class="pt-2 flex items-center justify-end gap-2.5 border-t border-outline-variant">
-                <button type="button" class="px-4 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors cursor-pointer" data-modal-close>{{ __('superadmin.common.cancel') }}</button>
-                <button type="submit" disabled class="px-4 py-2 rounded-lg bg-error hover:opacity-90 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            <div class="sa-modal-footer">
+                <button type="button" class="sa-button secondary" data-modal-close>{{ __('superadmin.common.cancel') }}</button>
+                <button type="submit" disabled class="sa-button danger disabled:opacity-50 disabled:cursor-not-allowed">
                     <span class="material-symbols-outlined text-[16px]">restart_alt</span>{{ __('superadmin.system.reset') }}
                 </button>
             </div>
@@ -217,226 +220,25 @@
     <template id="tpl-load-failed"><x-superadmin.empty-state icon="error" :title="__('superadmin.common.load_failed_title')" description="" /></template>
 @endsection
 @push('scripts')
-    <script>
-        const resetPhrase = @json($resetPhrase);
-        const systemNotice = (message, type = 'success') => {
-            const n = document.querySelector('#notice');
-            n.textContent = message;
-            n.className = `sa-notice ${type} is-visible`;
-        };
-        // Clone one of the <template> empty states, optionally overriding its description.
-        const emptyStateHtml = (templateId, description = null) => {
-            const wrapper = document.createElement('div');
-            wrapper.innerHTML = document.getElementById(templateId).innerHTML;
-            if (description !== null) wrapper.querySelector('[data-empty-description]').textContent = description;
-            return wrapper.innerHTML;
-        };
-        async function loadSystem() {
-            const {
-                data
-            } = await dfApi('{{ route('superadmin.system.index') }}');
-            const maintenance = data.maintenance;
-            document.querySelector('#maintenance-enabled').checked = maintenance.enabled;
-            document.querySelector('#maintenance-starts').value = toDateTimeLocal(maintenance.starts_at);
-            document.querySelector('#maintenance-ends').value = toDateTimeLocal(maintenance.ends_at);
-            renderHealth(data.health);
-            renderConfigForm(document.querySelector('#mail-config-form'), data.mail_config);
-            renderConfigForm(document.querySelector('#storage-config-form'), data.storage_config);
-        };
-        const configTexts = @js([
-            'system' => __('superadmin.system.config_source_system'),
-            'env' => __('superadmin.system.config_source_env'),
-            'envValue' => __('superadmin.system.config_env_value', ['value' => '__VALUE__']),
-            'envEmpty' => __('superadmin.system.config_env_empty'),
-            'envSecretSet' => __('superadmin.system.config_env_secret_set'),
-            'envSecretEmpty' => __('superadmin.system.config_env_secret_empty'),
+    <x-superadmin.page-script name="system" :i18n="[
+        'config' => [
+            'system' => __('superadmin.system.config_source_system'), 'env' => __('superadmin.system.config_source_env'),
+            'envValue' => __('superadmin.system.config_env_value'), 'envEmpty' => __('superadmin.system.config_env_empty'),
+            'envSecretSet' => __('superadmin.system.config_env_secret_set'), 'envSecretEmpty' => __('superadmin.system.config_env_secret_empty'),
             'useEnv' => __('superadmin.system.config_use_env'),
-        ]);
-        // Fill a mail/storage settings form: saved values, the .env value as placeholder, and which source is in effect.
-        const renderConfigForm = (form, fields) => {
-            if (!form || !fields) return;
-            Object.entries(fields).forEach(([name, info]) => {
-                const input = form.elements[name];
-                if (!input) return;
-                const envText = info.secret
-                    ? (info.env_configured ? configTexts.envSecretSet : configTexts.envSecretEmpty)
-                    : (info.env_configured ? configTexts.envValue.replace('__VALUE__', info.env_value) : configTexts.envEmpty);
-                if (input.tagName === 'SELECT') {
-                    const envOption = input.querySelector('[data-env-option]');
-                    if (envOption) envOption.textContent = info.env_configured ? `${configTexts.useEnv} (${info.env_value})` : configTexts.useEnv;
-                    input.value = info.value ?? '';
-                } else if (info.secret) {
-                    input.value = '';
-                } else {
-                    input.value = info.value ?? '';
-                    input.placeholder = info.env_configured ? String(info.env_value) : '';
-                }
-                const hint = form.querySelector(`[data-config-hint="${name}"]`);
-                if (hint) {
-                    hint.innerHTML = `<span class="sa-config-source is-${info.source}">${escapeHtml(configTexts[info.source])}</span>${escapeHtml(envText)}`;
-                }
-                const clear = form.querySelector(`[data-clear-secret="${name}"]`);
-                if (clear) {
-                    clear.classList.toggle('hidden', !info.configured);
-                    clear.classList.toggle('flex', info.configured);
-                    clear.querySelector('input').checked = false;
-                }
-            });
-        };
-        // Email / storage tabs (arrow keys move between tabs, the hash keeps the choice on reload).
-        const configTabs = Array.from(document.querySelectorAll('[data-config-tabs] [role="tab"]'));
-        const selectConfigTab = (name, focus = false) => {
-            const tab = configTabs.find(t => t.dataset.tab === name) || configTabs[0];
-            configTabs.forEach(t => {
-                const selected = t === tab;
-                t.setAttribute('aria-selected', String(selected));
-                t.tabIndex = selected ? 0 : -1;
-                document.getElementById(t.getAttribute('aria-controls')).hidden = !selected;
-            });
-            if (focus) tab.focus();
-            return tab.dataset.tab;
-        };
-        configTabs.forEach((tab, index) => {
-            tab.addEventListener('click', () => history.replaceState(null, '', `#${selectConfigTab(tab.dataset.tab)}`));
-            tab.addEventListener('keydown', e => {
-                if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
-                e.preventDefault();
-                const next = configTabs[(index + (e.key === 'ArrowRight' ? 1 : -1) + configTabs.length) % configTabs.length];
-                history.replaceState(null, '', `#${selectConfigTab(next.dataset.tab, true)}`);
-            });
-        });
-        selectConfigTab(location.hash.slice(1));
-        window.addEventListener('hashchange', () => selectConfigTab(location.hash.slice(1)));
-        document.querySelectorAll('[data-config-form]').forEach(form => {
-            form.addEventListener('submit', async e => {
-                e.preventDefault();
-                const errorBox = form.querySelector('[data-config-error]');
-                errorBox.classList.add('hidden');
-                const body = {};
-                Array.from(form.elements).forEach(el => {
-                    if (!el.name) return;
-                    if (el.type === 'checkbox') body[el.name] = el.checked;
-                    else if (el.type === 'number') body[el.name] = el.value === '' ? null : Number(el.value);
-                    else body[el.name] = el.value.trim() === '' ? null : el.value.trim();
-                });
-                try {
-                    const result = await dfApi(form.dataset.configForm, { method: 'PUT', body });
-                    systemNotice(result.message);
-                    await loadSystem();
-                } catch (error) {
-                    errorBox.textContent = error.message;
-                    errorBox.classList.remove('hidden');
-                } finally {
-                    restoreSubmitButton(form);
-                }
-            });
-        });
-        const healthLabels = {!! json_encode(['database' => __('superadmin.dashboard.database'), 'queue' => __('superadmin.dashboard.queue'), 'socket' => 'Socket.IO', 'mail' => __('superadmin.dashboard.mail'), 'storage' => __('superadmin.dashboard.storage'), 'supervisor' => __('superadmin.dashboard.supervisor')], JSON_UNESCAPED_UNICODE) !!};
-        const renderHealth = health => {
-            const rows = [
-                ['database', statusPill(health.database.status)],
-                ['queue', `<small>${escapeHtml(health.queue.connection)} · ${health.queue.failed_jobs}</small>`],
-                ['socket', statusPill(health.socket.status), health.socket.reason_message],
-                ['mail', statusPill(health.mail.configured ? 'configured' : 'not_configured')],
-                ['storage', statusPill(health.storage.status)],
-            ];
-            if (health.supervisor) rows.push(['supervisor', statusPill(health.supervisor.status)]);
-            document.querySelector('#system-health').innerHTML = rows.map(([key, markup, hint]) =>
-                `<div class="sa-health-row"><div><strong>${escapeHtml(healthLabels[key] || key)}</strong>${hint ? `<small>${escapeHtml(hint)}</small>` : ''}</div>${markup}</div>`
-            ).join('');
-        };
-        const toDateTimeLocal = value => {
-            if (!value) return '';
-            const date = new Date(value);
-            if (Number.isNaN(date.getTime())) return value.slice(0, 16);
-            const offset = date.getTimezoneOffset();
-            return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 16);
-        };
-        // None of the forms on this page navigate away or reload after submit, so — unlike a normal
-        // POST — the submit button the shared submit-loading listener (initSuperadminLoading) disabled
-        // and spun must be restored by hand once the async request settles.
-        const restoreSubmitButton = form => {
-            const button = form.querySelector('button[type="submit"]');
-            if (!button) return;
-            button.disabled = false;
-            button.classList.remove('opacity-75', 'cursor-wait');
-            if (button.dataset.originalHtml) button.innerHTML = button.dataset.originalHtml;
-        };
-        document.querySelector('#maintenance-form').addEventListener('submit', e => {
-            e.preventDefault();
-            const enabled = document.querySelector('#maintenance-enabled').checked;
-            openSuperadminConfirm({
-                message: enabled ? @js(__('superadmin.system.confirm_maintenance_enable')) : @js(__('superadmin.system.confirm_maintenance_disable')),
-                description: enabled ? @js(__('superadmin.system.maintenance_enable_description')) : @js(__('superadmin.system.maintenance_disable_description')),
-                confirmLabel: @js(__('superadmin.system.save_maintenance')),
-                confirmIcon: 'construction',
-                onConfirm: async () => {
-                    await dfApi('{{ route('superadmin.system.maintenance.update') }}', {
-                        method: 'PUT',
-                        body: {
-                            enabled,
-                            starts_at: document.querySelector('#maintenance-starts').value || null,
-                            ends_at: document.querySelector('#maintenance-ends').value || null
-                        }
-                    });
-                    systemNotice(@js(__('superadmin.system.maintenance_saved')));
-                },
-            });
-        });
-        const mailTestForm = document.querySelector('#mail-test-form');
-        mailTestForm.addEventListener('submit', async e => {
-            e.preventDefault();
-            const errorBox = document.querySelector('#mail-test-modal-error');
-            errorBox.classList.add('hidden');
-            try {
-                const result = await dfApi('{{ route('superadmin.system.mail-test') }}', {
-                    method: 'POST',
-                    body: { email: mailTestForm.email.value, message: mailTestForm.message.value }
-                });
-                mailTestForm.message.value = '';
-                window.closeSuperadminModal('mail-test-modal');
-                systemNotice(result.message);
-            } catch (error) {
-                // Keep the modal open with what was typed so the address can be corrected and resent.
-                errorBox.textContent = error.message;
-                errorBox.classList.remove('hidden');
-            } finally {
-                restoreSubmitButton(mailTestForm);
-            }
-        });
-        const resetForm = document.querySelector('#reset-system-form');
-        const resetSubmit = resetForm.querySelector('button[type="submit"]');
-        // Only allow submitting once the phrase is typed exactly; the server re-checks it anyway.
-        const syncResetSubmit = () => {
-            resetSubmit.disabled = resetForm.phrase.value !== resetPhrase || resetForm.password.value === '';
-        };
-        resetForm.phrase.addEventListener('input', syncResetSubmit);
-        resetForm.password.addEventListener('input', syncResetSubmit);
-        resetForm.addEventListener('submit', async e => {
-            e.preventDefault();
-            const errorBox = document.querySelector('#reset-system-modal-error');
-            errorBox.classList.add('hidden');
-            try {
-                await dfApi('{{ route('superadmin.system.reset') }}', {
-                    method: 'POST',
-                    body: { password: resetForm.password.value, phrase: resetForm.phrase.value }
-                });
-                resetForm.reset();
-                window.closeSuperadminModal('reset-system-modal');
-                systemNotice(@js(__('superadmin.system.reset_complete')));
-                loadSystem().catch(() => {});
-            } catch (error) {
-                errorBox.textContent = error.message;
-                errorBox.classList.remove('hidden');
-            } finally {
-                restoreSubmitButton(resetForm);
-                syncResetSubmit();
-            }
-        });
-
-        loadSystem().catch(error => {
-            systemNotice(error.message, 'error');
-            document.querySelector('#system-health').innerHTML = emptyStateHtml('tpl-load-failed', error.message);
-        });
-    </script>
+        ],
+        'health' => [
+            'database' => __('superadmin.dashboard.database'), 'queue' => __('superadmin.dashboard.queue'), 'socket' => 'Socket.IO',
+            'mail' => __('superadmin.dashboard.mail'), 'storage' => __('superadmin.dashboard.storage'), 'supervisor' => __('superadmin.dashboard.supervisor'),
+        ],
+        'confirm_maintenance_enable' => __('superadmin.system.confirm_maintenance_enable'),
+        'confirm_maintenance_disable' => __('superadmin.system.confirm_maintenance_disable'),
+        'maintenance_enable_description' => __('superadmin.system.maintenance_enable_description'),
+        'maintenance_disable_description' => __('superadmin.system.maintenance_disable_description'),
+        'save_maintenance' => __('superadmin.system.save_maintenance'), 'maintenance_saved' => __('superadmin.system.maintenance_saved'),
+        'reset_complete' => __('superadmin.system.reset_complete'),
+    ]" :urls="[
+        'index' => route('superadmin.system.index'), 'maintenance' => route('superadmin.system.maintenance.update'),
+        'mail_test' => route('superadmin.system.mail-test'), 'reset' => route('superadmin.system.reset'), 'reset_phrase' => $resetPhrase,
+    ]" />
 @endpush

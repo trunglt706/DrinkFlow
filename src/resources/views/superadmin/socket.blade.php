@@ -1,12 +1,8 @@
 @extends('superadmin.layout', ['title' => __('superadmin.socket.title'), 'active' => 'socket'])
 @section('content')
-    <div class="superadmin-heading">
-        <div>
-            <p class="superadmin-eyebrow">{{ __('superadmin.common.infra_security') }}</p>
-            <h1>{{ __('superadmin.socket.title') }}</h1>
-            <p>{{ __('superadmin.socket.description') }}</p>
-        </div><a class="sa-button secondary" href="{{ route('superadmin.queue.page') }}">{{ __('superadmin.socket.open_failed_jobs') }}</a>
-    </div>
+    <x-superadmin.page-header :eyebrow="__('superadmin.common.infra_security')" :title="__('superadmin.socket.title')" :description="__('superadmin.socket.description')">
+    <a class="sa-button secondary" href="{{ route('superadmin.queue.page') }}">{{ __('superadmin.socket.open_failed_jobs') }}</a>
+    </x-superadmin.page-header>
     <section class="sa-grid kpis kpis-4">
         <article class="sa-card sa-kpi"><span class="label">{{ __('superadmin.socket.gateway') }}</span><strong id="gateway-status"
                 class="value">—</strong><span class="hint" id="gateway-reason">{{ __('superadmin.socket.gateway_health') }}</span></article>
@@ -34,33 +30,5 @@
     <template id="tpl-load-failed"><x-superadmin.empty-state icon="error" :bordered="false" :title="__('superadmin.common.load_failed_title')" description="" /></template>
 @endsection
 @push('scripts')
-    <script>
-        const renderEmpty = (container, templateId, description = null) => {
-            container.innerHTML = document.getElementById(templateId).innerHTML;
-            if (description !== null) container.querySelector('[data-empty-description]').textContent = description;
-        };
-
-        async function loadSocket() {
-            const {
-                data
-            } = await dfApi('{{ route('superadmin.socket.index') }}');
-            document.querySelector('#gateway-status').innerHTML = statusPill(data.status);
-            // When the check fails, the server explains why (wrong secret, gateway down, ...) — see SocketHealthReason.
-            document.querySelector('#gateway-reason').textContent = data.reason_message || @js(__('superadmin.socket.gateway_health'));
-            document.querySelector('#connected-users').textContent = data.connected_users ?? '—';
-            document.querySelector('#connected-admins').textContent = (data.connected_admins ?? 0) + (data
-                .connected_superadmins ?? 0);
-            document.querySelector('#auth-failures').textContent = data.authentication_failures ?? '—';
-            const disconnects = document.querySelector('#disconnects');
-            if ((data.recent_disconnects || []).length) {
-                disconnects.innerHTML = data.recent_disconnects.map(d =>
-                    `<div class="sa-health-row"><div><strong>${escapeHtml(d.actor_type)}</strong><small>${escapeHtml(d.reason)} · ${escapeHtml(d.at)}</small></div></div>`
-                    ).join('');
-            } else {
-                renderEmpty(disconnects, 'tpl-no-disconnects');
-            }
-        }
-        loadSocket().catch(error => renderEmpty(document.querySelector('#disconnects'), 'tpl-load-failed', error.message));
-        setInterval(() => loadSocket().catch(() => {}), 30000);
-    </script>
+    <x-superadmin.page-script name="socket" :i18n="['gateway_health' => __('superadmin.socket.gateway_health')]" :urls="['index' => route('superadmin.socket.index')]" />
 @endpush

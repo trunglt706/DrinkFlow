@@ -1,8 +1,8 @@
 @extends('superadmin.layout', ['title' => $registration->name, 'active' => 'registrations'])
 @section('content')
     @php
-        $fieldLabel = 'flex flex-col gap-1 text-xs font-semibold';
-        $fieldInput = 'sa-input !min-w-0 w-full !py-2';
+        $fieldLabel = 'flex flex-col gap-1.5 text-[13px] font-semibold text-on-surface';
+        $fieldInput = 'sa-input !min-w-0 w-full';
         $isPending = $registration->status === \App\Enums\AdminStatus::Pending;
         $rows = [
             [__('platform.registration.field_name'), $registration->name],
@@ -15,13 +15,9 @@
                 : __('platform.registrations.email_unverified')],
         ];
     @endphp
-    <div class="superadmin-heading">
-        <div>
-            <a class="sa-back-link" href="{{ route('superadmin.registrations.index') }}">← {{ __('platform.registrations.title') }}</a>
-            <h1>{{ $registration->name }}</h1>
-            <p>{{ $registration->email }} · <x-superadmin.status-pill :status="$registration->status" /></p>
-        </div>
-    </div>
+    <x-superadmin.page-header :back="route('superadmin.registrations.index')" :back-label="__('platform.registrations.title')" :title="$registration->name">
+        <x-slot:meta><p class="sa-heading-meta">{{ $registration->email }} · <x-superadmin.status-pill :status="$registration->status" /></p></x-slot:meta>
+    </x-superadmin.page-header>
     <x-superadmin.flash />
 
     <div class="sa-split">
@@ -54,7 +50,7 @@
         </section>
 
         @if ($isPending)
-            <div class="space-y-4">
+            <div class="sa-stack">
                 <section class="sa-card sa-section">
                     <div class="sa-section-header">
                         <div>
@@ -66,7 +62,7 @@
                         <p class="sa-notice error is-visible mb-3">{{ __('platform.registrations.email_not_verified') }}</p>
                     @endunless
                     <form method="POST" action="{{ route('superadmin.registrations.approve', $registration) }}" class="space-y-4"
-                        data-confirm="{{ __('platform.registrations.approve_confirm', ['name' => $registration->name]) }}">
+                        data-confirm-tone="success" data-confirm-description="{{ __('superadmin.modals.confirm.approve_registration') }}" data-confirm-icon="how_to_reg" data-confirm="{{ __('platform.registrations.approve_confirm', ['name' => $registration->name]) }}">
                         @csrf
                         <fieldset class="space-y-4" @disabled(! $registration->hasVerifiedEmail())>
                             <label class="{{ $fieldLabel }}">{{ __('platform.registration.field_package') }}
@@ -105,7 +101,7 @@
                         </div>
                     </div>
                     <form method="POST" action="{{ route('superadmin.registrations.reject', $registration) }}" class="space-y-4"
-                        data-confirm="{{ __('platform.registrations.reject_confirm', ['name' => $registration->name]) }}">
+                        data-confirm-tone="warning" data-confirm-description="{{ __('superadmin.modals.confirm.reject_registration') }}" data-confirm-icon="block" data-confirm="{{ __('platform.registrations.reject_confirm', ['name' => $registration->name]) }}">
                         @csrf
                         <label class="{{ $fieldLabel }}">{{ __('platform.registrations.reason') }}
                             <textarea name="reason" rows="3" required minlength="3" maxlength="1000" class="{{ $fieldInput }}">{{ old('reason') }}</textarea>

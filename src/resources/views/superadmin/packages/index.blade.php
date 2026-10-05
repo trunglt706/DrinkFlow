@@ -1,17 +1,12 @@
 @extends('superadmin.layout', ['title' => __('platform.packages.title'), 'active' => 'packages'])
 @section('content')
-    <div class="superadmin-heading">
-        <div>
-            <p class="superadmin-eyebrow">{{ __('platform.nav.plans') }}</p>
-            <h1>{{ __('platform.packages.title') }}</h1>
-            <p>{{ __('platform.packages.description') }}</p>
-        </div>
-        @can('package.manage')
-            <button class="sa-button" type="button" data-modal-open="create-package-modal">
-                <span class="material-symbols-outlined text-[16px]">add</span>{{ __('platform.packages.create') }}
-            </button>
-        @endcan
-    </div>
+    <x-superadmin.page-header :eyebrow="__('platform.nav.plans')" :title="__('platform.packages.title')" :description="__('platform.packages.description')">
+            @can('package.manage')
+                <button class="sa-button" type="button" data-modal-open="create-package-modal">
+                    <span class="material-symbols-outlined text-[16px]">add</span>{{ __('platform.packages.create') }}
+                </button>
+            @endcan
+    </x-superadmin.page-header>
     <x-superadmin.flash />
     <section class="sa-card sa-section">
         <div class="sa-section-header">
@@ -33,26 +28,26 @@
             <table class="sa-table">
                 <thead>
                     <tr>
-                        <th>{{ __('platform.packages.package') }}</th>
-                        <th class="text-right">{{ __('platform.packages.field_monthly_price') }}</th>
-                        <th class="text-right">{{ __('platform.packages.field_room_limit') }}</th>
-                        <th>{{ __('superadmin.common.status') }}</th>
-                        <th class="text-right">{{ __('platform.packages.active_subscriptions') }}</th>
-                        <th class="text-right">{{ __('superadmin.common.actions') }}</th>
+                        <th class="col-primary">{{ __('platform.packages.package') }}</th>
+                        <th class="text-right num">{{ __('platform.packages.field_monthly_price') }}</th>
+                        <th class="text-right num">{{ __('platform.packages.field_room_limit') }}</th>
+                        <th class="col-status">{{ __('superadmin.common.status') }}</th>
+                        <th class="text-right num">{{ __('platform.packages.active_subscriptions') }}</th>
+                        <th class="text-right col-actions">{{ __('superadmin.common.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($packages as $package)
                         <tr>
-                            <td>
+                            <td class="col-primary">
                                 <strong class="block">{{ $package->name }}</strong>
                                 <small class="block text-outline font-mono">{{ $package->code }}</small>
                             </td>
-                            <td class="text-right whitespace-nowrap">{{ \App\Support\Helpers\FormatHelper::formatCurrency($package->monthly_price) }}</td>
-                            <td class="text-right">{{ $package->room_limit }}</td>
-                            <td><x-superadmin.status-pill :status="$package->status" /></td>
-                            <td class="text-right">{{ $package->active_subscriptions_count }}</td>
-                            <td class="text-right">
+                            <td class="text-right whitespace-nowrap num">{{ \App\Support\Helpers\FormatHelper::formatCurrency($package->monthly_price) }}</td>
+                            <td class="text-right num">{{ $package->room_limit }}</td>
+                            <td class="col-status"><x-superadmin.status-pill :status="$package->status" /></td>
+                            <td class="text-right num">{{ $package->active_subscriptions_count }}</td>
+                            <td class="text-right col-actions">
                                 <a class="sa-button secondary" href="{{ route('superadmin.packages.show', $package) }}"><span class="material-symbols-outlined text-[16px]">visibility</span>{{ __('superadmin.common.details') }}</a>
                             </td>
                         </tr>
@@ -69,11 +64,16 @@
     </section>
 
     @can('package.manage')
-        <x-superadmin.modal id="create-package-modal" icon="inventory_2" :title="__('platform.packages.create')" :description="__('platform.packages.create_description')" max-width="max-w-2xl">
+        <x-superadmin.modal id="create-package-modal" icon="inventory_2" tone="create" :title="__('platform.packages.create')" :description="__('platform.packages.create_description')" max-width="max-w-2xl">
             <form method="POST" action="{{ route('superadmin.packages.store') }}" class="space-y-4">
                 @csrf
+                <x-superadmin.modal-guide :title="__('superadmin.modals.package.guide_title')">
+                    <li>{{ __('superadmin.modals.package.guide_price') }}</li>
+                    <li>{{ __('superadmin.modals.package.guide_limit') }}</li>
+                    <li>{{ __('superadmin.modals.package.guide_snapshot') }}</li>
+                </x-superadmin.modal-guide>
                 @include('superadmin.packages._fields', ['package' => null])
-                <div class="pt-2 flex items-center justify-end gap-2.5 border-t border-outline-variant">
+                <div class="sa-modal-footer">
                     <button type="button" class="sa-button secondary" data-modal-close>{{ __('superadmin.common.cancel') }}</button>
                     <button type="submit" class="sa-button"><span class="material-symbols-outlined text-[16px]">add</span>{{ __('platform.packages.create') }}</button>
                 </div>

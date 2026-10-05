@@ -1,12 +1,6 @@
 @extends('superadmin.layout', ['title' => __('superadmin.audit.title'), 'active' => 'audit'])
 @section('content')
-    <div class="superadmin-heading">
-        <div>
-            <p class="superadmin-eyebrow">{{ __('superadmin.common.platform_data') }}</p>
-            <h1>{{ __('superadmin.audit.title') }}</h1>
-            <p>{{ __('superadmin.audit.description') }}</p>
-        </div>
-    </div>
+    <x-superadmin.page-header :eyebrow="__('superadmin.common.platform_data')" :title="__('superadmin.audit.title')" :description="__('superadmin.audit.description')" />
     <section class="sa-card sa-section">
         <div class="sa-section-header">
             <div>
@@ -34,7 +28,7 @@
             <table class="sa-table">
                 <thead>
                     <tr>
-                        <th class="whitespace-nowrap">{{ __('superadmin.common.time') }}</th>
+                        <th class="whitespace-nowrap col-date">{{ __('superadmin.common.time') }}</th>
                         <th>{{ __('superadmin.audit.actor') }}</th>
                         <th>{{ __('superadmin.audit.event') }}</th>
                         <th>{{ __('superadmin.audit.target') }}</th>
@@ -47,7 +41,7 @@
                             $actorName = $audit->actorSuperadmin?->name;
                         @endphp
                         <tr>
-                            <td class="whitespace-nowrap">
+                            <td class="whitespace-nowrap col-date">
                                 <span class="block">{{ $audit->created_at?->format('d/m/Y') }}</span>
                                 <small class="block text-outline">{{ $audit->created_at?->format('H:i:s') }}</small>
                             </td>
@@ -84,6 +78,6 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-4">{{ $audits->links() }}</div>
+        {{ $audits->links('components.superadmin.pagination') }}
     </section>
 @endsection

@@ -32,6 +32,7 @@
 | [06-hieu-nang-user-room.md](06-hieu-nang-user-room.md) | UPG-06 – Hiệu năng trang User Room | 4 | 🔴 Cao | ✅ Hoàn thành (4/4) |
 | [07-van-hanh-va-hardening.md](07-van-hanh-va-hardening.md) | UPG-07 – Vận hành, dọn dữ liệu & hardening | 4 | 🟡 Thấp | ✅ Hoàn thành (4/4) |
 | [08-admin-room.md](08-admin-room.md) | UPG-08 – Khu vực Admin của Room (`/admin/{room}/*`, `/admin/profile`) | 9 | 🔴 Cao | ✅ Hoàn thành (9/9) |
+| [09-superadmin-ui.md](09-superadmin-ui.md) | UPG-09 – Nâng cấp UX/UI khu vực Superadmin (`/superadmin/*`) | 12 | 🟡 Thấp | ✅ Hoàn thành (12/12) |
 
 ---
 

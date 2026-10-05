@@ -1,33 +1,21 @@
 @extends('superadmin.layout', ['title' => __('superadmin.dashboard.title'), 'active' => 'dashboard'])
 
 @section('content')
-    <div class="superadmin-heading">
-        <div>
-            <p class="superadmin-eyebrow">{{ __('superadmin.dashboard.eyebrow') }}</p>
-            <h1>{{ __('superadmin.dashboard.title') }}</h1>
-            <p>{{ __('superadmin.dashboard.description') }}</p>
-        </div>
-        <div class="superadmin-actions">
-@can('queue.view')<a class="sa-button secondary" href="{{ route('superadmin.socket.page') }}"><span
-                    class="material-symbols-outlined">hub</span>{{ __('superadmin.dashboard.live_monitoring') }}</a>
-@endcan
-
-@can('settings.view')<a class="sa-button"
-                href="{{ route('superadmin.system.page') }}"><span class="material-symbols-outlined">build_circle</span>{{ __('superadmin.dashboard.system_settings') }}</a>
-@endcan
-</div>
-    </div>
+    <x-superadmin.page-header :eyebrow="__('superadmin.dashboard.eyebrow')" :title="__('superadmin.dashboard.title')" :description="__('superadmin.dashboard.description')">
+        @can('queue.view')
+            <a class="sa-button secondary" href="{{ route('superadmin.socket.page') }}"><span class="material-symbols-outlined">hub</span>{{ __('superadmin.dashboard.live_monitoring') }}</a>
+        @endcan
+        @can('settings.view')
+            <a class="sa-button" href="{{ route('superadmin.system.page') }}"><span class="material-symbols-outlined">build_circle</span>{{ __('superadmin.dashboard.system_settings') }}</a>
+        @endcan
+    </x-superadmin.page-header>
     <div id="notice" class="sa-notice"></div>
     @include('superadmin.dashboard._platform-widgets', ['widgets' => $widgets])
     <section class="sa-grid kpis kpis-4">
-        <article class="sa-card sa-kpi"><span class="label">{{ __('superadmin.dashboard.total_rooms') }}</span><strong id="total-rooms"
-                class="value">—</strong><span id="active-rooms" class="hint">{{ __('superadmin.common.loading') }}</span></article>
-        <article class="sa-card sa-kpi"><span class="label">{{ __('superadmin.dashboard.global_users') }}</span><strong id="total-users"
-                class="value">—</strong><span id="active-users" class="hint">{{ __('superadmin.common.loading') }}</span></article>
-        <article class="sa-card sa-kpi"><span class="label">{{ __('superadmin.dashboard.admins') }}</span><strong id="total-admins"
-                class="value">—</strong><span class="hint">{{ __('superadmin.dashboard.room_admins') }}</span></article>
-        <article class="sa-card sa-kpi"><span class="label">{{ __('superadmin.dashboard.orders_today') }}</span><strong id="orders-today"
-                class="value">—</strong><span class="hint">{{ __('superadmin.dashboard.non_cancelled_orders') }}</span></article>
+        <x-superadmin.kpi :label="__('superadmin.dashboard.total_rooms')" icon="meeting_room" tone="accent" value-id="total-rooms" hint-id="active-rooms" :hint="__('superadmin.common.loading')" />
+        <x-superadmin.kpi :label="__('superadmin.dashboard.global_users')" icon="group" value-id="total-users" hint-id="active-users" :hint="__('superadmin.common.loading')" />
+        <x-superadmin.kpi :label="__('superadmin.dashboard.admins')" icon="admin_panel_settings" value-id="total-admins" :hint="__('superadmin.dashboard.room_admins')" />
+        <x-superadmin.kpi :label="__('superadmin.dashboard.orders_today')" icon="receipt_long" tone="success" value-id="orders-today" :hint="__('superadmin.dashboard.non_cancelled_orders')" />
     </section>
     <div class="sa-split">
         <section class="sa-card sa-section">
@@ -143,6 +131,13 @@
                         class="material-symbols-outlined">refresh</span>{{ __('superadmin.analytics.refresh') }}</button>
             </div>
         </div>
+        <div class="sa-tabs" role="tablist" aria-label="{{ __('superadmin.analytics.tabs_label') }}" data-sa-tablist>
+            <button type="button" class="sa-tab" role="tab" id="sa-tab-operations" aria-controls="sa-panel-operations" aria-selected="true" data-sa-tab="operations"><span class="material-symbols-outlined" aria-hidden="true">monitoring</span>{{ __('superadmin.analytics.tab_operations') }}</button>
+            <button type="button" class="sa-tab" role="tab" id="sa-tab-security" aria-controls="sa-panel-security" aria-selected="false" tabindex="-1" data-sa-tab="security"><span class="material-symbols-outlined" aria-hidden="true">shield</span>{{ __('superadmin.analytics.tab_security') }}</button>
+            <button type="button" class="sa-tab" role="tab" id="sa-tab-trends" aria-controls="sa-panel-trends" aria-selected="false" tabindex="-1" data-sa-tab="trends"><span class="material-symbols-outlined" aria-hidden="true">insights</span>{{ __('superadmin.analytics.tab_trends') }}</button>
+        </div>
+
+        <div class="sa-tab-panel" role="tabpanel" id="sa-panel-operations" aria-labelledby="sa-tab-operations" data-sa-tab-panel="operations">
         <div id="sa-analytics-notice" class="sa-notice error" role="alert"></div>
 
         <div class="sa-grid kpis kpis-3">
@@ -182,9 +177,9 @@
                         <table class="sa-table">
                             <thead>
                                 <tr>
-                                    <th>{{ __('superadmin.analytics.date') }}</th>
-                                    <th>{{ __('superadmin.analytics.metric_orders') }}</th>
-                                    <th>{{ __('superadmin.analytics.metric_gmv') }}</th>
+                                    <th class="col-date">{{ __('superadmin.analytics.date') }}</th>
+                                    <th class="num">{{ __('superadmin.analytics.metric_orders') }}</th>
+                                    <th class="num">{{ __('superadmin.analytics.metric_gmv') }}</th>
                                 </tr>
                             </thead>
                             <tbody id="sa-trend-table"></tbody>
@@ -218,11 +213,11 @@
                         <tr>
                             <th>{{ __('superadmin.common.campaign') }}</th>
                             <th>{{ __('superadmin.common.room') }}</th>
-                            <th>{{ __('superadmin.common.status') }}</th>
-                            <th>{{ __('superadmin.analytics.col_deadline') }}</th>
-                            <th>{{ __('superadmin.analytics.col_overdue_by') }}</th>
+                            <th class="col-status">{{ __('superadmin.common.status') }}</th>
+                            <th class="col-date">{{ __('superadmin.analytics.col_deadline') }}</th>
+                            <th class="col-date">{{ __('superadmin.analytics.col_overdue_by') }}</th>
                             <th class="num">{{ __('superadmin.analytics.col_orders') }}</th>
-                            <th><span class="sa-sr-only">{{ __('superadmin.common.actions') }}</span></th>
+                            <th class="col-actions"><span class="sa-sr-only">{{ __('superadmin.common.actions') }}</span></th>
                         </tr>
                     </thead>
                     <tbody id="sa-stuck-body">
@@ -250,7 +245,7 @@
                             <th class="num">{{ __('superadmin.analytics.col_gmv') }}</th>
                             <th class="num">{{ __('superadmin.analytics.col_outstanding') }}</th>
                             <th class="num">{{ __('superadmin.analytics.col_overdue', ['days' => \App\Services\Dashboard\SuperadminDashboardService::OVERDUE_DEBT_DAYS]) }}</th>
-                            <th>{{ __('superadmin.analytics.col_last_activity') }}</th>
+                            <th class="col-date">{{ __('superadmin.analytics.col_last_activity') }}</th>
                             <th>{{ __('superadmin.analytics.col_flags') }}</th>
                         </tr>
                     </thead>
@@ -261,6 +256,9 @@
             </div>
         </section>
 
+        </div>
+
+        <div class="sa-tab-panel" role="tabpanel" id="sa-panel-security" aria-labelledby="sa-tab-security" data-sa-tab-panel="security" hidden>
         @php($insights = \App\Services\Dashboard\SuperadminInsightsService::class)
         <div id="sa-insights-notice" class="sa-notice error" role="alert"></div>
         <section class="sa-card sa-section" aria-labelledby="sa-heatmap-title">
@@ -296,7 +294,7 @@
                         <table class="sa-table">
                             <thead>
                                 <tr>
-                                    <th>{{ __('superadmin.analytics.date') }}</th>
+                                    <th class="col-date">{{ __('superadmin.analytics.date') }}</th>
                                     @foreach (['low', 'medium', 'high'] as $severity)
                                         <th class="num">{{ __('superadmin.analytics.sev_' . $severity) }}</th>
                                     @endforeach
@@ -331,13 +329,13 @@
                 <table class="sa-table">
                     <thead>
                         <tr>
-                            <th>{{ __('superadmin.analytics.col_ip') }}</th>
+                            <th class="col-mono">{{ __('superadmin.analytics.col_ip') }}</th>
                             <th class="num">{{ __('superadmin.analytics.col_events') }}</th>
                             <th class="num">{{ __('superadmin.analytics.col_failed_logins') }}</th>
                             <th class="num">{{ __('superadmin.analytics.col_high') }}</th>
-                            <th>{{ __('superadmin.analytics.col_last_seen') }}</th>
-                            <th>{{ __('superadmin.common.status') }}</th>
-                            <th><span class="sa-sr-only">{{ __('superadmin.common.actions') }}</span></th>
+                            <th class="col-date">{{ __('superadmin.analytics.col_last_seen') }}</th>
+                            <th class="col-status">{{ __('superadmin.common.status') }}</th>
+                            <th class="col-actions"><span class="sa-sr-only">{{ __('superadmin.common.actions') }}</span></th>
                         </tr>
                     </thead>
                     <tbody id="sa-ips-body">
@@ -363,7 +361,7 @@
                             <th class="num">{{ __('superadmin.analytics.col_campaigns_created') }}</th>
                             <th class="num">{{ __('superadmin.analytics.col_payments') }}</th>
                             <th class="num">{{ __('superadmin.analytics.col_audit_actions') }}</th>
-                            <th>{{ __('superadmin.analytics.col_last_login') }}</th>
+                            <th class="col-date">{{ __('superadmin.analytics.col_last_login') }}</th>
                             <th>{{ __('superadmin.analytics.col_flags') }}</th>
                         </tr>
                     </thead>
@@ -374,6 +372,9 @@
             </div>
         </section>
 
+        </div>
+
+        <div class="sa-tab-panel" role="tabpanel" id="sa-panel-trends" aria-labelledby="sa-tab-trends" data-sa-tab-panel="trends" hidden>
         @php($trends = \App\Services\Dashboard\SuperadminTrendsService::class)
         <div id="sa-trends-notice" class="sa-notice error" role="alert"></div>
         <section class="sa-card sa-section" aria-labelledby="sa-cohort-title">
@@ -450,6 +451,7 @@
                 @endforeach
             </div>
         </section>
+        </div>
     </section>
     @else
         <p class="sa-notice is-visible mt-4" data-platform-analytics-hidden>{{ __('platform.dashboard.analytics_hidden') }}</p>
@@ -457,58 +459,9 @@
 @endsection
 
 @push('scripts')
-    <script>
-        const formatBytes = bytes => {
-            const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
-            let value = Number(bytes) || 0;
-            let unit = 0;
-            while (value >= 1024 && unit < units.length - 1) {
-                value /= 1024;
-                unit++;
-            }
-            return `${new Intl.NumberFormat(document.documentElement.lang || undefined, { maximumFractionDigits: unit === 0 ? 0 : 1 }).format(value)} ${units[unit]}`;
-        };
-        const storageUsageText = storage => {
-            const driver = storage.driver || storage.disk || '';
-            if (storage.used_bytes == null || storage.total_bytes == null) {
-                return @js(__('superadmin.dashboard.storage_usage_unknown', ['driver' => '__DRIVER__'])).replace('__DRIVER__', driver);
-            }
-            const template = storage.limit === 'quota'
-                ? @js(__('superadmin.dashboard.storage_usage_quota', ['driver' => '__DRIVER__', 'used' => '__USED__', 'total' => '__TOTAL__']))
-                : @js(__('superadmin.dashboard.storage_usage', ['driver' => '__DRIVER__', 'used' => '__USED__', 'total' => '__TOTAL__']));
-            return template
-                .replace('__DRIVER__', driver)
-                .replace('__USED__', formatBytes(storage.used_bytes))
-                .replace('__TOTAL__', formatBytes(storage.total_bytes));
-        };
-        dfApi('{{ route('superadmin.dashboard') }}').then(({
-            data
-        }) => {
-            // Figures outside the viewer's permissions come back as null and stay "—".
-            document.querySelector('#total-rooms').textContent = data.total_rooms ?? '—';
-            document.querySelector('#active-rooms').textContent = data.active_rooms === null ? '' : @js(__('superadmin.dashboard.active_rooms', ['count' => '__COUNT__'])).replace('__COUNT__', data.active_rooms);
-            document.querySelector('#total-users').textContent = data.total_global_users ?? '—';
-            document.querySelector('#active-users').textContent = data.active_global_users === null ? '' : @js(__('superadmin.dashboard.active_users', ['count' => '__COUNT__'])).replace('__COUNT__', data.active_global_users);
-            document.querySelector('#total-admins').textContent = data.total_admins ?? '—';
-            document.querySelector('#orders-today').textContent = data.orders_today ?? '—';
-            const health = data.system_health;
-            if (!health) return;
-            document.querySelector('#database-status').innerHTML = statusPill(health.database.status);
-            document.querySelector('#queue-status').textContent =
-                `${health.queue.connection} · ${@js(__('superadmin.dashboard.failed_count', ['count' => '__COUNT__'])).replace('__COUNT__', health.queue.failed_jobs)}`;
-            document.querySelector('#socket-status').innerHTML = statusPill(health.socket.status);
-            document.querySelector('#socket-status').title = health.socket.reason_message || '';
-            document.querySelector('#mail-status').innerHTML = statusPill(health.mail.configured ? 'configured' : 'not_configured');
-            document.querySelector('#storage-status').innerHTML = statusPill(health.storage.status);
-            document.querySelector('#storage-usage').textContent = storageUsageText(health.storage);
-            if (health.supervisor) {
-                document.querySelector('#supervisor-row').hidden = false;
-                document.querySelector('#supervisor-status').innerHTML = statusPill(health.supervisor.status);
-            }
-        }).catch(error => {
-            const n = document.querySelector('#notice');
-            n.textContent = error.message;
-            n.className = 'sa-notice error is-visible';
-        });
-    </script>
+    <x-superadmin.page-script name="dashboard" :i18n="[
+        'active_rooms' => __('superadmin.dashboard.active_rooms'), 'active_users' => __('superadmin.dashboard.active_users'),
+        'failed_count' => __('superadmin.dashboard.failed_count'), 'storage_usage' => __('superadmin.dashboard.storage_usage'),
+        'storage_usage_quota' => __('superadmin.dashboard.storage_usage_quota'), 'storage_usage_unknown' => __('superadmin.dashboard.storage_usage_unknown'),
+    ]" :urls="['summary' => route('superadmin.dashboard')]" />
 @endpush

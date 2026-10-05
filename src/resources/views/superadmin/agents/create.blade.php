@@ -4,13 +4,8 @@
         $input = 'sa-input !min-w-0 w-full';
         $label = 'block text-xs font-semibold text-on-surface mb-1';
     @endphp
-    <div class="superadmin-heading">
-        <div>
-            <a class="sa-back-link" href="{{ route('superadmin.agents.index') }}">← {{ __('platform.agents.title') }}</a>
-            <h1>{{ __('platform.agents.create_title') }}</h1>
-            <p>{{ __('platform.agents.create_description') }}</p>
-        </div>
-    </div>
+    <x-superadmin.page-header :back="route('superadmin.agents.index')" :back-label="__('platform.agents.title')" :title="__('platform.agents.create_title')" :description="__('platform.agents.create_description')">
+    </x-superadmin.page-header>
     <x-superadmin.flash />
 
     <section class="sa-card sa-section">
@@ -53,7 +48,7 @@
 
                 <fieldset>
                     <legend class="{{ $label }}">{{ __('platform.registration.field_package') }} <span class="text-error">*</span></legend>
-                    <p class="text-[11px] text-outline mb-2">{{ __('platform.agents.package_hint') }}</p>
+                    <p class="text-xs text-outline mb-2">{{ __('platform.agents.package_hint') }}</p>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                         @foreach ($packages as $package)
                             <label class="flex items-start gap-3 rounded-xl border border-outline-variant bg-surface-container-lowest p-3 cursor-pointer hover:border-primary/60 has-[:checked]:border-primary has-[:checked]:ring-1 has-[:checked]:ring-primary transition-all">
@@ -69,7 +64,7 @@
                     </div>
                 </fieldset>
 
-                <div class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-outline-variant">
+                <div class="sa-form-actions">
                     <a href="{{ route('superadmin.agents.index') }}" class="sa-button secondary">{{ __('superadmin.common.cancel') }}</a>
                     <button type="submit" class="sa-button">
                         <span class="material-symbols-outlined text-[16px]">person_add</span>{{ __('platform.agents.create_submit') }}
