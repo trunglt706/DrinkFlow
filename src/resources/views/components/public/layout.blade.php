@@ -135,6 +135,7 @@
     @if(isset($head))
         {{ $head }}
     @endif
+    <x-devtools-guard />
 </head>
 
 <body data-submit-loading-text="{{ __('global.common.loading') }}" data-realtime-url="{{ rtrim(config('services.realtime.public_url', 'http://localhost:3001'), '/') }}" @if (app()->isLocal()) data-socket-debug @endif class="bg-[#f8f9ff] text-[#0b1c30] min-h-full flex flex-col font-sans antialiased selection:bg-[#006948] selection:text-white">

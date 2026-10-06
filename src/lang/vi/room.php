@@ -443,6 +443,7 @@ return [
         'items_count' => ':count món',
         'campaign_empty_orders' => 'Không có đơn hàng nào được ghi nhận trong chiến dịch này.',
         'campaign_orderer' => 'Người đặt món',
+        'campaign_sponsor_tooltip' => 'Nhà tài trợ',
         'campaign_items_ordered' => 'Danh sách món đã đặt',
         'campaign_total_amount' => 'Tổng tiền',
         'sponsor_badge_full' => 'Tài trợ 100% (Full)',

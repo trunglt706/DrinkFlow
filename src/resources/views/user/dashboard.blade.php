@@ -10,7 +10,9 @@
   <!-- Main Canvas Space -->
   <div class="space-y-4">
 
-    <x-sponsor-honors :honors="$sponsorHonors" />
+    @if(count($sponsorHonors['sponsors']) > 0)
+      <x-sponsor-honors :honors="$sponsorHonors" />
+    @endif
 
     <!-- Weekly charts followed by the active campaign -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">

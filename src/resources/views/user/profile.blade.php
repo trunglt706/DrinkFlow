@@ -18,6 +18,7 @@
                     <div class="flex flex-col gap-1">
                         <div class="flex flex-wrap items-center gap-1.5">
                             <h1 class="text-sm sm:text-base font-bold text-on-surface">{{ $user->name }}</h1>
+                            <x-sponsor-badge :rank="$sponsorBadge['rank']" :month="$sponsorBadge['month']" />
                             <span class="px-2 py-0.5 rounded bg-primary-fixed text-on-primary-fixed text-[10px] sm:text-[11px] flex items-center gap-1 font-semibold">
                                 <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span> {{ $memberStatusLabel }}
                             </span>
@@ -93,6 +94,8 @@
                 </div>
             </div>
         </section>
+
+        <x-sponsor-badge-history :badges="$recentSponsorBadges" />
 
         <!-- Profile Details Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">

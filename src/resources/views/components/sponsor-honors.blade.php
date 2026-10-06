@@ -1,4 +1,4 @@
-@props(['honors'])
+@props(['honors', 'recalculateUrl' => null])
 
 @once
 <style>
@@ -13,6 +13,8 @@
     .df-honors .honors-stars{font-size:10px;letter-spacing:3px;opacity:.7}.df-honors .honors-coffee{font-size:32px;line-height:1.3;margin:4px 0}.df-honors .honors-rank{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase}.df-honors .honors-brand{font-size:9px;font-weight:700;letter-spacing:1px;margin-top:6px}.df-honors .honors-edition{font-size:10px;margin-top:3px}.df-honors .honors-message{font-size:10px;line-height:1.5}
     .df-honors h3{font-size:14px;font-weight:700;margin:18px 0 5px;overflow-wrap:anywhere;text-transform:uppercase}
     .df-honors .honors-empty{padding:28px 0 8px;color:#acb7c9;font-size:13px}
+    .df-honors .honors-recalculate{display:inline-flex;align-items:center;gap:6px;margin-top:14px;padding:8px 16px;border:1px solid #e3c48a;border-radius:999px;background:#e3c48a1a;color:#e3c48a;font-size:12px;font-weight:600;cursor:pointer;transition:background .2s}.df-honors .honors-recalculate:hover{background:#e3c48a33}.df-honors .honors-recalculate .material-symbols-outlined{font-size:16px}
+    .df-honors .honors-flash{margin:14px auto 0;max-width:420px;font-size:12px;line-height:1.5}.df-honors .honors-flash.is-success{color:#86efac}.df-honors .honors-flash.is-error{color:#fca5a5}
     @media(max-width:640px){.df-honors .honors-podium{gap:28px;flex-direction:column}.df-honors .gold{order:0;transform:none}.df-honors .silver{order:1}.df-honors .bronze{order:2}.df-honors h2{font-size:22px}}
     @media(prefers-reduced-motion:reduce){.df-honors .honors-coin{transition:none}}
 </style>
@@ -54,5 +56,20 @@
         </div>
     @else
         <p class="honors-empty">{{ __('sponsor_honors.empty') }}</p>
+        @if($recalculateUrl)
+            <form method="POST" action="{{ $recalculateUrl }}">
+                @csrf
+                <button type="submit" class="honors-recalculate" data-sponsor-honors-recalculate>
+                    <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+                    <span>{{ __('sponsor_honors.recalculate') }}</span>
+                </button>
+            </form>
+        @endif
+    @endif
+    @if($recalculateUrl && session('sponsor_honors_status'))
+        <p class="honors-flash is-success" role="status">{{ session('sponsor_honors_status') }}</p>
+    @endif
+    @if($recalculateUrl && session('sponsor_honors_error'))
+        <p class="honors-flash is-error" role="alert">{{ session('sponsor_honors_error') }}</p>
     @endif
 </section>

@@ -185,13 +185,16 @@
                             </td>
                             <td class="py-3.5 px-4 text-left">
                                 <div class="group/user">
-                                    <button type="button" data-open-user-detail
-                                        data-room-user-id="{{ $ru->id }}"
-                                        class="flex items-center gap-1.5 text-left cursor-pointer focus:outline-none bg-transparent border-0 p-0 font-bold text-on-surface text-sm group-hover/user:text-primary transition-colors">
-                                        <span>{{ $name }}</span>
-                                        <span
-                                            class="material-symbols-outlined text-[14px] text-outline opacity-0 group-hover/user:opacity-100 transition-opacity">visibility</span>
-                                    </button>
+                                    <div class="flex items-center gap-1">
+                                        <button type="button" data-open-user-detail
+                                            data-room-user-id="{{ $ru->id }}"
+                                            class="flex items-center gap-1.5 text-left cursor-pointer focus:outline-none bg-transparent border-0 p-0 font-bold text-on-surface text-sm group-hover/user:text-primary transition-colors">
+                                            <span>{{ $name }}</span>
+                                            <span
+                                                class="material-symbols-outlined text-[14px] text-outline opacity-0 group-hover/user:opacity-100 transition-opacity">visibility</span>
+                                        </button>
+                                        <x-sponsor-badge :rank="$sponsorRanks['ranks'][$ru->id] ?? null" :month="$sponsorRanks['month']" />
+                                    </div>
                                     <div class="flex items-center gap-1 text-[11px] text-outline">
                                         <span>{{ $email }}</span>
                                         @if ($ru->globalUser?->email)

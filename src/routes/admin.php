@@ -97,6 +97,7 @@ Route::middleware(['auth:admin', 'admin.room', 'room.subscription'])
     Route::get('/socket-token', \App\Http\Controllers\Admin\SocketTokenController::class)->middleware('json.only')->name('admin.socket-token');
     Route::post('/notifications/read-all', [\App\Http\Controllers\Admin\NotificationController::class, 'markAllRead'])->name('admin.notifications.read-all');
     Route::post('/notifications/broadcast', [\App\Http\Controllers\Admin\NotificationController::class, 'broadcast'])->middleware('throttle:admin-bulk')->name('admin.notifications.broadcast');
+    Route::post('/sponsor-honors/recalculate', [\App\Http\Controllers\Admin\SponsorHonorController::class, 'recalculate'])->middleware('throttle:sponsor-honors-recalculate')->name('admin.sponsor-honors.recalculate');
 
     // Dedicated Standalone Page Views
     Route::get('/campaigns/list', [\App\Http\Controllers\Admin\CampaignController::class, 'page'])->name('admin.campaigns.page');

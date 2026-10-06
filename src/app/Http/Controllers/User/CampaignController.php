@@ -84,7 +84,9 @@ class CampaignController extends Controller
 
         $orders = $ordersQuery->oldest('id')->get();
 
-        $orderData = $orders->map(function (Order $order): array {
+        $sponsorPercentages = $campaign->sponsorPercentages();
+
+        $orderData = $orders->map(function (Order $order) use ($sponsorPercentages): array {
             $roomUser = $order->roomUser;
             $globalUser = $roomUser?->globalUser;
             $displayName = $roomUser?->display_name ?: ($globalUser?->name ?: __('room.debts.campaign_orderer'));
@@ -129,6 +131,7 @@ class CampaignController extends Controller
                 'sponsor_amount' => (int) $order->sponsor_amount,
                 'final_amount' => (int) $order->final_amount,
                 'note' => $order->note,
+                'is_sponsor' => isset($sponsorPercentages[(int) $order->room_user_id]),
                 'items' => $items,
             ];
         })->values()->all();

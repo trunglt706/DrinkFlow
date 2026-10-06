@@ -4,7 +4,7 @@
         <div>
             <h1 class="text-2xl font-bold text-on-surface tracking-tight">{{ __('admin.reports_analytics_title') }}</h1>
         </div>
-        <div class="flex items-center gap-3">
+        <div @class(['flex items-center gap-3', 'hidden' => $activeReportTab === 'badges']) data-report-range-actions>
             <x-admin.date-range-filter id="report-date-range" :date-from="$dateFrom" :date-to="$dateTo" />
             <button type="button" onclick="exportReportCSV()" class="px-3.5 py-2 bg-surface-container hover:bg-surface-container-high border border-outline-variant text-on-surface rounded text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors">
                 <span class="material-symbols-outlined text-[16px] text-primary">download</span>
@@ -76,6 +76,10 @@
         <button type="button" onclick="switchReportTab('users')" id="rtab-users" class="rtab flex items-center gap-2 px-3.5 py-2.5 border-b-2 border-transparent text-outline hover:text-on-surface transition-colors whitespace-nowrap">
             <span class="material-symbols-outlined text-[18px]">group</span>
             <span>{{ __('admin.tab_users_analytics') }}</span>
+        </button>
+        <button type="button" onclick="switchReportTab('badges')" id="rtab-badges" class="rtab flex items-center gap-2 px-3.5 py-2.5 border-b-2 border-transparent text-outline hover:text-on-surface transition-colors whitespace-nowrap">
+            <span class="material-symbols-outlined text-[18px]">workspace_premium</span>
+            <span>{{ __('sponsor_honors.report_tab') }}</span>
         </button>
     </div>
 
@@ -269,4 +273,121 @@
             </div>
         </div>
     </div>
+
+    <!-- Tab: Monthly sponsor badges (server-rendered, filtered by year rather than the date range) -->
+    @php
+        $badgeTones = [1 => 'bg-amber-100 text-amber-600 ring-amber-300', 2 => 'bg-slate-100 text-slate-500 ring-slate-300', 3 => 'bg-orange-100 text-orange-700 ring-orange-300'];
+        $badgeMetals = [1 => 'gold', 2 => 'silver', 3 => 'bronze'];
+    @endphp
+    <div id="panel-badges" class="report-panel space-y-6 hidden" data-badge-report>
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-xs space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-outline-variant">
+                <div>
+                    <h3 class="font-bold text-sm text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-[18px]">workspace_premium</span>
+                        <span>{{ __('sponsor_honors.report_title', ['year' => $badgeReport['year']]) }}</span>
+                    </h3>
+                    <p class="text-[11px] text-outline mt-0.5">{{ __('sponsor_honors.report_desc') }}</p>
+                </div>
+                <form method="GET" action="{{ route('admin.reports.page', $room) }}" class="flex items-center gap-2" data-no-loading>
+                    <input type="hidden" name="report_tab" value="badges">
+                    <label for="badge-year" class="text-xs font-semibold text-outline">{{ __('sponsor_honors.report_year') }}</label>
+                    <select id="badge-year" name="badge_year" onchange="this.form.submit()" class="rounded-lg border border-outline-variant bg-surface px-2.5 py-1.5 text-xs text-on-surface">
+                        @foreach ($badgeReport['years'] as $year)
+                            <option value="{{ $year }}" @selected($year === $badgeReport['year'])>{{ $year }}</option>
+                        @endforeach
+                    </select>
+                    <noscript><button type="submit" class="text-xs font-semibold text-primary">{{ __('sponsor_honors.report_apply') }}</button></noscript>
+                </form>
+            </div>
+
+            @if (count($badgeReport['months']) === 0)
+                <div class="flex flex-col items-center justify-center py-10 px-4 text-center rounded-xl border border-dashed border-outline-variant/80 bg-surface-container-low/30">
+                    <span class="material-symbols-outlined text-[26px] text-outline mb-2" aria-hidden="true">workspace_premium</span>
+                    <p class="text-xs text-outline font-medium">{{ __('sponsor_honors.report_empty', ['year' => $badgeReport['year']]) }}</p>
+                </div>
+            @else
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <h4 class="text-xs font-bold text-on-surface">{{ __('sponsor_honors.report_by_month') }}</h4>
+                        <div class="overflow-x-auto border border-outline-variant/60 rounded-xl">
+                            <table class="w-full text-left text-xs border-collapse" data-badge-months>
+                                <thead>
+                                    <tr class="bg-surface-container-low text-outline uppercase text-[11px] tracking-wide font-semibold border-b border-outline-variant/60">
+                                        <th class="py-3 px-4">{{ __('sponsor_honors.report_col_month') }}</th>
+                                        @foreach ($badgeMetals as $rank => $metal)
+                                            <th class="py-3 px-4">{{ __('sponsor_honors.history_rank', ['rank' => $rank]) }}</th>
+                                        @endforeach
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-outline-variant/40">
+                                    @foreach ($badgeReport['months'] as $monthRow)
+                                        <tr class="hover:bg-surface-container-low/50 transition-colors">
+                                            <td class="py-3 px-4 font-mono font-semibold text-on-surface whitespace-nowrap">{{ $monthRow['month'] }}</td>
+                                            @foreach ($badgeMetals as $rank => $metal)
+                                                @php
+                                                    $winner = $monthRow['podium'][$rank - 1] ?? null;
+                                                @endphp
+                                                <td class="py-3 px-4">
+                                                    @if ($winner)
+                                                        <div class="flex items-center gap-1.5 min-w-0">
+                                                            <x-sponsor-badge :rank="$rank" :month="$monthRow['month']" />
+                                                            <span class="truncate font-medium text-on-surface">{{ $winner['name'] }}</span>
+                                                        </div>
+                                                        <div class="text-[11px] text-outline font-mono">{{ \App\Support\Helpers\FormatHelper::formatCurrency((float) $winner['amount']) }}</div>
+                                                    @else
+                                                        <span class="text-outline">—</span>
+                                                    @endif
+                                                </td>
+                                            @endforeach
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <h4 class="text-xs font-bold text-on-surface">{{ __('sponsor_honors.report_by_member', ['year' => $badgeReport['year']]) }}</h4>
+                        <div class="overflow-x-auto border border-outline-variant/60 rounded-xl">
+                            <table class="w-full text-left text-xs border-collapse" data-badge-members>
+                                <thead>
+                                    <tr class="bg-surface-container-low text-outline uppercase text-[11px] tracking-wide font-semibold border-b border-outline-variant/60">
+                                        <th class="py-3 px-4">{{ __('admin.report_col_member') }}</th>
+                                        @foreach ($badgeMetals as $rank => $metal)
+                                            <th class="py-3 px-4 text-center">{{ __('sponsor_honors.'.$metal) }}</th>
+                                        @endforeach
+                                        <th class="py-3 px-4 text-center">{{ __('sponsor_honors.report_col_total') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-outline-variant/40">
+                                    @foreach ($badgeReport['members'] as $member)
+                                        <tr class="hover:bg-surface-container-low/50 transition-colors">
+                                            <td class="py-3 px-4 font-semibold text-on-surface">{{ $member['name'] }}</td>
+                                            @foreach ($badgeMetals as $rank => $metal)
+                                                <td class="py-3 px-4 text-center">
+                                                    @if ($member[$metal] > 0)
+                                                        <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 ring-1 font-bold {{ $badgeTones[$rank] }}">
+                                                            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">workspace_premium</span>{{ $member[$metal] }}
+                                                        </span>
+                                                    @else
+                                                        <span class="text-outline">0</span>
+                                                    @endif
+                                                </td>
+                                            @endforeach
+                                            <td class="py-3 px-4 text-center font-bold text-primary font-mono">{{ $member['total'] }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>
+    </div>
+    @if ($activeReportTab === 'badges')
+        {{-- Runs after the admin.js module has registered switchReportTab. --}}
+        <script>window.addEventListener('load', () => window.switchReportTab?.('badges'));</script>
+    @endif
 </x-admin.layout>

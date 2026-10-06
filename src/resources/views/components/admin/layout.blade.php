@@ -596,14 +596,31 @@
 
     <!-- Global Admin API Fetch Helper -->
     <script>
-        window.dfApi = async (url, options = {}) => {
+        // The session token can rotate while the page stays open (login/logout in another tab), leaving the
+        // <meta> token stale. Re-read it from a fresh render of this page; null means the session is gone.
+        const dfRefreshCsrfToken = async () => {
+            try {
+                const page = await fetch(window.location.href, { headers: { 'Accept': 'text/html' }, cache: 'no-store' });
+                // A redirect means the admin was logged out (e.g. to the login page): retrying cannot succeed.
+                if (!page.ok || page.redirected) return null;
+                const html = new DOMParser().parseFromString(await page.text(), 'text/html');
+                const token = html.querySelector('meta[name="csrf-token"]')?.content;
+                if (!token) return null;
+                document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', token);
+                return token;
+            } catch (e) {
+                return null;
+            }
+        };
+        window.dfApi = async (url, options = {}, retried = false) => {
             const headers = {
                 'Accept': 'application/json',
                 ...(options.headers || {})
             };
-            if (options.body && typeof options.body !== 'string' && !(options.body instanceof FormData)) {
+            let body = options.body;
+            if (body && typeof body !== 'string' && !(body instanceof FormData)) {
                 headers['Content-Type'] = 'application/json';
-                options.body = JSON.stringify(options.body);
+                body = JSON.stringify(body);
             }
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
             if (csrfToken) {
@@ -611,8 +628,18 @@
             }
             const response = await fetch(url, {
                 ...options,
+                body,
                 headers
             });
+            if (response.status === 419) {
+                if (!retried && await dfRefreshCsrfToken()) {
+                    return window.dfApi(url, options, true);
+                }
+                const expiredError = new Error(@js(__('admin.session_expired_reload')));
+                expiredError.status = 419;
+                expiredError.errors = {};
+                throw expiredError;
+            }
             if (!response.ok) {
                 const errData = await response.json().catch(() => ({}));
                 const apiError = new Error(errData.message || `HTTP ${response.status}`);

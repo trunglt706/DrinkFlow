@@ -11,11 +11,14 @@ use App\Enums\RoomStatus;
 use App\Models\GlobalUser;
 use App\Models\Room;
 use App\Models\RoomUser;
+use App\Services\Reporting\MonthlySponsorStatisticsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class UserRoomProfileService
 {
+    public function __construct(private readonly MonthlySponsorStatisticsService $sponsorStatistics) {}
+
     /**
      * Tổng hợp thông tin cá nhân và thống kê số lượng đơn hàng, chi tiêu, top món yêu thích của người dùng trong phòng.
      *
@@ -69,6 +72,7 @@ class UserRoomProfileService
 
         $activeCampaign = $room->campaigns()->where('status', CampaignStatus::Active->value)->first();
         $userRooms = $user ? $user->rooms()->where('rooms.status', RoomStatus::Active->value)->get() : collect();
+        $sponsorRanks = $this->sponsorStatistics->previousMonthRanks($room);
 
         return [
             'is_json' => false,
@@ -86,6 +90,8 @@ class UserRoomProfileService
                     'time_remaining' => $activeCampaign->deadline ? ($activeCampaign->deadline->isFuture() ? $activeCampaign->deadline->diffForHumans(['parts' => 2, 'short' => true]) : '00:00') : '14:22',
                 ] : null,
                 'userRooms' => $userRooms,
+                'sponsorBadge' => ['rank' => $sponsorRanks['ranks'][$roomUser->id] ?? null, 'month' => $sponsorRanks['month']],
+                'recentSponsorBadges' => $this->sponsorStatistics->recentBadges($room, $roomUser),
             ],
         ];
     }

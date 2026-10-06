@@ -362,9 +362,13 @@
                     </tr>
                 </thead>
                 <tbody id="orders-tbody" class="divide-y divide-outline-variant/50">
+                    @php
+                        $campaignSponsorPercentages = isset($activeCampaign) && $activeCampaign ? $activeCampaign->sponsorPercentages() : [];
+                    @endphp
                     @forelse($orders as $ord)
                         @php
                             $member = $ord->roomUser?->globalUser?->name ?? $ord->roomUser?->display_name ?? 'Member #' . $ord->room_user_id;
+                            $sponsorPercentage = $campaignSponsorPercentages[(int) $ord->room_user_id] ?? null;
                             $statusValue = $ord->status instanceof \BackedEnum ? $ord->status->value : (string) $ord->status;
                             $stClass = match($statusValue) {
                                 'completed', 'paid' => 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
@@ -432,7 +436,15 @@
                                         </div>
                                     @endif
                                     <div class="min-w-0">
-                                        <div class="font-semibold text-on-surface text-xs truncate" title="{{ $member }}">{{ $member }}</div>
+                                        <div class="flex items-center gap-1 min-w-0">
+                                            <div class="font-semibold text-on-surface text-xs truncate" title="{{ $member }}">{{ $member }}</div>
+                                            @if($sponsorPercentage !== null)
+                                                <span tabindex="0" role="img" data-order-sponsor-mark
+                                                    data-tooltip="{{ __('admin.order_sponsor_tooltip', ['percentage' => $sponsorPercentage]) }}"
+                                                    aria-label="{{ __('admin.order_sponsor_tooltip', ['percentage' => $sponsorPercentage]) }}"
+                                                    class="material-symbols-outlined shrink-0 text-[15px] text-amber-600 cursor-help" style="font-variation-settings:'FILL' 1">volunteer_activism</span>
+                                            @endif
+                                        </div>
                                         @if($ord->roomUser?->globalUser?->email)
                                             <div class="text-[10px] font-mono text-outline truncate" title="{{ $ord->roomUser->globalUser->email }}" data-order-member-email>{{ $ord->roomUser->globalUser->email }}</div>
                                         @endif

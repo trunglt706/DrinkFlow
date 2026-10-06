@@ -1456,6 +1456,7 @@ return [
     'copy_email' => 'Sao chép email',
     'copy_phone' => 'Sao chép số điện thoại',
     'proxy_order_info' => 'Đơn được đặt dùm bởi :name (:email)',
+    'order_sponsor_tooltip' => 'Nhà tài trợ · :percentage%',
     'proxy_order_badge' => 'Đặt dùm',
     'proxy_order_by' => 'Đặt dùm bởi :name',
     'bulk_cancelled_success' => 'Đã hủy :count đơn hàng thành công.',
@@ -1605,6 +1606,7 @@ return [
     'broadcast_payment_body' => 'Vui lòng kiểm tra và thanh toán các khoản công nợ còn lại.',
     'broadcast_sent' => 'Đã gửi thông báo đến :count thành viên.',
     'broadcast_failed' => 'Không thể gửi thông báo.',
+    'session_expired_reload' => 'Phiên làm việc đã hết hạn. Vui lòng tải lại trang và thử lại.',
 
     // Auth Response Messages
     'logged_out' => 'Đăng xuất thành công.',

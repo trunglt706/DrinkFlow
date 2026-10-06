@@ -17,6 +17,7 @@ use App\Models\RoomUser;
 use App\Models\RoomUserDevice;
 use App\Services\Auth\DeviceTrustService;
 use App\Services\Audit\AuditService;
+use App\Services\Reporting\MonthlySponsorStatisticsService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -67,7 +68,7 @@ class RoomUserController extends Controller
      * @param \App\Services\Admin\AdminRoomUserService $userService Room user service.
      * @return View Blade view.
      */
-    public function page(Request $request, Room $room, \App\Services\Admin\AdminRoomUserService $userService): View
+    public function page(Request $request, Room $room, \App\Services\Admin\AdminRoomUserService $userService, MonthlySponsorStatisticsService $sponsorStatistics): View
     {
         $query = $room->roomUsers()
             ->with(['globalUser', 'devices'])
@@ -104,6 +105,7 @@ class RoomUserController extends Controller
                 'label' => __('admin.status_'.$status->value),
             ])->values()->all(),
             'filters' => ['q' => $search, 'status' => $status !== '' ? $status : 'all'],
+            'sponsorRanks' => $sponsorStatistics->previousMonthRanks($room),
         ], $metrics));
     }
 

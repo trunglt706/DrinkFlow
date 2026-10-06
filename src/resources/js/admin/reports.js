@@ -118,13 +118,17 @@ export function initAdminReports() {
         activeBtn?.classList.add('border-primary', 'text-primary', 'font-bold');
         activeBtn?.classList.remove('border-transparent', 'text-outline');
 
-        // Lazy load tab data on active
-        if (tabId !== 'campaigns') {
+        // The badges tab is filtered by year, so the date range picker and export do not apply to it.
+        document.querySelector('[data-report-range-actions]')?.classList.toggle('hidden', tabId === 'badges');
+
+        // Lazy load tab data on active (the badges tab is server-rendered and filtered by year).
+        if (tabId !== 'campaigns' && tabId !== 'badges') {
             window.loadTabReportData(tabId);
         }
     };
 
     window.loadTabReportData = async function(tabId = currentActiveTab, force = false) {
+        if (tabId === 'badges') return;
         const dateFrom = dateRangePicker?.querySelector('.date-from-hidden')?.value || '';
         const dateTo = dateRangePicker?.querySelector('.date-to-hidden')?.value || '';
         const cacheKey = `${tabId}_${dateFrom}_${dateTo}`;

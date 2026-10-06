@@ -29,7 +29,7 @@
             </div>
         </div>
 
-        <x-sponsor-honors :honors="$sponsorHonors" />
+        <x-sponsor-honors :honors="$sponsorHonors" :recalculate-url="route('admin.sponsor-honors.recalculate', $room)" />
 
         <!-- 5 Summary Metrics Grid -->
         <section id="metrics-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">

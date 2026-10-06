@@ -186,6 +186,15 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(20)->by('admin-bulk:'.($request->user('admin')?->id ?? $request->ip() ?: '127.0.0.1'));
         });
 
+        // Rebuilding the sponsor podium re-aggregates a month of orders: 3 runs per 10 minutes per admin account.
+        RateLimiter::for('sponsor-honors-recalculate', function (Request $request) {
+            return Limit::perMinutes(10, 3)
+                ->by('sponsor-honors:'.($request->user('admin')?->id ?? $request->ip() ?: '127.0.0.1'))
+                ->response(static fn (Request $request, array $headers) => back()->with('sponsor_honors_error', __('sponsor_honors.recalculate_rate_limited', [
+                    'minutes' => max(1, (int) ceil(((int) ($headers['Retry-After'] ?? 60)) / 60)),
+                ])));
+        });
+
         RateLimiter::for('room-join', function (Request $request) {
             return Limit::perMinute(15)->by($request->ip() ?: '127.0.0.1');
         });

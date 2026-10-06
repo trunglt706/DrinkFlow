@@ -160,6 +160,25 @@ class Campaign extends Model
             ->count('room_user_id');
     }
 
+    /**
+     * Members funding this campaign and their share (only full sponsorship keeps sponsor_allocations).
+     *
+     * @return array<int, int> Sponsorship percentage keyed by room_user_id; members with 0% are left out.
+     */
+    public function sponsorPercentages(): array
+    {
+        $percentages = [];
+        foreach ($this->sponsor_allocations ?? [] as $allocation) {
+            $roomUserId = is_array($allocation) ? (int) ($allocation['room_user_id'] ?? 0) : 0;
+            $percentage = is_array($allocation) ? (int) ($allocation['percentage'] ?? 0) : 0;
+            if ($roomUserId > 0 && $percentage > 0) {
+                $percentages[$roomUserId] = $percentage;
+            }
+        }
+
+        return $percentages;
+    }
+
     public function debts(): HasMany
     {
         return $this->hasMany(Debt::class);

@@ -443,6 +443,7 @@ return [
         'items_count' => ':count 点',
         'campaign_empty_orders' => 'このキャンペーンの注文は見つかりませんでした。',
         'campaign_orderer' => '注文者',
+        'campaign_sponsor_tooltip' => 'スポンサー',
         'campaign_items_ordered' => '注文商品一覧',
         'campaign_total_amount' => '合計金額',
         'sponsor_badge_full' => '全額スポンサー (Full)',

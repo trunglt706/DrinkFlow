@@ -443,6 +443,7 @@ return [
         'items_count' => ':count items',
         'campaign_empty_orders' => 'No orders found for this campaign.',
         'campaign_orderer' => 'Ordered By',
+        'campaign_sponsor_tooltip' => 'Sponsor',
         'campaign_items_ordered' => 'Items Ordered',
         'campaign_total_amount' => 'Total Amount',
         'sponsor_badge_full' => '100% Full Sponsor',

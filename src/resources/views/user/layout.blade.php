@@ -10,6 +10,7 @@
     <link rel="alternate icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     @vite(['resources/css/room.css', 'resources/js/global.js'])
     @stack('head')
+    <x-devtools-guard />
 </head>
 
 <body class="user-shell">

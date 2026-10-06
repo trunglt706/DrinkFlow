@@ -367,11 +367,15 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-outline-variant/40">
+                            @php
+                                $campaignSponsorPercentages = $campaign->sponsorPercentages();
+                            @endphp
                             @forelse($orders as $index => $order)
                                 @php
                                     $roomUser = $order->roomUser;
                                     $globalUser = $roomUser?->globalUser;
                                     $location = $globalUser?->desk_location;
+                                    $sponsorPercentage = $campaignSponsorPercentages[(int) $order->room_user_id] ?? null;
                                 @endphp
                                 <tr class="hover:bg-surface-container-low/50 transition-colors align-top">
                                     <td class="px-4 py-3 w-14 text-left font-mono text-outline">{{ $index + 1 }}</td>
@@ -379,6 +383,13 @@
                                         <div>
                                             <div class="font-semibold text-on-surface">
                                                 {{ $roomUser?->display_name ?? __('admin.member') }}
+                                                @if ($sponsorPercentage !== null)
+                                                    <span tabindex="0" data-order-sponsor-mark
+                                                        data-tip="{{ __('admin.order_sponsor_tooltip', ['percentage' => $sponsorPercentage]) }}"
+                                                        aria-label="{{ __('admin.order_sponsor_tooltip', ['percentage' => $sponsorPercentage]) }}"
+                                                        @mouseenter="showTip($event)" @mouseleave="hideTip()" @focus="showTip($event)" @blur="hideTip()"
+                                                        class="material-symbols-outlined ml-1 align-middle text-[15px] text-amber-600 cursor-help" style="font-variation-settings:'FILL' 1">volunteer_activism</span>
+                                                @endif
                                                 @if ($order->parent?->roomUser)
                                                     <span tabindex="0"
                                                         data-tip="{{ __('admin.proxy_order_info', ['name' => $order->parent->roomUser?->display_name ?? __('admin.member'), 'email' => $order->parent->roomUser?->globalUser?->email ?? '']) }}"
