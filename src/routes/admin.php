@@ -86,6 +86,7 @@ Route::middleware('auth:admin')->prefix('admin/subscription')->group(function ()
 
 // The Agent's platform billing history (invoices and payments of its own account).
 Route::get('/admin/billing', [\App\Http\Controllers\Admin\BillingController::class, 'index'])->middleware('auth:admin')->name('admin.billing.index');
+Route::get('/admin/billing/invoices/{invoice}', [\App\Http\Controllers\Admin\BillingController::class, 'show'])->whereNumber('invoice')->middleware('auth:admin')->name('admin.billing.show');
 Route::get('/admin/billing/invoices/{invoice}/pdf', [\App\Http\Controllers\Admin\BillingController::class, 'download'])->whereNumber('invoice')->middleware(['auth:admin', 'throttle:20,1'])->name('admin.billing.download');
 Route::get('/admin/billing/invoices/{invoice}/pay', [\App\Http\Controllers\Admin\BillingController::class, 'pay'])->whereNumber('invoice')->middleware(['auth:admin', 'throttle:10,1'])->name('admin.billing.pay');
 

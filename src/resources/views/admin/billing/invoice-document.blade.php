@@ -1,5 +1,5 @@
 {{-- Printable platform invoice (App\Services\Billing\InvoicePdfService): rendered to an A4 PDF by headless
-     Chrome, or shown in the browser with the print dialog when no PDF renderer is available.
+     Chrome (download) and shown inside the admin invoice page (view).
      Self-contained on purpose (inline CSS, no app layout/assets), so the PDF never depends on the asset build. --}}
 @php
     $money = static fn (int $amount): string => \App\Support\Helpers\FormatHelper::formatCurrency($amount);
@@ -150,8 +150,5 @@
 
     <footer class="foot">{{ __('platform.billing.document.footer', ['date' => now()->toAppDateTime()]) }}</footer>
 </main>
-@if ($autoPrint)
-    <script>window.addEventListener('load', function () { window.print(); });</script>
-@endif
 </body>
 </html>

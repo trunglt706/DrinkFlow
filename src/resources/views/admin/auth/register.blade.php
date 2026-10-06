@@ -1,5 +1,5 @@
 {{-- Public Agent registration (/admin/register): centered card of documents/pages/admin/drinkflow-register-options.html
-     (option 2). The account stays pending until the email is verified and a Superadmin approves it. --}}
+     (option 2). The first invoice is issued at once; the package starts when it is paid. --}}
 <x-admin-auth.layout :title="__('platform.registration.page_title')" :centered="true">
     @php
         $inputWrap = 'relative flex items-center h-[43px] rounded-[10px] border border-outline-variant bg-surface-container-lowest focus-within:border-primary focus-within:ring-[3px] focus-within:ring-primary/15 transition-all';
@@ -13,12 +13,11 @@
             ['email', 'email', 'alternate_email', 'field_email', true, 'email'],
             ['phone', 'tel', 'call', 'field_phone', true, 'tel'],
         ];
-        $passwords = [
-            ['password', 'admin-password', 'toggle-admin-password', 'field_password', 'placeholder_password'],
-            ['password_confirmation', 'admin-password-confirmation', 'toggle-admin-password-confirmation', 'field_password_confirmation', 'placeholder_password_confirmation'],
-        ];
         // The first offered package is preselected; after a failed submit the visitor's choice is kept.
         $selectedPackage = (string) old('package_id', $packages->first()?->id);
+        // Billing cycle of the first invoice and of every renewal (6 months by default).
+        $periodQuantity = (int) old('period_quantity', \App\Services\Subscription\SubscriptionService::DEFAULT_CYCLE_QUANTITY);
+        $periodUnit = (string) old('period_unit', \App\Services\Subscription\SubscriptionService::CYCLE_UNIT_MONTH);
     @endphp
 
     <div class="relative rounded-3xl border border-emerald-100 bg-white/95 shadow-[0_28px_80px_rgba(32,74,60,0.12)] px-4 py-6 sm:px-10 sm:py-8">
@@ -70,19 +69,10 @@
                                     </div>
                                 </div>
                             @endforeach
-                            @foreach ($passwords as [$field, $id, $toggleId, $labelKey, $placeholderKey])
-                                <div>
-                                    <label for="{{ $id }}" class="{{ $label }}">{{ __('platform.registration.'.$labelKey) }}</label>
-                                    <div class="{{ $inputWrap }} @error('password') !border-error @enderror">
-                                        <span class="material-symbols-outlined text-outline pl-3 text-[18px]">lock</span>
-                                        <input id="{{ $id }}" name="{{ $field }}" type="password" required minlength="8" autocomplete="new-password"
-                                            placeholder="{{ __('platform.registration.'.$placeholderKey) }}" class="{{ $input }} font-mono">
-                                        <button type="button" id="{{ $toggleId }}" class="pr-3 text-outline hover:text-on-surface focus:outline-none cursor-pointer" aria-label="{{ __('admin.toggle_password_visibility') }}">
-                                            <span class="material-symbols-outlined text-[18px]">visibility</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            @endforeach
+                            <p class="sm:col-span-2 flex gap-2 rounded-[11px] bg-emerald-50 p-3 text-[11px] text-on-surface-variant">
+                                <span class="material-symbols-outlined text-[16px] text-primary shrink-0">mark_email_read</span>
+                                <span>{{ __('platform.registration.password_by_email_hint') }}</span>
+                            </p>
                             <x-admin-auth.captcha variant="field" class="sm:col-span-2" />
                         </div>
                     </section>
@@ -110,6 +100,24 @@
                                 </label>
                             @endforeach
                         </fieldset>
+                        <div class="mt-3" data-register-cycle>
+                            <span id="register-cycle-label" class="{{ $label }}">{{ __('platform.registration.field_cycle') }}</span>
+                            <div class="grid grid-cols-[1fr_1.2fr] gap-2" role="group" aria-labelledby="register-cycle-label">
+                                <div class="{{ $inputWrap }} @error('period_quantity') !border-error @enderror">
+                                    <span class="material-symbols-outlined text-outline pl-3 text-[18px]">event_repeat</span>
+                                    <input id="register-period-quantity" name="period_quantity" type="number" min="1" max="24" step="1" required
+                                        value="{{ $periodQuantity }}" aria-label="{{ __('platform.registration.field_cycle_quantity') }}" class="{{ $input }}">
+                                </div>
+                                <div class="{{ $inputWrap }} @error('period_unit') !border-error @enderror">
+                                    <select id="register-period-unit" name="period_unit" required aria-label="{{ __('platform.registration.field_cycle_unit') }}"
+                                        class="{{ $input }} cursor-pointer">
+                                        <option value="{{ \App\Services\Subscription\SubscriptionService::CYCLE_UNIT_MONTH }}" @selected($periodUnit === \App\Services\Subscription\SubscriptionService::CYCLE_UNIT_MONTH)>{{ __('platform.cycle.unit_month') }}</option>
+                                        <option value="{{ \App\Services\Subscription\SubscriptionService::CYCLE_UNIT_YEAR }}" @selected($periodUnit === \App\Services\Subscription\SubscriptionService::CYCLE_UNIT_YEAR)>{{ __('platform.cycle.unit_year') }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <small class="mt-1 block text-[11px] text-outline">{{ __('platform.registration.cycle_hint') }}</small>
+                        </div>
                         <p class="mt-3 flex gap-2 rounded-[11px] bg-emerald-50 p-3 text-[11px] text-on-surface-variant">
                             <span class="material-symbols-outlined text-[16px] text-primary shrink-0">verified</span>
                             <span><b class="text-primary">{{ __('platform.registration.package_note_title') }}</b> {{ __('platform.registration.package_hint') }}</span>

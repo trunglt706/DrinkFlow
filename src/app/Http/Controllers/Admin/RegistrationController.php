@@ -86,15 +86,21 @@ class RegistrationController extends Controller
     }
 
     /**
-     * Resend the verification link (same answer whether or not the email is registered).
+     * Resend the activation email (same answer whether or not the email is registered).
+     *
+     * Registrations made before the pay-to-activate flow (no subscription yet) still get the old
+     * verification link.
      *
      * @param ResendAdminVerificationRequest $request Validated email.
-     * @param AdminEmailVerificationService $verification Verification service.
+     * @param RegisterAdminAction $registration Registration action (activation email).
+     * @param AdminEmailVerificationService $verification Legacy verification service.
      * @return RedirectResponse Pending notice.
      */
-    public function resend(ResendAdminVerificationRequest $request, AdminEmailVerificationService $verification): RedirectResponse
+    public function resend(ResendAdminVerificationRequest $request, RegisterAdminAction $registration, AdminEmailVerificationService $verification): RedirectResponse
     {
-        $verification->resend((string) $request->validated('email'));
+        if (! $registration->resendActivation((string) $request->validated('email'))) {
+            $verification->resend((string) $request->validated('email'));
+        }
 
         return redirect()->route('admin.register.pending')
             ->with('registered_email', (string) $request->validated('email'))

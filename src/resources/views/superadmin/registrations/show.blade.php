@@ -51,6 +51,29 @@
 
         @if ($isPending)
             <div class="sa-stack">
+                @if ($firstInvoice)
+                {{-- Pay-to-activate registration: no approval, the package starts when this invoice is paid. --}}
+                <section class="sa-card sa-section" data-registration-awaiting-payment>
+                    <div class="sa-section-header">
+                        <div>
+                            <h2>{{ __('platform.registrations.awaiting_payment_title') }}</h2>
+                            <p>{{ __('platform.registrations.activates_on_payment') }}</p>
+                        </div>
+                    </div>
+                    <dl class="grid gap-2 text-[13px]">
+                        <div class="flex justify-between gap-3"><dt class="text-outline">{{ __('platform.billing.invoice') }}</dt><dd class="font-mono font-semibold">{{ $firstInvoice->number }}</dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-outline">{{ __('platform.emails.cycle_label') }}</dt><dd>{{ \App\Services\Subscription\SubscriptionService::cycleLabel((int) $firstInvoice->period_start->diffInMonths($firstInvoice->period_end, true)) }}</dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-outline">{{ __('platform.billing.total') }}</dt><dd class="font-semibold">{{ \App\Support\Helpers\FormatHelper::formatCurrency((int) $firstInvoice->total) }}</dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-outline">{{ __('platform.billing.due_at') }}</dt><dd>{{ $firstInvoice->due_at->toAppDate() }}</dd></div>
+                        <div class="flex justify-between gap-3"><dt class="text-outline">{{ __('validation.attributes.status') }}</dt><dd>{{ __('platform.billing.status.'.$firstInvoice->status->value) }}</dd></div>
+                    </dl>
+                    @if ($canViewBilling)
+                        <div class="mt-3 flex justify-end">
+                            <a href="{{ route('superadmin.billing.agent', $registration) }}" class="sa-button"><span class="material-symbols-outlined text-[16px]">receipt_long</span>{{ __('platform.registrations.open_billing') }}</a>
+                        </div>
+                    @endif
+                </section>
+                @else
                 <section class="sa-card sa-section">
                     <div class="sa-section-header">
                         <div>
@@ -92,6 +115,7 @@
                         </fieldset>
                     </form>
                 </section>
+                @endif
 
                 <section class="sa-card sa-section">
                     <div class="sa-section-header">

@@ -10,7 +10,7 @@ use Spatie\Browsershot\Browsershot;
 /**
  * Printable document of one platform invoice, as HTML and as an A4 PDF.
  *
- * The same Blade template feeds both, so the PDF and the browser-printable fallback always match.
+ * The same Blade template feeds both, so the PDF and the in-app invoice view always match.
  * PDF rendering needs Node.js + puppeteer + Chrome on the server (config/pdf.php).
  */
 class InvoicePdfService
@@ -19,16 +19,14 @@ class InvoicePdfService
      * HTML document of the invoice.
      *
      * @param AdminInvoice $invoice Invoice to render.
-     * @param bool $autoPrint Open the browser's print dialog on load (fallback when no PDF can be made).
      * @return string HTML.
      */
-    public function html(AdminInvoice $invoice, bool $autoPrint = false): string
+    public function html(AdminInvoice $invoice): string
     {
         $invoice->loadMissing(['admin', 'package:id,name', 'payments' => static fn ($query) => $query->orderBy('paid_at')]);
 
         return view('admin.billing.invoice-document', [
             'invoice' => $invoice,
-            'autoPrint' => $autoPrint,
         ])->render();
     }
 
@@ -38,7 +36,7 @@ class InvoicePdfService
      * @param AdminInvoice $invoice Invoice to render.
      * @return string PDF bytes.
      *
-     * @throws \Throwable When headless Chrome is missing or fails (callers fall back to {@see html()}).
+     * @throws \Throwable When headless Chrome is missing or fails.
      */
     public function pdf(AdminInvoice $invoice): string
     {

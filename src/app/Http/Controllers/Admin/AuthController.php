@@ -56,6 +56,11 @@ class AuthController extends Controller
         /** @var Admin $admin */
         $admin = $request->user('admin');
 
+        // A self-registered Agent whose first invoice is unpaid has no package yet: billing is the next step.
+        if ($admin->subscriptions()->pending()->exists() && ! $admin->subscriptions()->active()->exists()) {
+            return redirect()->route('admin.billing.index');
+        }
+
         $today = Carbon::today();
 
         $rooms = $admin->rooms()

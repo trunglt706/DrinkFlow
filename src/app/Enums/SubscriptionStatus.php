@@ -13,6 +13,8 @@ namespace App\Enums;
  */
 enum SubscriptionStatus: string
 {
+    /** Self-registered Agent waiting for its first invoice to be paid; becomes `active` once settled. */
+    case Pending = 'pending';
     case Active = 'active';
     case Superseded = 'superseded';
     case Expired = 'expired';

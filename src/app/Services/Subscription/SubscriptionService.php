@@ -27,8 +27,16 @@ use Illuminate\Validation\ValidationException;
  */
 class SubscriptionService
 {
-    /** Length of one subscription period in months. */
+    /** Default length of one subscription period in months (a subscription keeps its own `period_months`). */
     public const PERIOD_MONTHS = 1;
+
+    /** Billing cycle units offered at registration. */
+    public const CYCLE_UNIT_MONTH = 'month';
+
+    public const CYCLE_UNIT_YEAR = 'year';
+
+    /** Default registration cycle: 6 months. */
+    public const DEFAULT_CYCLE_QUANTITY = 6;
 
     public const CHANGE_IMMEDIATE = 'immediate';
 
@@ -49,13 +57,15 @@ class SubscriptionService
      * @param Superadmin|null $approvedBy Superadmin approving the subscription.
      * @param CarbonInterface|null $startsAt Start of the first period (now by default).
      * @param int $prorationCredit Credit from the replaced subscription, deducted from the first invoice.
+     * @param int|null $periodMonths Billing period length; null keeps the replaced subscription's cycle (1 month without one).
      * @return AdminSubscription New active subscription.
      */
-    public function activate(Admin $admin, Package $package, ?Superadmin $approvedBy = null, ?CarbonInterface $startsAt = null, int $prorationCredit = 0): AdminSubscription
+    public function activate(Admin $admin, Package $package, ?Superadmin $approvedBy = null, ?CarbonInterface $startsAt = null, int $prorationCredit = 0, ?int $periodMonths = null): AdminSubscription
     {
-        return DB::transaction(function () use ($admin, $package, $approvedBy, $startsAt, $prorationCredit): AdminSubscription {
+        return DB::transaction(function () use ($admin, $package, $approvedBy, $startsAt, $prorationCredit, $periodMonths): AdminSubscription {
             $startsAt ??= now();
             $previous = $this->endCurrent($admin, SubscriptionStatus::Superseded, $startsAt);
+            $months = max(1, $periodMonths ?? $previous?->periodMonths() ?? self::PERIOD_MONTHS);
 
             return AdminSubscription::create([
                 'admin_id' => $admin->id,
@@ -63,13 +73,96 @@ class SubscriptionService
                 'package_id' => $package->id,
                 'status' => SubscriptionStatus::Active->value,
                 'price_snapshot' => $package->monthly_price,
-                'proration_credit' => min($prorationCredit, $package->monthly_price),
+                'period_months' => $months,
+                'proration_credit' => min($prorationCredit, $package->monthly_price * $months),
                 'room_limit_snapshot' => $package->room_limit,
                 'starts_at' => $startsAt,
-                'expires_at' => $startsAt->copy()->addMonthsNoOverflow(self::PERIOD_MONTHS),
+                'expires_at' => $startsAt->copy()->addMonthsNoOverflow($months),
                 'approved_by_superadmin_id' => $approvedBy?->id,
             ]);
         });
+    }
+
+    /**
+     * Months in a registration cycle ("6 months", "1 year").
+     *
+     * @param int $quantity Number of units (at least 1).
+     * @param string $unit {@see CYCLE_UNIT_MONTH} or {@see CYCLE_UNIT_YEAR}.
+     * @return int Period length in months.
+     */
+    public static function cycleMonths(int $quantity, string $unit): int
+    {
+        return max(1, $quantity) * ($unit === self::CYCLE_UNIT_YEAR ? 12 : 1);
+    }
+
+    /**
+     * Human label of a billing cycle: whole years as years ("1 năm"), anything else in months ("6 tháng").
+     *
+     * @param int $months Period length in months.
+     * @return string Translated label.
+     */
+    public static function cycleLabel(int $months): string
+    {
+        $months = max(1, $months);
+
+        return $months % 12 === 0
+            ? trans_choice('platform.cycle.years', intdiv($months, 12), ['count' => intdiv($months, 12)])
+            : trans_choice('platform.cycle.months', $months, ['count' => $months]);
+    }
+
+    /**
+     * Create the subscription of a self-registered Agent, waiting for its first invoice to be paid.
+     *
+     * It grants nothing yet (no room quota, rooms stay blocked): {@see activatePending()} starts it
+     * once the first invoice is settled.
+     *
+     * @param Admin $admin Registering Agent.
+     * @param Package $package Requested package, whose current terms are frozen.
+     * @param int $periodMonths Billing period length chosen at registration.
+     * @return AdminSubscription Pending subscription.
+     */
+    public function createPending(Admin $admin, Package $package, int $periodMonths): AdminSubscription
+    {
+        return AdminSubscription::create([
+            'admin_id' => $admin->id,
+            'package_id' => $package->id,
+            'status' => SubscriptionStatus::Pending->value,
+            'price_snapshot' => $package->monthly_price,
+            'period_months' => max(1, $periodMonths),
+            'proration_credit' => 0,
+            'room_limit_snapshot' => $package->room_limit,
+            'starts_at' => now(),
+            'expires_at' => null,
+        ]);
+    }
+
+    /**
+     * Start a pending subscription once its first invoice is paid: the first period runs from the payment.
+     *
+     * Must run inside the transaction that settled the invoice.
+     *
+     * @param AdminSubscription $subscription Pending subscription (locked by the caller).
+     * @param CarbonInterface $startsAt Payment time, start of the first period.
+     * @return AdminSubscription|null The now active subscription, or null when it was not pending anymore.
+     */
+    public function activatePending(AdminSubscription $subscription, CarbonInterface $startsAt): ?AdminSubscription
+    {
+        $subscription = AdminSubscription::query()->lockForUpdate()->find($subscription->id);
+        if ($subscription === null || $subscription->status !== SubscriptionStatus::Pending) {
+            return null;
+        }
+        $admin = Admin::query()->lockForUpdate()->findOrFail($subscription->admin_id);
+        $previous = $this->endCurrent($admin, SubscriptionStatus::Superseded, $startsAt);
+
+        $subscription->update([
+            'status' => SubscriptionStatus::Active->value,
+            'previous_subscription_id' => $previous?->id,
+            'starts_at' => $startsAt,
+            'expires_at' => $startsAt->copy()->addMonthsNoOverflow($subscription->periodMonths()),
+        ]);
+        $this->audit->record('subscription.started', 'admin', $admin->id, null, ['status' => SubscriptionStatus::Pending->value], $this->snapshot($subscription), ['reason' => 'first_invoice_paid']);
+
+        return $subscription;
     }
 
     /**
@@ -360,7 +453,7 @@ class SubscriptionService
     {
         $expiresAt = $subscription->expires_at->copy();
         while ($expiresAt->lessThanOrEqualTo($now)) {
-            $expiresAt = $expiresAt->addMonthsNoOverflow(self::PERIOD_MONTHS);
+            $expiresAt = $expiresAt->addMonthsNoOverflow($subscription->periodMonths());
         }
         $subscription->update(['expires_at' => $expiresAt]);
     }
@@ -392,10 +485,16 @@ class SubscriptionService
         if ($subscription->expires_at === null || $subscription->price_snapshot === 0) {
             return 0;
         }
-        $total = max(1, $subscription->starts_at->diffInSeconds($subscription->expires_at, true));
+        // Value of the current billing period only (a renewed subscription's starts_at is its first period).
+        $periodPrice = $subscription->periodPrice();
+        $periodStart = $subscription->expires_at->copy()->subMonthsNoOverflow($subscription->periodMonths());
+        if ($periodStart->lessThan($subscription->starts_at)) {
+            $periodStart = $subscription->starts_at->copy();
+        }
+        $total = max(1, $periodStart->diffInSeconds($subscription->expires_at, true));
         $remaining = max(0, now()->diffInSeconds($subscription->expires_at, false));
 
-        return (int) min($subscription->price_snapshot, round($subscription->price_snapshot * $remaining / $total));
+        return (int) min($periodPrice, round($periodPrice * $remaining / $total));
     }
 
     /**
@@ -410,6 +509,7 @@ class SubscriptionService
             'subscription_id' => $subscription->id,
             'package_id' => $subscription->package_id,
             'price_snapshot' => $subscription->price_snapshot,
+            'period_months' => $subscription->periodMonths(),
             'room_limit_snapshot' => $subscription->room_limit_snapshot,
             'expires_at' => $subscription->expires_at?->toIso8601String(),
         ];

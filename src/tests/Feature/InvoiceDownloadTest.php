@@ -63,22 +63,51 @@ class InvoiceDownloadTest extends TestCase
             ->assertHeader('Content-Disposition', 'attachment; filename="drinkflow-invoice-test.pdf"');
     }
 
-    public function test_printable_page_is_served_when_pdf_rendering_fails(): void
+    public function test_failed_pdf_rendering_never_opens_a_print_page(): void
     {
         $invoice = $this->invoiceOf($this->alice);
         $this->partialMock(InvoicePdfService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('pdf')->andThrow(new \RuntimeException('Chrome missing'));
         });
 
-        $this->actingAs($this->alice, 'admin')->get(route('admin.billing.download', $invoice))
+        // The download button (fetch) gets a JSON error it shows as a toast…
+        $this->actingAs($this->alice, 'admin')->getJson(route('admin.billing.download', $invoice))
+            ->assertStatus(503)
+            ->assertJson(['message' => __('platform.billing.pdf_unavailable')]);
+        // …and a plain link goes back with the same message, never to a printable page.
+        $this->actingAs($this->alice, 'admin')->from(route('admin.billing.index'))->get(route('admin.billing.download', $invoice))
+            ->assertRedirect(route('admin.billing.index'))
+            ->assertSessionHas('error', __('platform.billing.pdf_unavailable'));
+    }
+
+    public function test_invoice_view_page_shows_the_document_with_a_download_button(): void
+    {
+        $invoice = $this->invoiceOf($this->alice);
+
+        $this->actingAs($this->alice, 'admin')->get(route('admin.billing.show', $invoice))
             ->assertOk()
             ->assertSee((string) $invoice->number)
-            ->assertSee('Tea Corp')
-            ->assertSee('window.print()', false);
+            ->assertSee('data-invoice-document', false)
+            ->assertSee('srcdoc=', false)
+            ->assertSee('data-invoice-download', false)
+            ->assertSee(route('admin.billing.download', $invoice), false)
+            ->assertDontSee('window.print()', false);
+    }
+
+    public function test_billing_history_links_to_view_and_download_each_invoice(): void
+    {
+        $invoice = $this->invoiceOf($this->alice);
+
+        $this->actingAs($this->alice, 'admin')->get(route('admin.billing.index'))
+            ->assertOk()
+            ->assertSee(route('admin.billing.show', $invoice), false)
+            ->assertSee('data-invoice-download', false)
+            ->assertSee(route('admin.billing.download', $invoice), false);
     }
 
     public function test_another_agents_invoice_is_not_found(): void
     {
         $this->actingAs($this->alice, 'admin')->get(route('admin.billing.download', $this->invoiceOf($this->bob)))->assertNotFound();
+        $this->actingAs($this->alice, 'admin')->get(route('admin.billing.show', $this->invoiceOf($this->bob)))->assertNotFound();
     }
 }

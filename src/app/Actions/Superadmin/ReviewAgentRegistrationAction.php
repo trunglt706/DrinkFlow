@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace App\Actions\Superadmin;
 
 use App\Enums\AdminStatus;
+use App\Enums\InvoiceStatus;
 use App\Enums\Permission;
 use App\Enums\PermissionScope;
+use App\Enums\SubscriptionStatus;
 use App\Mail\AdminApprovedMail;
 use App\Mail\AdminRejectedMail;
 use App\Models\Admin;
+use App\Models\AdminInvoice;
+use App\Models\AdminSubscription;
 use App\Models\Package;
 use App\Models\Superadmin;
 use App\Services\Audit\AuditService;
@@ -56,6 +60,10 @@ class ReviewAgentRegistrationAction
 
         return DB::transaction(function () use ($admin, $actor, $packageId, $manager): Admin {
             $admin = $this->lockPending($admin);
+            if (self::awaitsPayment($admin)) {
+                // Pay-to-activate registration: its package starts when the first invoice is paid, never by approval.
+                throw ValidationException::withMessages(['registration' => __('platform.registrations.activates_on_payment')]);
+            }
             if (! $admin->hasVerifiedEmail()) {
                 throw ValidationException::withMessages(['registration' => __('platform.registrations.email_not_verified')]);
             }
@@ -111,14 +119,33 @@ class ReviewAgentRegistrationAction
                 'reviewed_by_superadmin_id' => $actor->id,
                 'rejection_reason' => $reason,
             ]);
+            // A pay-to-activate registration also drops its pending subscription and unpaid first invoice.
+            $voided = AdminInvoice::query()->where('admin_id', $admin->id)->outstanding()->where('paid_amount', 0)->get();
+            foreach ($voided as $invoice) {
+                $invoice->update(['status' => InvoiceStatus::Void->value, 'voided_at' => now(), 'void_reason' => $reason]);
+            }
+            AdminSubscription::query()->where('admin_id', $admin->id)->pending()
+                ->update(['status' => SubscriptionStatus::Cancelled->value, 'ended_at' => now()]);
             $this->audit->record('agent.rejected', 'admin', $admin->id, null, ['status' => AdminStatus::Pending->value], [
                 'status' => AdminStatus::Rejected->value,
                 'reason' => $reason,
+                'voided_invoice_ids' => $voided->pluck('id')->all(),
             ]);
             Mail::to($admin->email)->queue((new AdminRejectedMail($admin, $reason))->locale(app()->getLocale())->afterCommit());
 
             return $admin;
         });
+    }
+
+    /**
+     * Whether the registration follows the pay-to-activate flow (a subscription waits for its first invoice).
+     *
+     * @param Admin $admin Registered Agent.
+     * @return bool True when approval does not apply.
+     */
+    public static function awaitsPayment(Admin $admin): bool
+    {
+        return AdminSubscription::query()->where('admin_id', $admin->id)->pending()->exists();
     }
 
     /**

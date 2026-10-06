@@ -58,9 +58,9 @@ class AgentRegistrationNotificationTest extends TestCase
             'company' => 'Tea Corp',
             'email' => 'agent@example.test',
             'phone' => '+84 901 234 567',
-            'password' => 'secret-pass-1',
-            'password_confirmation' => 'secret-pass-1',
             'package_id' => $this->package->id,
+            'period_quantity' => 6,
+            'period_unit' => 'month',
         ])->assertRedirect(route('admin.register.pending'));
     }
 
@@ -107,7 +107,8 @@ class AgentRegistrationNotificationTest extends TestCase
             ->assertSee(__('platform.registration.section_info'))
             ->assertSee(__('platform.registration.section_package'))
             ->assertSee(__('platform.registration.price_free'))
-            ->assertSee('id="toggle-admin-password"', false);
+            ->assertSee('id="register-period-quantity"', false)
+            ->assertDontSee('id="toggle-admin-password"', false);
     }
 
     public function test_first_package_is_preselected(): void
@@ -133,7 +134,7 @@ class AgentRegistrationNotificationTest extends TestCase
         $this->app['env'] = 'testing';
         $this->post(route('admin.register'), [
             'name' => 'Spam Bot', 'email' => 'bot@example.test', 'phone' => '+84 901 234 567',
-            'password' => 'secret-pass-1', 'password_confirmation' => 'secret-pass-1', 'package_id' => $this->package->id,
+            'package_id' => $this->package->id, 'period_quantity' => 6, 'period_unit' => 'month',
         ])->assertSessionHasErrors('captcha');
         $this->assertDatabaseMissing('admins', ['email' => 'bot@example.test']);
     }

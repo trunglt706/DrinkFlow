@@ -17,6 +17,20 @@
 
         <x-admin.billing-warning />
 
+        @if ($awaitingFirstPayment)
+            <div class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="status" data-billing-awaiting-payment>
+                <span class="material-symbols-outlined text-[20px] text-amber-600 shrink-0">hourglass_top</span>
+                <div>
+                    <p class="font-semibold">{{ __('platform.billing.awaiting_first_payment_title') }}</p>
+                    <p class="mt-0.5 text-xs">{{ __('platform.billing.awaiting_first_payment_body') }}</p>
+                </div>
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="rounded-xl border border-error/30 bg-error-container p-3 text-sm text-on-error-container" role="alert">{{ session('error') }}</div>
+        @endif
+
         <section class="rounded-xl border border-outline-variant bg-surface-container-lowest overflow-hidden">
             <div class="px-5 py-4 border-b border-outline-variant"><h2 class="text-sm font-bold text-on-surface">{{ __('platform.billing.invoices') }}</h2></div>
             <div class="overflow-x-auto">
@@ -37,10 +51,11 @@
                                 <td class="px-5 py-3">
                                     <div class="flex items-center gap-2">
                                         <strong class="font-mono">{{ $invoice->number }}</strong>
-                                        <a href="{{ route('admin.billing.download', $invoice) }}" class="inline-flex items-center gap-1 rounded-md border border-outline-variant px-1.5 py-0.5 text-[11px] font-semibold text-primary hover:bg-primary/5"
-                                            title="{{ __('platform.billing.download_pdf') }}" aria-label="{{ __('platform.billing.download_pdf') }} {{ $invoice->number }}">
-                                            <span class="material-symbols-outlined text-[15px]">picture_as_pdf</span>{{ __('platform.billing.download_pdf_short') }}
+                                        <a href="{{ route('admin.billing.show', $invoice) }}" data-invoice-view class="inline-flex items-center gap-1 rounded-md border border-outline-variant px-1.5 py-0.5 text-[11px] font-semibold text-on-surface-variant hover:bg-surface-container"
+                                            title="{{ __('platform.billing.view_invoice') }}" aria-label="{{ __('platform.billing.view_invoice') }} {{ $invoice->number }}">
+                                            <span class="material-symbols-outlined text-[15px]">visibility</span>{{ __('platform.billing.view_invoice_short') }}
                                         </a>
+                                        <x-admin.invoice-download-button :invoice="$invoice" :file-name="$documents->fileName($invoice)" />
                                     </div>
                                     <small class="block text-outline">{{ $invoice->package?->name }}@if ($invoice->credit > 0) · {{ __('platform.billing.credit', ['amount' => $money($invoice->credit)]) }}@endif</small>
                                 </td>

@@ -25,6 +25,7 @@ import { initAdminSettings } from './admin/settings';
 import { initAdminUsers } from './admin/users';
 import { initAdminLoading, initAdminReloadButtons, initFilterFormSkeletons } from './admin/loading';
 import { initAdminRealtime } from './admin/realtime';
+import { initAdminBilling } from './admin/billing';
 
 export {
     initAdminGoToTop,
@@ -82,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initAdminOrderOnBehalf();
     initCampaignOrderingLock();
     initAdminReports();
+    initAdminBilling();
     initAdminSettings();
     initAdminUsers();
     initAdminLoading();

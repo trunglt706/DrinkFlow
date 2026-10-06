@@ -29,8 +29,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class AdminSubscription extends Model
 {
     protected $fillable = [
-        'admin_id', 'previous_subscription_id', 'package_id', 'scheduled_package_id', 'status', 'price_snapshot', 'proration_credit',
-        'room_limit_snapshot', 'starts_at', 'expires_at', 'cancel_at_period_end', 'ended_at', 'approved_by_superadmin_id',
+        'admin_id', 'previous_subscription_id', 'package_id', 'scheduled_package_id', 'status', 'price_snapshot', 'period_months', 'proration_credit',
+        'room_limit_snapshot', 'starts_at', 'expires_at', 'renewal_reminder_sent_for', 'cancel_at_period_end', 'ended_at', 'approved_by_superadmin_id',
     ];
 
     protected function casts(): array
@@ -38,7 +38,9 @@ class AdminSubscription extends Model
         return [
             'status' => SubscriptionStatus::class,
             'price_snapshot' => 'integer',
+            'period_months' => 'integer',
             'proration_credit' => 'integer',
+            'renewal_reminder_sent_for' => 'datetime',
             'cancel_at_period_end' => 'boolean',
             'room_limit_snapshot' => 'integer',
             'starts_at' => 'datetime',
@@ -56,6 +58,35 @@ class AdminSubscription extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', SubscriptionStatus::Active->value);
+    }
+
+    /**
+     * Subscription waiting for its first invoice to be paid (self-registered Agent).
+     *
+     * @param Builder<AdminSubscription> $query Subscription query.
+     * @return Builder<AdminSubscription> Pending subscriptions.
+     */
+    public function scopePending(Builder $query): Builder
+    {
+        return $query->where('status', SubscriptionStatus::Pending->value);
+    }
+
+    /**
+     * Length of one billing period in months (at least 1).
+     */
+    public function periodMonths(): int
+    {
+        return max(1, (int) ($this->period_months ?? 1));
+    }
+
+    /**
+     * Price of one full billing period: the monthly price snapshot times the period length.
+     *
+     * @return int Amount in VND.
+     */
+    public function periodPrice(): int
+    {
+        return (int) $this->price_snapshot * $this->periodMonths();
     }
 
     /**

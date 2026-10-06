@@ -87,16 +87,18 @@ class SubscriptionUpgradeService
             }
 
             $now = now();
-            $credit = min($this->subscriptions->unusedCredit($current), $package->monthly_price);
-            $total = $package->monthly_price - $credit;
+            // The new package keeps the current billing cycle: one full period of it, minus the unused value of the current one.
+            $periodPrice = $package->monthly_price * $current->periodMonths();
+            $credit = min($this->subscriptions->unusedCredit($current), $periodPrice);
+            $total = $periodPrice - $credit;
             $invoice = AdminInvoice::create([
                 'admin_id' => $admin->id,
                 'admin_subscription_id' => $current->id,
                 'type' => InvoiceType::Upgrade->value,
                 'package_id' => $package->id,
                 'period_start' => $now,
-                'period_end' => $now->copy()->addMonthsNoOverflow(SubscriptionService::PERIOD_MONTHS),
-                'subtotal' => $package->monthly_price,
+                'period_end' => $now->copy()->addMonthsNoOverflow($current->periodMonths()),
+                'subtotal' => $periodPrice,
                 'credit' => $credit,
                 'total' => $total,
                 'paid_amount' => 0,

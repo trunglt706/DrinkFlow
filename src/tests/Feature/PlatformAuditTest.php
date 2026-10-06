@@ -62,17 +62,24 @@ class PlatformAuditTest extends TestCase
     {
         $this->post(route('admin.register'), [
             'name' => 'Applicant', 'email' => 'applicant@example.test', 'phone' => '0901234567',
-            'password' => 'secret-pass-1', 'password_confirmation' => 'secret-pass-1', 'package_id' => $this->package->id,
+            'package_id' => $this->package->id, 'period_quantity' => 6, 'period_unit' => 'month',
         ])->assertRedirect();
         $admin = Admin::query()->where('email', 'applicant@example.test')->firstOrFail();
-        $this->get(app(\App\Services\Admin\AdminEmailVerificationService::class)->link($admin));
-        $this->actingAs($this->owner, 'superadmin')->post(route('superadmin.registrations.approve', $admin));
+        $this->post(app(\App\Services\Admin\AdminActivationService::class)->link($admin), [
+            'sign_in_value' => 'secret-pass-1', 'sign_in_value_confirmation' => 'secret-pass-1',
+        ])->assertRedirect();
+        // Pay-to-activate: the Superadmin records the payment of the first invoice, which starts the package.
+        $invoice = $admin->invoices()->firstOrFail();
+        $this->actingAs($this->owner, 'superadmin')->post(route('superadmin.billing.payments.store', $invoice), [
+            'amount' => $invoice->total, 'method' => 'bank_transfer',
+        ])->assertRedirect();
 
-        $this->assertSame(['admin.registered', 'admin.email_verified', 'agent.approved'], $this->events('admin', $admin->id));
-        $approved = AuditLog::query()->where('event', 'agent.approved')->firstOrFail();
-        $this->assertSame(AuditLog::ACTOR_SUPERADMIN, $approved->actor_type);
-        $this->assertSame($this->owner->id, $approved->actor_id);
-        $this->assertSame(300000, $approved->after_data['price_snapshot']);
+        $this->assertSame(['admin.registered', 'agent.activated', 'subscription.started'], $this->events('admin', $admin->id));
+        $started = AuditLog::query()->where('event', 'subscription.started')->firstOrFail();
+        $this->assertSame(AuditLog::ACTOR_SUPERADMIN, $started->actor_type);
+        $this->assertSame($this->owner->id, $started->actor_id);
+        $this->assertSame(300000, $started->after_data['price_snapshot']);
+        $this->assertSame(6, $started->after_data['period_months']);
         $this->assertSame(AuditLog::ACTOR_SYSTEM, AuditLog::query()->where('event', 'admin.registered')->value('actor_type'));
     }
 

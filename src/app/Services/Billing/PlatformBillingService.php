@@ -6,6 +6,7 @@ namespace App\Services\Billing;
 
 use App\Enums\InvoiceStatus;
 use App\Enums\PlatformPaymentMethod;
+use App\Mail\SubscriptionStartedMail;
 use App\Models\AdminInvoice;
 use App\Models\AdminPayment;
 use App\Models\AdminSubscription;
@@ -18,6 +19,7 @@ use App\Services\Subscription\SubscriptionUpgradeService;
 use Carbon\CarbonInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -34,6 +36,7 @@ class PlatformBillingService
         private readonly AuditService $audit,
         private readonly BillingEnforcementService $enforcement,
         private readonly SubscriptionUpgradeService $upgrades,
+        private readonly SubscriptionService $subscriptions,
     ) {}
 
     /**
@@ -69,27 +72,29 @@ class PlatformBillingService
     {
         $now ??= now();
         $periodEnd = $subscription->expires_at->copy();
-        $periodStart = $periodEnd->copy()->subMonthsNoOverflow(SubscriptionService::PERIOD_MONTHS);
+        $periodStart = $periodEnd->copy()->subMonthsNoOverflow($subscription->periodMonths());
         if ($periodStart->lessThan($subscription->starts_at)) {
             $periodStart = $subscription->starts_at->copy();
         }
+        // Any invoice of the period counts: a paid upgrade invoice is moved onto the new subscription as its first period.
         if (AdminInvoice::query()->where('admin_subscription_id', $subscription->id)->where('period_start', $periodStart)->exists()) {
             return null;
         }
 
         $firstPeriod = $periodStart->equalTo($subscription->starts_at);
-        $credit = $firstPeriod ? min($subscription->proration_credit, $subscription->price_snapshot) : 0;
-        $total = $subscription->price_snapshot - $credit;
+        $periodPrice = $subscription->periodPrice();
+        $credit = $firstPeriod ? min($subscription->proration_credit, $periodPrice) : 0;
+        $total = $periodPrice - $credit;
 
         try {
-            return DB::transaction(function () use ($subscription, $periodStart, $periodEnd, $credit, $total, $now): AdminInvoice {
+            return DB::transaction(function () use ($subscription, $periodStart, $periodEnd, $periodPrice, $credit, $total, $now): AdminInvoice {
                 $invoice = AdminInvoice::create([
                     'admin_id' => $subscription->admin_id,
                     'admin_subscription_id' => $subscription->id,
                     'package_id' => $subscription->package_id,
                     'period_start' => $periodStart,
                     'period_end' => $periodEnd,
-                    'subtotal' => $subscription->price_snapshot,
+                    'subtotal' => $periodPrice,
                     'credit' => $credit,
                     'total' => $total,
                     'paid_amount' => 0,
@@ -166,6 +171,82 @@ class PlatformBillingService
      * @return AdminPayment Recorded payment.
      * @throws ValidationException When the invoice is not outstanding or the amount is invalid.
      */
+    /**
+     * Issue the first invoice of a pending (self-registered) subscription: one full billing period.
+     *
+     * The period dates are provisional (from now); they move to the payment date when the invoice is
+     * settled. A free package is settled at once, which starts the subscription immediately.
+     *
+     * @param AdminSubscription $subscription Pending subscription.
+     * @return AdminInvoice Issued invoice.
+     */
+    public function invoicePendingSubscription(AdminSubscription $subscription): AdminInvoice
+    {
+        return DB::transaction(function () use ($subscription): AdminInvoice {
+            $now = now();
+            $total = $subscription->periodPrice();
+            $invoice = AdminInvoice::create([
+                'admin_id' => $subscription->admin_id,
+                'admin_subscription_id' => $subscription->id,
+                'type' => InvoiceType::Subscription->value,
+                'package_id' => $subscription->package_id,
+                'period_start' => $now,
+                'period_end' => $now->copy()->addMonthsNoOverflow($subscription->periodMonths()),
+                'subtotal' => $total,
+                'credit' => 0,
+                'total' => $total,
+                'paid_amount' => 0,
+                'status' => $total === 0 ? InvoiceStatus::Paid->value : InvoiceStatus::Open->value,
+                'issued_at' => $now,
+                'due_at' => $now->copy()->addDays((int) config('platform.billing.due_days', 7)),
+                'paid_at' => $total === 0 ? $now : null,
+            ]);
+            $invoice->update(['number' => sprintf('INV-%s-%06d', $now->format('Ym'), $invoice->id)]);
+            $this->audit->record('invoice.issued', 'admin_invoice', $invoice->id, null, [], [
+                'admin_id' => $invoice->admin_id,
+                'number' => $invoice->number,
+                'total' => $invoice->total,
+                'period_months' => $subscription->periodMonths(),
+                'reason' => 'registration',
+            ]);
+            if ($total === 0) {
+                $this->startPendingSubscription($invoice, $now);
+            }
+
+            return $invoice->refresh();
+        });
+    }
+
+    /**
+     * Start a self-registered Agent's subscription once its first invoice is settled.
+     *
+     * The first period runs from the payment, so the invoice is moved onto the real period, and the
+     * Agent is told by email that the package is now usable. A no-op for any other invoice.
+     *
+     * @param AdminInvoice $invoice Settled subscription invoice (locked by the caller).
+     * @param CarbonInterface $paidAt Payment time.
+     * @return void
+     */
+    private function startPendingSubscription(AdminInvoice $invoice, CarbonInterface $paidAt): void
+    {
+        $subscription = AdminSubscription::query()->find($invoice->admin_subscription_id);
+        if ($subscription === null || $subscription->status !== \App\Enums\SubscriptionStatus::Pending) {
+            return;
+        }
+        $subscription = $this->subscriptions->activatePending($subscription, $paidAt);
+        if ($subscription === null) {
+            return;
+        }
+        $invoice->update(['period_start' => $subscription->starts_at, 'period_end' => $subscription->expires_at]);
+
+        $admin = $invoice->admin()->first();
+        if ($admin !== null) {
+            Mail::to($admin->email)->queue(
+                (new SubscriptionStartedMail($admin, $subscription->loadMissing('package')))->locale(app()->getLocale())->afterCommit(),
+            );
+        }
+    }
+
     public function recordPayment(AdminInvoice $invoice, ?Superadmin $actor, int $amount, PlatformPaymentMethod $method, ?string $reference = null, ?CarbonInterface $paidAt = null, ?string $note = null, ?string $gatewayTransactionId = null): AdminPayment
     {
         $payment = DB::transaction(function () use ($invoice, $actor, $amount, $method, $reference, $paidAt, $note, $gatewayTransactionId): AdminPayment {
@@ -208,6 +289,8 @@ class PlatformBillingService
             if ($settled && $invoice->isUpgrade()) {
                 // The upgrade was waiting for this payment: start the new package in the same transaction.
                 $this->upgrades->applyPaid($invoice, $paidAt);
+            } elseif ($settled) {
+                $this->startPendingSubscription($invoice, $paidAt);
             }
 
             return $payment;

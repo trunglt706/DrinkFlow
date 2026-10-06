@@ -7,6 +7,7 @@ namespace App\Services\Billing;
 use App\Actions\Superadmin\AgentLifecycleAction;
 use App\Enums\AdminStatus;
 use App\Enums\InvoiceStatus;
+use App\Enums\SubscriptionStatus;
 use App\Models\Admin;
 use App\Models\AdminInvoice;
 use App\Services\Audit\AuditService;
@@ -26,6 +27,7 @@ class BillingEnforcementService
     public function __construct(
         private readonly AgentLifecycleAction $lifecycle,
         private readonly AuditService $audit,
+        private readonly BillingSuspensionNotifier $notifier,
     ) {}
 
     /**
@@ -63,7 +65,10 @@ class BillingEnforcementService
         }
         $now ??= now();
         $graceStart = $now->copy()->subDays((int) config('platform.billing.grace_days', 7));
+        // Only invoices of a running package suspend: an unpaid registration invoice simply leaves the
+        // package unstarted (there is no service to suspend yet).
         $adminIds = AdminInvoice::query()->where('status', InvoiceStatus::Overdue->value)->where('due_at', '<', $graceStart)
+            ->whereHas('subscription', static fn ($query) => $query->where('status', '!=', SubscriptionStatus::Pending->value))
             ->distinct()->pluck('admin_id');
 
         $suspended = 0;
@@ -77,6 +82,8 @@ class BillingEnforcementService
                 $this->lifecycle->suspend($admin, __('platform.billing.auto_suspend_reason', ['number' => $invoice?->number]));
                 $admin->forceFill(['billing_suspended_at' => $now])->save();
                 $this->audit->record('agent.auto_suspended', 'admin', $admin->id, null, [], ['invoice_id' => $invoice?->id, 'invoice_number' => $invoice?->number]);
+                // Email to the Agent + inbox/realtime/outbound alerts to its responsible Superadmins (after commit).
+                $this->notifier->notifySuspended($admin, $invoice);
             });
             $suspended++;
         }

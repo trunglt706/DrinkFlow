@@ -44,6 +44,11 @@ Schedule::command('subscriptions:process')
     ->hourly()
     ->withoutOverlapping();
 
+// Remind Agents a few days before their package period ends (once per period).
+Schedule::command('subscriptions:remind-renewals')
+    ->dailyAt('08:00')
+    ->withoutOverlapping();
+
 // 7. Platform billing: invoice new subscription periods, then flag unpaid invoices past their due date
 Schedule::command('billing:generate-invoices')
     ->hourlyAt(10)

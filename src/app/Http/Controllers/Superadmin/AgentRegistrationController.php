@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Superadmin;
 
 use App\Actions\Superadmin\ReviewAgentRegistrationAction;
 use App\Enums\AdminStatus;
+use App\Enums\InvoiceType;
 use App\Enums\Permission;
 use App\Enums\PermissionScope;
 use App\Enums\SuperadminStatus;
@@ -15,6 +16,7 @@ use App\Http\Requests\RejectAgentRegistrationRequest;
 use App\Models\Admin;
 use App\Models\Package;
 use App\Models\Superadmin;
+use App\Services\Authorization\AgentScope;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -67,9 +69,10 @@ class AgentRegistrationController extends Controller
      *
      * @param Request $request Incoming request.
      * @param Admin $admin Registering Agent.
+     * @param AgentScope $scope Superadmin scope (billing link only for those who may open it).
      * @return View Review page.
      */
-    public function show(Request $request, Admin $admin): View
+    public function show(Request $request, Admin $admin, AgentScope $scope): View
     {
         abort_unless($admin->registered_at !== null, 404);
         $actor = $this->actor($request);
@@ -78,8 +81,15 @@ class AgentRegistrationController extends Controller
             \Illuminate\Support\Facades\Gate::forUser($actor)->authorize('view', $admin);
         }
 
+        // Pay-to-activate registration: its first invoice replaces the approval form.
+        $firstInvoice = ReviewAgentRegistrationAction::awaitsPayment($admin)
+            ? $admin->invoices()->where('type', InvoiceType::Subscription->value)->oldest('id')->first()
+            : null;
+
         return view('superadmin.registrations.show', [
             'registration' => $admin->load(['requestedPackage', 'reviewedBy']),
+            'firstInvoice' => $firstInvoice,
+            'canViewBilling' => $scope->allows($actor, Permission::DebtView, $admin->id),
             'packages' => Package::query()->selectable()->get(),
             'managers' => Superadmin::query()->where('status', SuperadminStatus::Active->value)->orderBy('name')->get(['id', 'name', 'email']),
             'managedApprover' => $actor->scopeFor(Permission::AgentApprove) === PermissionScope::Managed,

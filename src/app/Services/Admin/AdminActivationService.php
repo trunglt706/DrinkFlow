@@ -6,8 +6,10 @@ namespace App\Services\Admin;
 
 use App\Enums\AdminStatus;
 use App\Enums\PackageStatus;
+use App\Enums\SubscriptionStatus;
 use App\Mail\AdminActivatedMail;
 use App\Models\Admin;
+use App\Models\AdminSubscription;
 use App\Models\Package;
 use App\Services\Audit\AuditService;
 use App\Services\Subscription\SubscriptionService;
@@ -109,6 +111,15 @@ class AdminActivationService
                 $this->reject(__('platform.activation.already_active'));
             }
 
+            // A self-registered Agent already has its subscription (pending until the first invoice is paid):
+            // activating the account only sets the password, it never grants the package for free.
+            $registered = AdminSubscription::query()->where('admin_id', $admin->id)
+                ->whereIn('status', [SubscriptionStatus::Pending->value, SubscriptionStatus::Active->value])
+                ->latest('id')->first();
+            if ($registered !== null) {
+                return $this->activateRegistered($admin, $registered, $signInValue, $ip);
+            }
+
             $package = Package::query()->lockForUpdate()->find($admin->requested_package_id);
             if ($package === null || $package->status !== PackageStatus::Active) {
                 $this->reject(__('platform.activation.package_unavailable'));
@@ -150,6 +161,39 @@ class AdminActivationService
      * @return never
      * @throws ValidationException Always.
      */
+    /**
+     * Activate the account of a self-registered Agent: password, verified email and `active` status.
+     *
+     * The subscription is left as it is (it starts when the first invoice is paid), so the Agent can sign
+     * in and pay but gets no room quota before that. No "activated" email: the registration email already
+     * carried the invoice, and the package email is sent when the payment starts the subscription.
+     *
+     * @param Admin $admin Locked pending Agent.
+     * @param AdminSubscription $subscription Subscription created at registration.
+     * @param string $signInValue Chosen sign-in value.
+     * @param string|null $ip Client IP for the audit trail.
+     * @return Admin Activated Agent.
+     */
+    private function activateRegistered(Admin $admin, AdminSubscription $subscription, string $signInValue, ?string $ip): Admin
+    {
+        // System-managed columns: not mass assignable, and hashed by the model cast on save.
+        $admin->forceFill([self::SIGN_IN_COLUMN => $signInValue]);
+        $admin->forceFill(['email_verified_at' => $admin->email_verified_at ?? now()]);
+        $admin->update([
+            'status' => AdminStatus::Active->value,
+            'reviewed_at' => now(),
+            'rejection_reason' => null,
+        ]);
+        $this->audit->record('agent.activated', 'admin', $admin->id, null, ['status' => AdminStatus::Pending->value], [
+            'status' => AdminStatus::Active->value,
+            'subscription_id' => $subscription->id,
+            'subscription_status' => $subscription->status->value,
+            'ip' => $ip,
+        ]);
+
+        return $admin;
+    }
+
     private function reject(string $message): never
     {
         throw ValidationException::withMessages([self::FORM_FIELD => $message]);
