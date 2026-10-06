@@ -5,7 +5,15 @@ declare(strict_types=1);
 return [
     'anonymous' => 'Member',
 
+    'types' => [
+        'sponsors' => 'Sponsor draw',
+        'shops' => 'Shop draw',
+    ],
+
     'fields' => [
+        'type' => 'Draw type',
+        'shops' => 'Shops',
+        'new_shops' => 'Add shops',
         'campaign' => 'Campaign',
         'target_winner_count' => 'Number of sponsors to draw',
         'target_campaign' => 'Campaign receiving the sponsors',
@@ -13,9 +21,12 @@ return [
     ],
 
     'errors' => [
+        'cannot_configure' => 'The settings can no longer change: a turn was drawn or the session is over.',
+        'not_configured' => 'The draw session is not set up yet.',
+        'shops_count' => 'Pick between 2 and :max shops.',
         'campaign_not_in_room' => 'The campaign does not belong to this room.',
-        'target_invalid' => 'The receiving campaign must belong to this room, differ from the source campaign and still be open.',
-        'no_eligible' => 'The campaign has no active member eligible for the draw.',
+        'target_invalid' => 'The sponsored campaign must belong to this room and still be open.',
+        'no_eligible' => 'The room has no active member to draw.',
         'too_many_winners' => 'The number of sponsors must be between 1 and :count (eligible members).',
         'cancelled' => 'The draw session was cancelled.',
         'cannot_draw' => 'This draw session does not allow another turn.',
@@ -29,6 +40,9 @@ return [
     ],
 
     'notify' => [
+        'room_title' => 'Sponsor draw result · :room',
+        'shop_title' => 'Shop draw result · :room',
+        'shop_winner' => 'Chosen shop: :name',
         'title' => 'Sponsor draw result: :campaign',
         'campaign' => 'Campaign: :name',
         'winner' => ':order. :name',
@@ -36,6 +50,8 @@ return [
     ],
 
     'flash' => [
+        'draft_created' => 'New session created. Set the draw type up to start.',
+        'configured' => 'Settings saved: list frozen and link issued.',
         'created' => 'Draw session created and its access link issued.',
         'link_issued' => 'New link issued; the previous link no longer works.',
         'cancelled' => 'Draw session cancelled.',
@@ -44,14 +60,28 @@ return [
     ],
 
     'admin' => [
+        'confirm_after_draw_shops' => 'The confirm button appears once the shop is drawn.',
+        'new_session' => 'New session',
+        'col_type' => 'Type',
+        'settings' => 'Settings',
+        'settings_title' => 'Draw settings',
+        'settings_hint' => 'The eligible list is frozen when saved and can only change before the first turn.',
+        'type_sponsors_hint' => ':count active members of the room take part in the draw.',
+        'type_shops_hint' => 'Pick the shops on the wheel; one shop is drawn at random.',
+        'shops_suggested' => 'Shops from past campaigns',
+        'shops_none' => 'No shop from past campaigns yet. Add some below.',
+        'shops_new_hint' => 'One shop per line.',
+        'settings_save' => 'Save settings',
+        'draft_title' => 'This draw is not set up yet',
+        'draft_hint' => 'Choose the draw type (sponsors or shops) to freeze the list and issue the members\' link.',
+        'settings_locked' => 'A turn was drawn, so the settings can no longer change.',
+        'reconfigure_hint' => 'Saving again freezes a new list with a new seed; the change is recorded in the proof.',
+        'shops_selected' => ':count shops',
         'nav' => 'Sponsor draw',
         'title' => 'Sponsor draw',
-        'description' => 'Create a session that draws sponsors among the campaign members. The server picks at random, each member can win at most once, and members watch live through a time-limited link.',
-        'create_title' => 'New draw session',
-        'create_hint' => 'The eligible list (active members who did not decline the campaign) is frozen on creation and never changes during the session.',
+        'description' => 'Draw sponsors among the room\'s members, or draw a shop. The server picks at random and every candidate wins at most once; members watch live through a time-limited link.',
         'optional' => 'optional',
         'target_none' => 'None',
-        'create_submit' => 'Create session & issue link',
         'target_hint' => 'When a receiving campaign is chosen, confirming the result makes it fully sponsored and splits the shares equally between the winners.',
         'sessions_title' => 'Draw sessions',
         'col_progress' => 'Drawn',
@@ -114,16 +144,17 @@ return [
     'landing' => [
         'page_title' => 'Sponsor draw · :campaign',
         'heading' => 'Live sponsor draw',
-        'intro' => 'You are watching the campaign\'s draw. Only admins draw; the server picks the result and everyone sees it at the same time.',
+        'intro' => 'You are watching a draw of the room. Only admins draw; the server picks and everyone sees the result at the same time.',
         'expired_title' => 'Link expired',
         'expired_body' => 'This draw link is no longer valid. Ask the room admin for a new link.',
         'forbidden_title' => 'Access denied',
-        'forbidden_body' => 'You are not part of this draw\'s campaign.',
+        'forbidden_body' => 'You are not an active member of the room of this draw.',
         'back_to_room' => 'Back to the room',
     ],
 
     'js' => [
         'status' => [
+            'draft' => 'Draft',
             'ready' => 'Ready',
             'drawing' => 'Drawing',
             'completed' => 'Awaiting confirmation',
@@ -157,5 +188,18 @@ return [
         'slot_closed' => '[Not drawn]',
         'already_won' => 'Won',
         'picking' => 'Picking',
+    ],
+    'stage_shops' => [
+        'auto_exclude' => 'Chosen shops are excluded automatically',
+        'eyebrow' => 'Shop draw',
+        'eligible_list' => 'Shops',
+        'search_placeholder' => 'Search a shop…',
+        'no_match' => 'No matching shop.',
+    ],
+    'js_shops' => [
+        'people' => ':count shops',
+        'reel_winner' => 'Chosen shop',
+        'remaining_people' => 'Left: :count shops',
+        'waiting_confirm' => 'A shop was chosen. Waiting for the admin to confirm and notify.',
     ],
 ];

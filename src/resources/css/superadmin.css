@@ -75,6 +75,15 @@
     --sa-chart-area: rgb(79 70 229 / .1);
     --sa-chart-grid: #f0f0f2;
     --sa-chart-axis: #71717a;
+    /* Categorical series in fixed order (validated for CVD + contrast on this surface; slots 3-5 sit below 3:1, so charts using them ship a table view). */
+    --sa-series-1: #2a78d6;
+    --sa-series-2: #eb6834;
+    --sa-series-3: #1baf7a;
+    --sa-series-4: #eda100;
+    --sa-series-5: #e87ba4;
+    --sa-series-6: #008300;
+    --sa-series-7: #4a3aa7;
+    --sa-series-8: #e34948;
     --sa-heat-0: #f4f4f5;
     --sa-heat-1: #e0e7ff;
     --sa-heat-2: #a5b4fc;
@@ -139,6 +148,15 @@
     --sa-chart-area: rgb(129 140 248 / .14);
     --sa-chart-grid: #232327;
     --sa-chart-axis: #a1a1aa;
+    /* Categorical series in fixed order (validated for CVD + contrast on this surface). */
+    --sa-series-1: #3987e5;
+    --sa-series-2: #d95926;
+    --sa-series-3: #199e70;
+    --sa-series-4: #c98500;
+    --sa-series-5: #d55181;
+    --sa-series-6: #008300;
+    --sa-series-7: #9085e9;
+    --sa-series-8: #e66767;
     --sa-heat-0: #1f1f23;
     --sa-heat-1: #272a4d;
     --sa-heat-2: #3730a3;
@@ -863,6 +881,9 @@ form.superadmin-actions .sa-button, .sa-filters .sa-button { height: 36px; }
 .sa-table tbody tr:hover > td[colspan] { background: transparent; }
 .sa-table tbody td[colspan] > .border-dashed { border-width: 0; background: transparent; }
 .sa-table tbody td.sa-empty { padding: 32px 20px; color: var(--sa-text-3); text-align: center; }
+/* Shared empty / loading state (components/superadmin/empty-state) spanning a whole table row. */
+.sa-table tbody td.sa-empty-cell { padding: 12px; }
+.sa-table tbody tr:hover > td.sa-empty-cell { background: transparent; }
 
 /* Row actions (components/superadmin/row-actions.blade.php): primary icon buttons + ⋯ dropdown. */
 .sa-row-actions { display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; }
@@ -1092,6 +1113,25 @@ a.sa-tab { text-decoration: none; white-space: nowrap; }
 .sa-legend { display: flex; flex-wrap: wrap; gap: 10px; color: var(--sa-text-2); font-size: 12px; font-weight: 600; }
 .sa-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .sa-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+.sa-swatch[style*="--swatch"] { background: var(--swatch); }
+.sa-swatch.sa-swatch-line { width: 14px; height: 2px; border-radius: 1px; }
+/* Revenue page (resources/js/superadmin/revenue-charts.js): one VND axis, bars = invoiced, line = collected. */
+.sa-revenue-split { align-items: start; }
+.sa-revenue-split > .sa-section { min-width: 0; }
+.sa-combo-band { fill: transparent; }
+.sa-combo-band.is-active { fill: var(--sa-chart-grid); }
+.sa-combo-bar { fill: var(--sa-series-1); }
+.sa-combo-line { fill: none; stroke: var(--sa-series-2); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sa-combo-marker { fill: var(--sa-series-2); stroke: var(--sa-surface); stroke-width: 2; }
+.sa-combo-label { fill: var(--sa-text-2); font-size: 11px; font-weight: 600; }
+.sa-donut-wrap { display: flex; justify-content: center; margin-bottom: 12px; }
+.sa-donut { width: 200px; min-height: 200px; }
+.sa-donut-slice { stroke: var(--sa-surface); stroke-width: 2; cursor: pointer; transition: opacity 120ms ease; }
+.sa-donut.has-focus .sa-donut-slice:not(.is-active) { opacity: .35; }
+.sa-donut-center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+.sa-donut-center strong { color: var(--sa-text); font-size: 15px; font-variant-numeric: tabular-nums; }
+.sa-donut-center small { color: var(--sa-text-3); font-size: 11px; }
+tr[data-package-slot].is-active td { background: var(--sa-surface-2); }
 .sa-swatch.sev-low, .sa-sev.sev-low { background: var(--sa-sev-low); fill: var(--sa-sev-low); }
 .sa-swatch.sev-medium, .sa-sev.sev-medium { background: var(--sa-sev-medium); fill: var(--sa-sev-medium); }
 .sa-swatch.sev-high, .sa-sev.sev-high { background: var(--sa-sev-high); fill: var(--sa-sev-high); }
@@ -1132,16 +1172,6 @@ a.sa-tab { text-decoration: none; white-space: nowrap; }
 .sa-infra-chart figcaption { margin-bottom: 6px; color: var(--sa-text-2); font-size: 12.5px; font-weight: 600; }
 
 /* Revenue trend (billing/revenue.blade.php): two bars per month, widths relative to the peak month. */
-.sa-trend { display: grid; gap: 14px; }
-.sa-trend-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: center; gap: 12px; }
-.sa-trend-month { color: var(--sa-text-3); font-family: var(--sa-mono); font-size: 12px; }
-.sa-trend-bars { display: grid; gap: 4px; }
-.sa-trend-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, 42%); align-items: center; gap: 10px; }
-.sa-trend-track { height: 8px; overflow: hidden; border-radius: 4px; background: var(--sa-surface-2); }
-.sa-trend-track > span { display: block; height: 100%; border-radius: 4px; }
-.sa-trend-bar small { overflow: hidden; color: var(--sa-text-2); font-size: 12px; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
-.sa-bar-invoiced { background: var(--sa-heat-2); }
-.sa-bar-collected { background: var(--sa-accent); }
 
 /* ==========================================================================
    8. Responsive

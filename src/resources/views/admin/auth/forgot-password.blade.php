@@ -1,89 +1,63 @@
-<x-admin-auth.layout :title="__('admin.forgot_password_title')">
-    <x-slot name="brandHero">
-        <div>
-            <h2 class="text-2xl lg:text-3xl font-bold tracking-tight text-on-surface leading-tight">
-                {{ __('admin.forgot_hero_heading') }}
-            </h2>
-        </div>
+{{-- Admin password recovery, step 1/3: ask for the account email and send a one-time code. Same centered card as
+     the sign-in page; components/admin-auth/recovery-steps shows where the visitor is in the flow. --}}
+@php
+    $inputWrap = 'relative flex items-center h-[45px] rounded-[10px] border border-outline-variant bg-surface-container-lowest focus-within:border-primary focus-within:ring-[3px] focus-within:ring-primary/15 transition-all';
+    $input = 'w-full min-w-0 border-0 bg-transparent px-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:ring-0 outline-none focus:!shadow-none autofill:[transition:background-color_600000s_0s,color_600000s_0s] font-medium';
+@endphp
+<x-admin-auth.layout :title="__('admin.forgot_password_title')" :centered="true">
+    <div class="mx-auto w-full max-w-[440px] rounded-3xl border border-emerald-100 bg-white/95 shadow-[0_28px_80px_rgba(32,74,60,0.12)] px-5 py-7 sm:px-9 sm:py-9">
+        <x-admin-auth.recovery-steps :current="1" />
 
-        <p class="text-xs lg:text-sm text-slate-600 leading-relaxed">
-            {{ __('admin.forgot_hero_desc') }}
-        </p>
+        <header class="text-center mb-6">
+            <span class="mx-auto mb-5 w-[64px] h-[64px] grid place-items-center rounded-[20px] text-white shadow-lg shadow-emerald-900/20"
+                style="background: linear-gradient(135deg, #006948 0%, #10a374 100%);" aria-hidden="true">
+                <span class="material-symbols-outlined !text-[32px]">lock_reset</span>
+            </span>
+            <h1 class="text-2xl sm:text-[26px] font-bold tracking-tight text-on-surface">{{ __('admin.forgot_password_heading') }}</h1>
+            <p class="mt-1.5 text-[13px] text-outline">{{ __('admin.forgot_password_subheading') }}</p>
+        </header>
 
-        <div class="space-y-3 pt-2">
-            <div class="flex items-center gap-3 p-3 rounded-lg bg-white/80 shadow-xs border border-emerald-100">
-                <div class="w-8 h-8 rounded bg-emerald-100 text-primary flex items-center justify-center shrink-0">
-                    <span class="material-symbols-outlined text-[18px]">verified_user</span>
-                </div>
-                <div>
-                    <strong class="text-xs font-semibold text-on-surface block">{{ __('admin.two_factor_otp') }}</strong>
-                    <span class="text-[11px] text-slate-500">{{ __('admin.otp_validity_15m') }}</span>
+        @if ($errors->any())
+            <div class="mb-4 rounded-xl bg-error-container p-3 text-xs font-medium text-on-error-container border border-error/20 flex items-center gap-2" role="alert">
+                <span class="material-symbols-outlined !text-[18px] text-error shrink-0" aria-hidden="true">error</span>
+                <span>{{ $errors->first() }}</span>
+            </div>
+        @endif
+        @if (session('status'))
+            <div class="mb-4 rounded-xl bg-emerald-50 p-3 text-xs font-medium text-emerald-800 border border-emerald-200 flex items-center gap-2" role="status">
+                <span class="material-symbols-outlined !text-[18px] text-emerald-600 shrink-0" aria-hidden="true">check_circle</span>
+                <span>{{ session('status') }}</span>
+            </div>
+        @endif
+
+        <form method="post" action="{{ route('admin.forgot-password.send') }}" data-loading-form="true" class="space-y-4">
+            @csrf
+            <div>
+                <label for="admin-email" class="block text-xs font-semibold text-on-surface mb-1">{{ __('admin.email_address') }}</label>
+                <div class="{{ $inputWrap }} @error('email') !border-error @enderror">
+                    <span class="material-symbols-outlined text-outline pl-3 !text-[18px]" aria-hidden="true">alternate_email</span>
+                    <input id="admin-email" name="email" type="email" value="{{ old('email') }}" required autofocus autocomplete="username"
+                        class="{{ $input }}" placeholder="admin@company.com">
                 </div>
             </div>
 
-            <div class="flex items-center gap-3 p-3 rounded-lg bg-white/80 shadow-xs border border-emerald-100">
-                <div class="w-8 h-8 rounded bg-emerald-100 text-primary flex items-center justify-center shrink-0">
-                    <span class="material-symbols-outlined text-[18px]">policy</span>
-                </div>
-                <div>
-                    <strong class="text-xs font-semibold text-on-surface block">{{ __('admin.security_audit_trail') }}</strong>
-                    <span class="text-[11px] text-slate-500">{{ __('admin.security_audit_desc') }}</span>
-                </div>
-            </div>
-        </div>
-    </x-slot>
+            <p class="flex gap-2 rounded-[11px] bg-emerald-50 p-3 text-[11px] leading-relaxed text-on-surface-variant">
+                <span class="material-symbols-outlined !text-[16px] text-primary shrink-0" aria-hidden="true">schedule</span>
+                <span><strong class="text-on-surface">{{ __('admin.two_factor_otp') }}</strong> · {{ __('admin.otp_validity_15m') }}. {{ __('admin.forgot_note_desc') }}</span>
+            </p>
 
-    <div>
-        <a href="{{ route('admin.login.page') }}" class="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-container mb-4 no-underline">
-            <span class="material-symbols-outlined text-[16px]">arrow_back</span>
-            <span>{{ __('admin.back_to_login') }}</span>
-        </a>
-        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-on-surface">{{ __('admin.forgot_password_heading') }}</h1>
-        <p class="text-xs text-outline mt-1">{{ __('admin.forgot_password_subheading') }}</p>
-    </div>
+            <button type="submit"
+                class="w-full h-[45px] flex items-center justify-center gap-2 rounded-[10px] bg-primary hover:bg-primary-container text-on-primary text-sm font-semibold shadow-sm hover:shadow transition-all duration-150 active:scale-[0.99] cursor-pointer">
+                <span class="material-symbols-outlined !text-[18px]" aria-hidden="true">send</span>
+                <span>{{ __('admin.send_otp_code') }}</span>
+            </button>
+        </form>
 
-    @if ($errors->any())
-        <div class="mt-4 rounded-xl bg-error-container p-3 text-xs font-medium text-on-error-container border border-error/20 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[18px] text-error shrink-0">error</span>
-            <span>{{ $errors->first() }}</span>
-        </div>
-    @endif
-
-    @if (session('status'))
-        <div class="mt-4 rounded-xl bg-emerald-50 p-3 text-xs font-medium text-emerald-800 border border-emerald-200 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[18px] text-emerald-600 shrink-0">check_circle</span>
-            <span>{{ session('status') }}</span>
-        </div>
-    @endif
-
-    <form method="post" action="{{ route('admin.forgot-password.send') }}" data-loading-form="true" class="mt-5 space-y-4">
-        @csrf
-        <div>
-            <label for="admin-email" class="block text-xs font-semibold text-on-surface mb-1">
-                {{ __('admin.email_address') }}
-            </label>
-            <div class="relative flex items-center rounded-lg border border-outline-variant bg-surface-container-lowest focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
-                <span class="material-symbols-outlined text-outline pl-3 text-[18px]">alternate_email</span>
-                <input id="admin-email" name="email" type="email" value="{{ old('email') }}" required autofocus
-                    class="w-full border-0 bg-transparent px-3 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:ring-0 outline-none font-medium"
-                    placeholder="admin@company.com">
-            </div>
-        </div>
-
-        <button type="submit"
-            class="w-full flex items-center justify-center gap-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary py-2.5 px-4 text-sm font-semibold shadow-sm transition-colors cursor-pointer">
-            <span class="material-symbols-outlined text-[18px]">send</span>
-            <span>{{ __('admin.send_otp_code') }}</span>
-        </button>
-    </form>
-
-    <div class="mt-6 p-4 rounded-xl bg-surface-container-low border border-outline-variant/60 text-xs text-outline space-y-1">
-        <div class="font-semibold text-on-surface flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-[16px] text-primary">info</span>
-            <span>{{ __('admin.important_note') }}</span>
-        </div>
-        <p class="leading-relaxed">
-            {{ __('admin.forgot_note_desc') }}
+        <p class="mt-6 pt-5 border-t border-emerald-100 text-center">
+            <a href="{{ route('admin.login.page') }}" class="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
+                <span class="material-symbols-outlined !text-[18px]" aria-hidden="true">arrow_back</span>
+                <span>{{ __('admin.back_to_login') }}</span>
+            </a>
         </p>
     </div>
 </x-admin-auth.layout>

@@ -23,16 +23,16 @@ Route::post('/admin/register/resend', [\App\Http\Controllers\Admin\RegistrationC
     ->name('admin.register.resend');
 Route::get('/admin/register/verify/{admin}/{hash}', [\App\Http\Controllers\Admin\RegistrationController::class, 'verify'])
     ->whereNumber('admin')
-    ->middleware(['signed', 'throttle:6,1'])
+    ->middleware([\App\Http\Middleware\RepairHtmlEscapedQuery::class, 'signed:relative', 'throttle:6,1'])
     ->name('admin.register.verify');
 // Invited Agent activation: choose the sign-in value, then the account becomes active.
 Route::get('/admin/activate/{admin}/{hash}', [\App\Http\Controllers\Admin\ActivationController::class, 'form'])
     ->whereNumber('admin')
-    ->middleware(['signed', 'throttle:6,1'])
+    ->middleware([\App\Http\Middleware\RepairHtmlEscapedQuery::class, 'signed:relative', 'throttle:6,1'])
     ->name('admin.activate.form');
 Route::post('/admin/activate/{admin}/{hash}', [\App\Http\Controllers\Admin\ActivationController::class, 'activate'])
     ->whereNumber('admin')
-    ->middleware(['signed', 'throttle:6,1'])
+    ->middleware(['signed:relative', 'throttle:6,1'])
     ->name('admin.activate');
 Route::get('/admin/forgot-password',[\App\Http\Controllers\Admin\AuthController::class, 'forgotPasswordPage'])
     ->middleware('throttle:admin-forgot-password')
@@ -106,6 +106,7 @@ Route::middleware(['auth:admin', 'admin.room', 'room.subscription'])
     Route::get('/sponsor-draws', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'index'])->name('admin.sponsor-draws.index');
     Route::post('/sponsor-draws', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'store'])->middleware('throttle:20,1')->name('admin.sponsor-draws.store');
     Route::get('/sponsor-draws/{sponsorDraw}', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'show'])->whereNumber('sponsorDraw')->name('admin.sponsor-draws.show');
+    Route::put('/sponsor-draws/{sponsorDraw}/settings', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'settings'])->whereNumber('sponsorDraw')->middleware('throttle:20,1')->name('admin.sponsor-draws.settings');
     Route::get('/sponsor-draws/{sponsorDraw}/state', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'state'])->whereNumber('sponsorDraw')->middleware('json.only')->name('admin.sponsor-draws.state');
     Route::get('/sponsor-draws/{sponsorDraw}/proof', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'proof'])->whereNumber('sponsorDraw')->name('admin.sponsor-draws.proof');
     Route::get('/sponsor-draws/{sponsorDraw}/socket-token', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'socketToken'])->whereNumber('sponsorDraw')->middleware('json.only')->name('admin.sponsor-draws.socket-token');

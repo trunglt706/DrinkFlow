@@ -2,8 +2,7 @@
  * Superadmin page modules. A page opts in by rendering <x-superadmin.page-script name="…">, which outputs a hidden
  * [data-sa-page] element carrying the page's translations (data-i18n) and URLs (data-urls).
  */
-import initAdminDetailPage from './admin-detail';
-import initAdminsPage from './admins';
+import initAgentDetailPage from './agent-detail';
 import initAuditPage from './audit';
 import initCampaignsPage from './campaigns';
 import initDashboardPage from './dashboard';
@@ -18,8 +17,7 @@ import initUserDetailPage from './user-detail';
 import initUsersPage from './users';
 
 const PAGES = {
-    'admin-detail': initAdminDetailPage,
-    admins: initAdminsPage,
+    'agent-detail': initAgentDetailPage,
     audit: initAuditPage,
     campaigns: initCampaignsPage,
     dashboard: initDashboardPage,

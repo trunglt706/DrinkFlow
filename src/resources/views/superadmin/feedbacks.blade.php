@@ -21,6 +21,8 @@
                         <option value="{{ $stars }}" @selected($filters['rating'] === $stars)>{{ $stars }} ★</option>
                     @endfor
                 </select>
+                {{-- Feedback from members of the rooms owned by one Agent. --}}
+                <x-superadmin.agent-filter permission="agent.view" :selected="$filters['agent']" />
                 <button class="sa-button secondary" type="submit"><span class="material-symbols-outlined text-[16px]">filter_list</span>{{ __('superadmin.common.filter') }}</button>
             </form>
         </div>

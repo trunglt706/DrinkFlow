@@ -38,6 +38,33 @@ const number = (value, digits = 0) => new Intl.NumberFormat(locale(), { maximumF
 /** Compact VND for axis ticks (e.g. 1,2 Tr / 1.2M) — full amounts stay in tooltips and tables. */
 const compactMoney = value => new Intl.NumberFormat(locale(), { notation: 'compact', maximumFractionDigits: 1 }).format(value || 0);
 
+/**
+ * Replace a table body with the shared empty state (components/superadmin/empty-state, cloned from
+ * <template id="sa-empty-state-template">): its translated title stays, the icon and description are per table.
+ *
+ * @param {HTMLElement} tbody Table body to fill.
+ * @param {number} columns Number of columns the row spans.
+ * @param {string} icon Material Symbols icon name.
+ * @param {string} description Translated description.
+ */
+function emptyRow(tbody, columns, icon, description) {
+    const template = document.getElementById('sa-empty-state-template');
+    const placeholder = template?.content.firstElementChild?.cloneNode(true);
+    if (!placeholder) {
+        tbody.innerHTML = `<tr><td colspan="${columns}" class="sa-empty">${escapeHtml(description)}</td></tr>`;
+        return;
+    }
+    placeholder.querySelector('[data-empty-icon]').textContent = icon;
+    placeholder.querySelector('[data-empty-description]').textContent = description;
+    const cell = document.createElement('td');
+    cell.colSpan = columns;
+    cell.className = 'sa-empty-cell';
+    cell.append(placeholder);
+    const row = document.createElement('tr');
+    row.append(cell);
+    tbody.replaceChildren(row);
+}
+
 const formatDate = (iso, options) => new Intl.DateTimeFormat(locale(), options).format(new Date(iso));
 const shortDay = iso => formatDate(`${iso}T00:00:00`, { day: '2-digit', month: '2-digit' });
 const longDay = iso => formatDate(`${iso}T00:00:00`, { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -286,7 +313,7 @@ function renderAging(container, aging, i18n) {
 
 function renderStuck(tbody, campaigns, i18n, campaignsUrl) {
     if (!campaigns.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="sa-empty">${escapeHtml(i18n.stuck_empty)}</td></tr>`;
+        emptyRow(tbody, 7, 'task_alt', i18n.stuck_empty);
         return;
     }
     tbody.innerHTML = campaigns.map(campaign => {
@@ -307,7 +334,7 @@ const FLAG_ICONS = { dormant: 'bedtime', bad_debt: 'money_off', no_admin: 'perso
 
 function renderRooms(tbody, rooms, i18n, roomUrl, thresholds) {
     if (!rooms.length) {
-        tbody.innerHTML = `<tr><td colspan="9" class="sa-empty">${escapeHtml(i18n.rooms_empty)}</td></tr>`;
+        emptyRow(tbody, 9, 'meeting_room', i18n.rooms_empty);
         return;
     }
     const flagHint = flag => trans(i18n[`flag_${flag}_hint`], {
@@ -451,7 +478,7 @@ function renderSecurityTypes(container, types, typeLabels, i18n, days) {
 
 function renderIps(tbody, ips, i18n, securityUrl, hours) {
     if (!ips.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="sa-empty">${escapeHtml(trans(i18n.ips_empty, { hours }))}</td></tr>`;
+        emptyRow(tbody, 7, 'verified_user', trans(i18n.ips_empty, { hours }));
         return;
     }
     tbody.innerHTML = ips.map(ip => {
@@ -472,7 +499,7 @@ const ADMIN_FLAG_CLASSES = { stale: 'no_admin', never_logged_in: 'no_admin', no_
 
 function renderAdmins(tbody, admins, i18n, adminUrl, staleDays) {
     if (!admins.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="sa-empty">${escapeHtml(i18n.admins_empty)}</td></tr>`;
+        emptyRow(tbody, 7, 'manage_accounts', i18n.admins_empty);
         return;
     }
     tbody.innerHTML = admins.map(admin => {
@@ -550,7 +577,7 @@ function bytes(value) {
 function renderCohorts(tbody, cohorts, i18n, months) {
     const columns = months + 2;
     if (!cohorts.some(cohort => cohort.size > 0)) {
-        tbody.innerHTML = `<tr><td colspan="${columns}" class="sa-empty">${escapeHtml(trans(i18n.cohort_empty, { months }))}</td></tr>`;
+        emptyRow(tbody, columns, 'group_add', trans(i18n.cohort_empty, { months }));
         return;
     }
     tbody.innerHTML = [...cohorts].reverse().map(cohort => {

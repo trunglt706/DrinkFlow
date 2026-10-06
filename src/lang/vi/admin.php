@@ -1021,30 +1021,25 @@ return [
 
     // Password Recovery Hero & Details
     'recovery_protocol' => 'GIAO THỨC CẤP QUYỀN KHÔI PHỤC',
-    'forgot_hero_heading' => 'Khôi phục quyền truy cập Quản trị Room',
-    'forgot_hero_desc' => 'Hệ thống sẽ tạo mã OTP xác thực bảo mật đa nhân tố (MFA) và gửi trực tiếp tới hòm thư công vụ đã được gán quyền quản lý Room.',
     'two_factor_otp' => 'Xác thực hai lớp (2-Factor OTP)',
     'otp_validity_15m' => 'Hiệu lực trong vòng 15 phút từ lúc phát lệnh',
-    'security_audit_trail' => 'Audit & Ghi nhận vết an ninh',
-    'security_audit_desc' => 'Ghi vết IP, User-Agent và gửi cảnh báo về hệ thống',
-    'important_note' => 'Lưu ý quan trọng',
     'forgot_note_desc' => 'Nếu không nhận được mã sau 2 phút, vui lòng kiểm tra thư mục Spam/Junk hoặc liên hệ IT Administrator để được cấp quyền tạm thời.',
 
     // Verify OTP Hero & Details
-    'mfa_challenge' => 'THỬ THÁCH XÁC THỰC MFA OTP',
-    'verify_hero_heading' => 'Nhập mã xác thực 6 chữ số',
-    'verify_hero_desc' => 'Mã bảo mật gồm 6 chữ số vừa được gửi tới địa chỉ hòm thư :email.',
     'session_challenge_id' => 'SESSION CHALLENGE ID:',
-    'validity_duration' => 'THỜI HẠN HIỆU LỰC:',
+    'validity_duration' => 'Thời hạn hiệu lực',
     'duration_15_mins' => '15 phút',
 
     // Reset Password Hero & Requirements
     'credential_protocol' => 'GIAO THỨC CẬP NHẬT THÔNG TIN ĐĂNG NHẬP',
-    'reset_hero_heading' => 'Thiết lập mật khẩu mới',
-    'reset_hero_desc' => 'Tạo mật khẩu an toàn mới cho tài khoản quản trị :email. Mật khẩu phải có tối thiểu 8 ký tự.',
     'security_requirements' => 'Yêu cầu bảo mật:',
     'req_min_8_chars' => 'Ít nhất 8 ký tự',
-    'req_alphanumeric' => 'Bao gồm chữ và số',
+    'recovery_steps_label' => 'Các bước lấy lại mật khẩu',
+    'recovery_step_email' => 'Email',
+    'recovery_step_otp' => 'Mã OTP',
+    'recovery_step_password' => 'Mật khẩu mới',
+    'req_min_chars' => 'Ít nhất :count ký tự',
+    'otp_sent_to' => 'Mã đã được gửi tới :email',
     'req_match_confirmation' => 'Khớp với trường nhập lại mật khẩu',
 
     'forgot_password_title' => 'Quên Mật Khẩu Quản Trị',
@@ -1065,7 +1060,7 @@ return [
     'reset_token_invalid_or_expired' => 'Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn (chỉ có hiệu lực trong 30 phút). Vui lòng gửi lại yêu cầu OTP.',
     'reset_password_title' => 'Đặt Lại Mật Khẩu Quản Trị',
     'reset_password_heading' => 'Thiết lập mật khẩu mới',
-    'reset_password_subheading' => 'Vui lòng nhập mật khẩu mới với tối thiểu 8 ký tự.',
+    'reset_password_subheading' => 'Vui lòng nhập mật khẩu mới với tối thiểu :count ký tự.',
     'save_new_password' => 'Lưu mật khẩu mới & Hoàn tất',
     'password_reset_success' => 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập bằng mật khẩu mới.',
     'campaign_closed_invalid_state' => 'Chiến dịch không thể đóng ở trạng thái hiện tại.',

@@ -31,6 +31,9 @@ import { initSuperadminPages } from './superadmin/pages';
 import { initSuperadminPermissionMatrix } from './superadmin/permission-matrix';
 import { initSuperadminGoToTop } from './superadmin/go-to-top';
 import { initSuperadminSensitive } from './superadmin/sensitive';
+import { initSuperadminNumberInputs } from './superadmin/number-input';
+import { initSuperadminRevenueCharts } from './superadmin/revenue-charts';
+import { initSuperadminDependentSelects } from './superadmin/dependent-select';
 import { initDateRangePickers } from './admin/ui-enhancements';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -64,5 +67,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initSuperadminPermissionMatrix();
     initSuperadminGoToTop();
     initSuperadminSensitive();
+    initSuperadminNumberInputs();
+    initSuperadminRevenueCharts();
+    initSuperadminDependentSelects();
     initDateRangePickers();
 });

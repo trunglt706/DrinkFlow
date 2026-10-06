@@ -138,7 +138,6 @@ class SuperadminScopeProbeTest extends TestCase
     {
         return [
             'agents' => ['superadmin.agents.index'],
-            'admins page' => ['superadmin.admins.page'],
             'admins API' => ['superadmin.admins.index'],
             'subscriptions' => ['superadmin.subscriptions.index'],
             'outstanding' => ['superadmin.billing.outstanding'],

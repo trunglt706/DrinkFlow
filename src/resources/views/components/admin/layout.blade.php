@@ -13,6 +13,9 @@
     $adminInitials = mb_strtoupper(mb_substr($adminUser?->name ?? 'AD', 0, 2));
     $adminAvatarUrl = $adminUser?->avatar_url ? route('admin.profile.avatar.show') : null;
     $hasLiveCampaign = $room instanceof \App\Models\Room ? $room->hasActiveCampaign() : false;
+    // First invoice of a self-registration unpaid: only the billing pages are reachable (EnsureFirstPaymentSettled).
+    $paymentLocked = $adminUser instanceof \App\Models\Admin && $room === null
+        && app(\App\Services\Billing\PaymentRequirementService::class)->awaitingFirstPayment($adminUser);
 @endphp
 <!doctype html>
 <html lang="{{ app()->getLocale() }}">
@@ -273,7 +276,7 @@
                             </div>
                         </a>
                     @endif
-                    <x-admin.account-nav :active="$active" />
+                    <x-admin.account-nav :active="$active" :locked="$paymentLocked" />
                 </nav>
             </div>
 
@@ -501,6 +504,8 @@
         <main class="flex-1 min-w-0 w-full max-w-[1440px] mx-auto p-4 sm:p-6 space-y-6">
             {{ $slot }}
         </main>
+
+        <x-admin.payment-reminder :locked="$paymentLocked" />
     </div>
 
     <!-- Admin Logout Confirmation Modal -->

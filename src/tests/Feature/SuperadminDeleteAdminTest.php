@@ -73,18 +73,37 @@ class SuperadminDeleteAdminTest extends TestCase
         $this->assertDatabaseHas('superadmins', ['id' => $root->id, 'email' => $root->email]);
     }
 
-    public function test_admin_pages_show_delete_controls(): void
+    public function test_agent_page_shows_the_delete_control(): void
     {
         $root = $this->root();
         $admin = Admin::create(['name' => 'Operator', 'email' => 'operator-ui@drinkflow.test', 'password' => 'password123', 'status' => 'active']);
 
-        $this->actingAs($root, 'superadmin')->get(route('superadmin.admins.page'))
+        $this->actingAs($root, 'superadmin')->get(route('superadmin.agents.show', $admin))
             ->assertOk()
-            ->assertSee('data-action="delete-admin" data-admin-id="'.$admin->id.'"', false);
+            ->assertSee('id="agent-delete"', false)
+            ->assertDontSee('data-agent-delete-blocked', false);
+    }
 
-        $this->actingAs($root, 'superadmin')->get(route('superadmin.admins.detail.page', $admin->id))
+    public function test_agent_with_billing_history_is_kept_and_cannot_be_deleted(): void
+    {
+        $root = $this->root();
+        $package = \App\Models\Package::create(['code' => 'std', 'name' => 'Standard', 'monthly_price' => 500000, 'room_limit' => 5, 'status' => 'active']);
+        $admin = Admin::create(['name' => 'Billed', 'email' => 'billed@drinkflow.test', 'password' => 'password123', 'status' => 'active']);
+        app(\App\Services\Subscription\SubscriptionService::class)->activate($admin, $package);
+        $this->artisan('billing:generate-invoices')->assertSuccessful();
+        $this->assertTrue($admin->invoices()->exists());
+
+        // The page offers suspension instead: the delete button is disabled with the reason.
+        $this->actingAs($root, 'superadmin')->get(route('superadmin.agents.show', $admin))
             ->assertOk()
-            ->assertSee('id="admin-delete"', false);
+            ->assertSee('data-agent-delete-blocked', false)
+            ->assertSee(__('platform.agents.delete_unavailable'))
+            ->assertDontSee('id="agent-delete"', false);
+        // And the API refuses it with a message instead of failing on the invoices' foreign key.
+        $this->actingAs($root, 'superadmin')->deleteJson(route('superadmin.admins.destroy', $admin))
+            ->assertUnprocessable()
+            ->assertJsonPath('message', __('platform.agents.delete_blocked_billing'));
+        $this->assertDatabaseHas('admins', ['id' => $admin->id]);
     }
 
     public function test_superadmin_layout_uses_admin_brand_mark_without_zero_trust_block(): void

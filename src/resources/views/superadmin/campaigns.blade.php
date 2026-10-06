@@ -10,10 +10,12 @@
             </div>
             <form method="GET" class="superadmin-actions">
                 <x-superadmin.search-input :value="$filters['search']" placeholder="{{ __('superadmin.campaigns.search') }}" />
-                <select name="room_id" class="sa-input" aria-label="{{ __('superadmin.common.room') }}">
+                <x-superadmin.agent-filter permission="room.view" :selected="$filters['agent']" />
+                {{-- Narrowed to the chosen Agent's rooms by resources/js/superadmin/dependent-select.js. --}}
+                <select name="room_id" class="sa-input" aria-label="{{ __('superadmin.common.room') }}" data-depends-on="agent">
                     <option value="">{{ __('superadmin.campaigns.all_rooms') }}</option>
                     @foreach ($rooms as $room)
-                        <option value="{{ $room->id }}" @selected($filters['room_id'] === $room->id)>{{ $room->name }}</option>
+                        <option value="{{ $room->id }}" data-parent="{{ $room->owner_admin_id }}" @selected($filters['room_id'] === $room->id)>{{ $room->name }}</option>
                     @endforeach
                 </select>
                 <select name="status" class="sa-input" aria-label="{{ __('superadmin.common.status') }}">
@@ -79,7 +81,7 @@
                             </td>
                         </tr>
                     @empty
-                        @php($isFiltered = $filters['search'] !== '' || $filters['room_id'] !== null || $filters['status'] !== '')
+                        @php($isFiltered = $filters['search'] !== '' || $filters['room_id'] !== null || $filters['agent'] !== null || $filters['status'] !== '')
                         <tr>
                             <td colspan="5">
                                 @if($isFiltered)

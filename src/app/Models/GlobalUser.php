@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\GlobalUserStatus;
 use App\Models\Concerns\HasNormalizedName;
 use App\Models\Concerns\HasStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -90,6 +91,19 @@ class GlobalUser extends Authenticatable
     public function roomUsers(): HasMany
     {
         return $this->hasMany(RoomUser::class);
+    }
+
+    /**
+     * Users holding a membership in at least one room owned by the Agent.
+     *
+     * @param Builder<GlobalUser> $query Query.
+     * @param int $agentId Owning Agent (admins.id).
+     * @return Builder<GlobalUser> Constrained query.
+     */
+    public function scopeMemberOfAgentRooms(Builder $query, int $agentId): Builder
+    {
+        return $query->whereHas('roomUsers', static fn (Builder $members) => $members
+            ->whereIn('room_id', Room::query()->where('owner_admin_id', $agentId)->select('id')));
     }
 
     public function rooms(): BelongsToMany

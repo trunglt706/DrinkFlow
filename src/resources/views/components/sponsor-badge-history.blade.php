@@ -28,7 +28,8 @@
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
             @foreach($badges as $badge)
                 @php($metal = ['gold', 'silver', 'bronze'][$badge['rank'] - 1])
-                <button type="button" class="badge-card rank-{{ $badge['rank'] }}" x-data="{ flipped: false }" @click="flipped = !flipped"
+                <button type="button" class="badge-card rank-{{ $badge['rank'] }}" x-data="{ flipped: false, hover: window.matchMedia('(hover: hover)').matches }"
+                    @mouseenter="if (hover) flipped = true" @mouseleave="if (hover) flipped = false" @click="if (!hover || $event.detail === 0) flipped = !flipped"
                     :aria-pressed="flipped.toString()" aria-pressed="false" data-sponsor-badge-card="{{ $badge['rank'] }}"
                     aria-label="{{ __('sponsor_honors.badge_tooltip', ['rank' => $badge['rank'], 'month' => $badge['month']]) }}">
                     <span class="badge-flip" :class="{ 'is-flipped': flipped }">

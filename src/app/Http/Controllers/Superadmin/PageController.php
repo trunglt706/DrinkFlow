@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Superadmin;
 
 use App\Enums\Permission;
+use App\Services\Authorization\AgentDirectoryService;
 use App\Services\Authorization\AgentScope;
 use App\Http\Controllers\Controller;
 use App\Enums\CampaignStatus;
@@ -19,8 +20,9 @@ use App\Models\SecurityEvent;
 use App\Models\Superadmin;
 use App\Models\SystemNotificationChannel;
 use App\Models\Version;
-use App\Services\Notification\AdminNotificationService;
+use App\Services\Notification\SuperadminNotificationService;
 use App\Services\Notification\NotificationPresentationService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Contracts\View\View;
@@ -63,32 +65,31 @@ class PageController extends Controller
         return view('superadmin.room-detail', ['roomKey' => $room->slug]);
     }
     /**
-     * Handle the admins operation.
-     * @return View Result of the operation.
-     */
-    public function admins(Request $request): View
-    {
-        $query = Admin::query()->withCount('rooms')->latest()->visibleTo($request->user('superadmin'));
-        $search = trim($request->string('q')->toString());
-        if ($search !== '') $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
-        $status = $request->string('status')->toString();
-        if ($status !== '') $query->where('status', $status);
-        return view('superadmin.admins', ['admins' => $query->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE)->withQueryString(), 'filters' => compact('search', 'status')]);
-    }
-    /**
-     * Admin (Agent account) profile shell (data loads from the admin API). Scope-checked here too, so an
-     * out-of-scope Agent ID is refused at once.
+     * Former Agent list: merged into Agents (superadmin.agents.index), kept as a permanent redirect for old
+     * links and bookmarks, with the search and status filters carried over.
      *
-     * @param Admin $admin Agent from the URL.
-     * @return View Admin profile page.
+     * @param Request $request Query string: q, status.
+     * @return RedirectResponse Redirect to the Agent list.
      */
-    public function admin(Admin $admin): View
+    public function admins(Request $request): RedirectResponse
+    {
+        return redirect()->route('superadmin.agents.index', array_filter($request->only(['q', 'status']), static fn ($value): bool => is_string($value) && $value !== ''), 301);
+    }
+
+    /**
+     * Former Agent profile: merged into the Agent page (superadmin.agents.show), kept as a permanent redirect.
+     * The scope is checked first, so an out-of-scope Agent ID is still refused here.
+     *
+     * @param Admin $admin Agent.
+     * @return RedirectResponse Redirect to the Agent page.
+     */
+    public function admin(Admin $admin): RedirectResponse
     {
         \Illuminate\Support\Facades\Gate::authorize('view', $admin);
 
-        // Only the ID goes to the page script: the account data itself loads from the (masked, scoped) admin API.
-        return view('superadmin.admin-detail', ['adminId' => $admin->id]);
+        return redirect()->route('superadmin.agents.show', $admin, 301);
     }
+
     /**
      * Handle the users operation.
      * @return View Result of the operation.
@@ -103,7 +104,10 @@ class PageController extends Controller
         $status !== ''
             ? $query->where('status', $status)
             : $query->where('status', '!=', \App\Enums\GlobalUserStatus::Deleted->value);
-        return view('superadmin.users', ['users' => $query->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE)->withQueryString(), 'filters' => compact('search', 'status')]);
+        // Members of at least one room owned by the Agent; the Agent must be visible (agent.view scope).
+        $agent = app(AgentDirectoryService::class)->visibleAgentId($request->user('superadmin'), $request->integer('agent') ?: null);
+        if ($agent !== null) $query->memberOfAgentRooms($agent);
+        return view('superadmin.users', ['users' => $query->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE)->withQueryString(), 'filters' => compact('search', 'status', 'agent')]);
     }
     /**
      * Handle the user operation.
@@ -118,7 +122,7 @@ class PageController extends Controller
      *
      * Unknown status values and non-numeric room ids are ignored rather than matched literally.
      *
-     * @param Request $request Query string: q, room_id, status.
+     * @param Request $request Query string: q, agent (owner of the rooms), room_id, status.
      * @return View Campaign registry page with the room list for the room filter.
      */
     public function campaigns(Request $request): View
@@ -129,36 +133,43 @@ class PageController extends Controller
         if ($search !== '') $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('restaurant', 'like', "%{$search}%"));
         $roomId = filter_var($request->query('room_id'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: null;
         if ($roomId !== null) $query->where('room_id', $roomId);
+        // Campaigns of the rooms owned by one Agent (the room scope above still applies).
+        $agentId = filter_var($request->query('agent'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: null;
+        if ($agentId !== null) $query->whereIn('room_id', Room::query()->where('owner_admin_id', $agentId)->select('id'));
         $status = CampaignStatus::tryFrom($request->string('status')->toString());
         if ($status !== null) $query->where('status', $status->value);
 
         return view('superadmin.campaigns', [
             'campaigns' => $query->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE)->withQueryString(),
-            'rooms' => app(AgentScope::class)->applyToRooms(Room::query(), $request->user('superadmin'), Permission::RoomView)->orderBy('name')->get(['id', 'name']),
-            'filters' => ['search' => $search, 'room_id' => $roomId, 'status' => $status?->value ?? ''],
+            // Every visible room, tagged with its owner: the Room select narrows itself to the chosen Agent.
+            'rooms' => app(AgentScope::class)->applyToRooms(Room::query(), $request->user('superadmin'), Permission::RoomView)->orderBy('name')->get(['id', 'name', 'owner_admin_id']),
+            'filters' => ['search' => $search, 'room_id' => $roomId, 'agent' => $agentId, 'status' => $status?->value ?? ''],
         ]);
     }
     /**
      * Render the notifications page: the signed-in account's own inbox, then the system alert channels.
      *
-     * The inbox only lists admin_notifications addressed to the current admin account, never other
-     * admins' or end users' notifications. Both lists paginate independently (`inbox_page` / `page`).
+     * The inbox lists the superadmin_notifications addressed to the signed-in Superadmin (the same source as
+     * the header bell), never another account's. Both lists paginate independently (`inbox_page` / `page`).
      *
-     * @param Request $request Query string: inbox_status (all|unread|read), inbox_q, q (channel search).
-     * @param AdminNotificationService $notifications Admin notification service.
+     * @param Request $request Query string: inbox_status (all|unread|read), inbox_q, date_from / date_to (inbox), q and channel_type (channels).
+     * @param SuperadminNotificationService $notifications Superadmin notification service.
      * @param NotificationPresentationService $presentation Localized title/body/icon for each notification.
      * @return View Notifications page.
      */
-    public function notifications(Request $request, AdminNotificationService $notifications, NotificationPresentationService $presentation): View
+    public function notifications(Request $request, SuperadminNotificationService $notifications, NotificationPresentationService $presentation): View
     {
         /** @var \App\Models\Superadmin $admin */
         $admin = $request->user('superadmin');
-        $inboxStatus = in_array($request->query('inbox_status'), [AdminNotificationService::FILTER_UNREAD, AdminNotificationService::FILTER_READ], true)
+        $inboxStatus = in_array($request->query('inbox_status'), [SuperadminNotificationService::FILTER_UNREAD, SuperadminNotificationService::FILTER_READ], true)
             ? (string) $request->query('inbox_status')
             : '';
         $inboxSearch = trim($request->string('inbox_q')->toString());
+        // Received-date window of the inbox (date-range picker: date_from / date_to); unreadable dates are ignored.
+        $inboxFrom = \App\Support\Helpers\DateRangeHelper::parseCarbonSafe($request->string('date_from')->toString() ?: null)?->startOfDay();
+        $inboxTo = \App\Support\Helpers\DateRangeHelper::parseCarbonSafe($request->string('date_to')->toString() ?: null)?->endOfDay();
         $inbox = $notifications
-            ->paginateForAdmin($admin, ['status' => $inboxStatus, 'search' => $inboxSearch], \App\Constants\Pagination::ADMIN_PER_PAGE, 'inbox_page')
+            ->paginateFor($admin, ['status' => $inboxStatus, 'search' => $inboxSearch, 'from' => $inboxFrom, 'to' => $inboxTo], \App\Constants\Pagination::ADMIN_PER_PAGE, 'inbox_page')
             ->withQueryString();
         $inboxPresentations = [];
         foreach ($inbox as $notification) {
@@ -168,13 +179,18 @@ class PageController extends Controller
         $query = SystemNotificationChannel::query()->latest();
         $search = trim($request->string('q')->toString());
         if ($search !== '') $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('type', 'like', "%{$search}%"));
+        $channelType = $request->string('channel_type')->toString();
+        $channelType = array_key_exists($channelType, SystemNotificationChannel::TYPES) ? $channelType : '';
+        if ($channelType !== '') $query->where('type', $channelType);
 
         return view('superadmin.notifications', [
             'channels' => $query->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE)->withQueryString(),
-            'filters' => compact('search', 'inboxStatus', 'inboxSearch'),
+            'filters' => compact('search', 'inboxStatus', 'inboxSearch', 'channelType') + [
+                'inboxFrom' => $inboxFrom?->toDateString() ?? '', 'inboxTo' => $inboxTo?->toDateString() ?? '',
+            ],
             'inbox' => $inbox,
             'inboxPresentations' => $inboxPresentations,
-            'inboxUnreadCount' => $notifications->unreadCountForAdmin($admin),
+            'inboxUnreadCount' => $notifications->unreadCountFor($admin),
         ]);
     }
     /**
@@ -294,7 +310,15 @@ class PageController extends Controller
         $query = Version::query()->latest('release_date');
         $search = trim($request->string('q')->toString());
         if ($search !== '') $query->where(fn ($q) => $q->where('version', 'like', "%{$search}%")->orWhere('title', 'like', "%{$search}%"));
-        return view('superadmin.versions', ['versions' => $query->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE)->withQueryString(), 'filters' => compact('search')]);
+        // Release-date window; an unreadable date is ignored.
+        $from = \App\Support\Helpers\DateRangeHelper::parseCarbonSafe($request->string('date_from')->toString() ?: null)?->toDateString();
+        $to = \App\Support\Helpers\DateRangeHelper::parseCarbonSafe($request->string('date_to')->toString() ?: null)?->toDateString();
+        if ($from !== null) $query->whereDate('release_date', '>=', $from);
+        if ($to !== null) $query->whereDate('release_date', '<=', $to);
+        return view('superadmin.versions', [
+            'versions' => $query->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE)->withQueryString(),
+            'filters' => ['search' => $search, 'date_from' => $from ?? '', 'date_to' => $to ?? ''],
+        ]);
     }
 
     /**
@@ -321,10 +345,15 @@ class PageController extends Controller
         if ($search !== '') {
             $query->where(fn ($q) => $q->where('content', 'like', "%{$search}%")->orWhere('user_display_name', 'like', "%{$search}%"));
         }
+        // Feedback from members of the rooms owned by one (visible) Agent.
+        $agent = app(AgentDirectoryService::class)->visibleAgentId($request->user('superadmin'), $request->integer('agent') ?: null);
+        if ($agent !== null) {
+            $query->whereHas('globalUser', static fn ($users) => $users->memberOfAgentRooms($agent));
+        }
 
         return view('superadmin.feedbacks', [
             'feedbacks' => $query->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE)->withQueryString(),
-            'filters' => ['status' => $status, 'rating' => $rating >= 1 && $rating <= 5 ? $rating : null, 'search' => $search],
+            'filters' => ['status' => $status, 'rating' => $rating >= 1 && $rating <= 5 ? $rating : null, 'search' => $search, 'agent' => $agent],
             'pendingCount' => Feedback::query()->where('status', FeedbackStatus::Inactive->value)->count(),
         ]);
     }

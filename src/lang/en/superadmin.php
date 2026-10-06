@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 return [
     'common' => [
+        'all_agents' => 'All Agents',
         'back' => 'Back',
         'governance' => 'Governance',
         'deleted' => 'Deleted',
@@ -81,7 +82,6 @@ return [
         'enterprise_superadmin' => 'Enterprise Superadmin',
         'dashboard_health' => 'System Overview',
         'room_management' => 'Room Management',
-        'admin_assignments' => 'Administrators',
         'global_users' => 'User Management',
         'global_campaigns' => 'Campaign Management',
         'audit_logs' => 'System Logs',
@@ -123,6 +123,7 @@ return [
         'storage' => 'File storage',
         'supervisor' => 'Background worker (Supervisor)',
         'quick_access' => 'Quick access',
+        'pending_registrations_description' => 'Self-registered Agents waiting for activation or review', 'outstanding_invoices_description' => 'Platform invoices not paid yet',
         'quick_access_description' => 'Areas that need monitoring.',
         'failed_login_events' => 'Failed logins and security events',
         'global_change_history' => 'Global change history',
@@ -135,6 +136,7 @@ return [
         'storage_usage_quota' => ':driver · :used used / :total (quota)',
     ],
     'analytics' => [
+        'empty_title' => 'No data yet',
         'title' => 'Operations analytics',
         'tabs_label' => 'Analytics groups', 'tab_operations' => 'Operations', 'tab_security' => 'Security & activity', 'tab_trends' => 'Trends & infrastructure',
         'description' => 'Last :days days compared with the previous :days days. Figures are cached for 5 minutes.',
@@ -282,6 +284,7 @@ return [
         'no_campaigns_title' => 'No campaigns yet', 'no_campaigns_description' => 'Campaigns created by room administrators will appear here.',
     ],
     'notifications' => [
+        'all_channel_types' => 'All channel types',
         'prompt_credential' => 'Credential / Webhook URL',
         'no_results_title' => 'No channels found',
         'no_results_description' => 'Try another keyword or clear the search filter.',
@@ -400,7 +403,6 @@ return [
         'identity_description' => 'Linked OAuth information is safely masked.',
         'room_memberships' => 'Room memberships',
         'membership_description' => 'Memberships and trusted devices for each Room.',
-        'devices' => 'Devices',
         'linked_identity' => 'Linked identity',
         'no_login_metadata' => 'No login metadata',
         'remove' => 'Remove',

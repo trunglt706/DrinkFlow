@@ -16,6 +16,8 @@
                         <option value="{{ $statusOption->value }}" @selected(($filters['status'] ?? '') === $statusOption->value)>{{ __('superadmin.common.'.$statusOption->value) }}</option>
                     @endforeach
                 </select>
+                {{-- Members of the rooms owned by one Agent. --}}
+                <x-superadmin.agent-filter permission="agent.view" :selected="$filters['agent'] ?? null" />
                 <button class="sa-button secondary" type="submit"><span class="material-symbols-outlined text-[16px]">filter_list</span>{{ __('superadmin.common.filter') }}</button>
             </form>
         </div>

@@ -5,7 +5,15 @@ declare(strict_types=1);
 return [
     'anonymous' => 'メンバー',
 
+    'types' => [
+        'sponsors' => 'スポンサー抽選',
+        'shops' => 'お店の抽選',
+    ],
+
     'fields' => [
+        'type' => '抽選の種類',
+        'shops' => '対象のお店',
+        'new_shops' => 'お店を追加',
         'campaign' => 'キャンペーン',
         'target_winner_count' => '選ぶスポンサー数',
         'target_campaign' => 'スポンサーを受けるキャンペーン',
@@ -13,9 +21,12 @@ return [
     ],
 
     'errors' => [
+        'cannot_configure' => '抽選済みまたは終了したセッションのため、設定を変更できません。',
+        'not_configured' => '抽選セッションがまだ設定されていません。',
+        'shops_count' => 'お店は 2〜:max 件選んでください。',
         'campaign_not_in_room' => 'このキャンペーンはこのルームのものではありません。',
-        'target_invalid' => 'スポンサーを受けるキャンペーンは、このルームに属し、元のキャンペーンと異なり、終了していない必要があります。',
-        'no_eligible' => '抽選の対象となる有効なメンバーがいません。',
+        'target_invalid' => 'スポンサー対象のキャンペーンはこのルームに属し、終了していない必要があります。',
+        'no_eligible' => 'ルームに抽選できる有効なメンバーがいません。',
         'too_many_winners' => 'スポンサー数は 1〜:count（対象メンバー数）で指定してください。',
         'cancelled' => 'この抽選は中止されました。',
         'cannot_draw' => 'この抽選ではこれ以上抽選できません。',
@@ -29,6 +40,9 @@ return [
     ],
 
     'notify' => [
+        'room_title' => 'スポンサー抽選の結果 · :room',
+        'shop_title' => 'お店の抽選結果 · :room',
+        'shop_winner' => '選ばれたお店: :name',
         'title' => 'スポンサー抽選結果：:campaign',
         'campaign' => 'キャンペーン：:name',
         'winner' => ':order. :name',
@@ -36,6 +50,8 @@ return [
     ],
 
     'flash' => [
+        'draft_created' => '新しいセッションを作成しました。抽選の種類を設定してください。',
+        'configured' => '設定を保存し、リストを確定してリンクを発行しました。',
         'created' => '抽選を作成し、アクセスリンクを発行しました。',
         'link_issued' => '新しいリンクを発行しました。以前のリンクは使えません。',
         'cancelled' => '抽選を中止しました。',
@@ -44,14 +60,28 @@ return [
     ],
 
     'admin' => [
+        'confirm_after_draw_shops' => 'お店が選ばれると確認ボタンが表示されます。',
+        'new_session' => '新しいセッション',
+        'col_type' => '種類',
+        'settings' => '設定',
+        'settings_title' => '抽選の設定',
+        'settings_hint' => '対象リストは保存時に確定し、最初の抽選前のみ変更できます。',
+        'type_sponsors_hint' => 'ルームの有効なメンバー :count 人が抽選対象です。',
+        'type_shops_hint' => '抽選するお店を選んでください。1 店をランダムに選びます。',
+        'shops_suggested' => '過去のキャンペーンのお店',
+        'shops_none' => '過去のキャンペーンのお店はまだありません。下で追加してください。',
+        'shops_new_hint' => '1 行に 1 店。',
+        'settings_save' => '設定を保存',
+        'draft_title' => 'この抽選はまだ設定されていません',
+        'draft_hint' => '抽選の種類（スポンサーまたはお店）を選ぶと、リストが確定しメンバー用リンクが発行されます。',
+        'settings_locked' => '抽選済みのため、設定は変更できません。',
+        'reconfigure_hint' => '再保存すると新しいリストとシードで確定し、変更は検証記録に残ります。',
+        'shops_selected' => ':count 店',
         'nav' => 'スポンサー抽選',
         'title' => 'スポンサー抽選',
-        'description' => 'キャンペーンのメンバーからスポンサーを選ぶ抽選を作成します。サーバーが無作為に選び、各メンバーの当選は1回まで。メンバーは期限付きリンクでライブ観覧できます。',
-        'create_title' => '新しい抽選',
-        'create_hint' => '対象リスト（キャンペーンを辞退していない有効なメンバー）は作成時に確定し、抽選中は変わりません。',
+        'description' => 'ルームのメンバーからスポンサーを抽選、またはお店を抽選します。サーバーがランダムに選び、各候補は最大 1 回まで当選します。メンバーは期限付きリンクでライブ観覧できます。',
         'optional' => '任意',
         'target_none' => '選択しない',
-        'create_submit' => '作成してリンクを発行',
         'target_hint' => 'スポンサーを受けるキャンペーンを選ぶと、結果の確定時にそのキャンペーンを全額スポンサーに設定し、当選者で均等に分けます。',
         'sessions_title' => '抽選一覧',
         'col_progress' => '当選数',
@@ -114,16 +144,17 @@ return [
     'landing' => [
         'page_title' => 'スポンサー抽選 · :campaign',
         'heading' => 'スポンサー抽選ライブ',
-        'intro' => 'キャンペーンの抽選を観覧しています。抽選できるのは管理者のみで、結果はサーバーが選び、全員に同時に表示されます。',
+        'intro' => 'ルームの抽選を観覧しています。抽選できるのは管理者のみで、結果はサーバーが選び全員に同時に表示されます。',
         'expired_title' => 'リンクの期限切れ',
         'expired_body' => 'この抽選リンクは無効になりました。ルーム管理者に新しいリンクを依頼してください。',
         'forbidden_title' => 'アクセス権がありません',
-        'forbidden_body' => 'この抽選のキャンペーンに参加していません。',
+        'forbidden_body' => 'この抽選のルームの有効なメンバーではありません。',
         'back_to_room' => 'ルームに戻る',
     ],
 
     'js' => [
         'status' => [
+            'draft' => '下書き',
             'ready' => '準備完了',
             'drawing' => '抽選中',
             'completed' => '確定待ち',
@@ -157,5 +188,18 @@ return [
         'slot_closed' => '[抽選なし]',
         'already_won' => '当選済み',
         'picking' => '選択中',
+    ],
+    'stage_shops' => [
+        'auto_exclude' => '選ばれたお店は自動的に除外',
+        'eyebrow' => 'お店の抽選',
+        'eligible_list' => '対象のお店',
+        'search_placeholder' => 'お店を検索…',
+        'no_match' => '該当するお店がありません。',
+    ],
+    'js_shops' => [
+        'people' => ':count 店',
+        'reel_winner' => '選ばれたお店',
+        'remaining_people' => '残り: :count 店',
+        'waiting_confirm' => 'お店が選ばれました。管理者の確認と通知を待っています。',
     ],
 ];

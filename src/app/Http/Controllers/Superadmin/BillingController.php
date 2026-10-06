@@ -18,6 +18,7 @@ use App\Services\Billing\PlatformBillingService;
 use App\Services\Billing\PlatformRevenueService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use App\Support\Helpers\DateRangeHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Symfony\Component\HttpFoundation\Response;
@@ -56,7 +57,9 @@ class BillingController extends Controller
     /**
      * Outstanding (open and overdue) invoices of the visible Agents.
      *
-     * @param Request $request Query string: q, status (open|overdue).
+     * The Agent filter only narrows the already scoped query, so an ID outside the scope simply matches nothing.
+     *
+     * @param Request $request Query string: q, status (open|overdue), agent (Agent ID), date_from / date_to (due date, Y-m-d).
      * @return View Outstanding list.
      */
     public function outstanding(Request $request): View
@@ -64,12 +67,18 @@ class BillingController extends Controller
         $search = trim($request->string('q')->toString());
         $status = InvoiceStatus::tryFrom($request->string('status')->toString());
         $status = $status?->isOutstanding() ? $status : null;
+        $agentId = $request->integer('agent') ?: null;
+        $from = DateRangeHelper::parseCarbonSafe($request->string('date_from')->toString() ?: null)?->startOfDay();
+        $to = DateRangeHelper::parseCarbonSafe($request->string('date_to')->toString() ?: null)?->endOfDay();
 
         $query = AdminInvoice::query()->with(['admin:id,name,email,company', 'package:id,name'])->outstanding();
         $this->scope->apply($query, $this->actor($request), Permission::DebtView, 'admin_invoices.admin_id');
         $totalDue = (int) (clone $query)->selectRaw('COALESCE(SUM(total - paid_amount), 0) as due')->value('due');
         $invoices = $query
             ->when($status !== null, static fn ($q) => $q->where('status', $status->value))
+            ->when($agentId !== null, static fn ($q) => $q->where('admin_id', $agentId))
+            ->when($from !== null, static fn ($q) => $q->where('due_at', '>=', $from))
+            ->when($to !== null, static fn ($q) => $q->where('due_at', '<=', $to))
             ->when($search !== '', static fn ($q) => $q->where(static fn ($inner) => $inner->where('number', 'like', "%{$search}%")
                 ->orWhereHas('admin', static fn ($admins) => $admins->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))))
             ->orderBy('due_at')
@@ -79,7 +88,10 @@ class BillingController extends Controller
         return view('superadmin.billing.outstanding', [
             'invoices' => $invoices,
             'totalDue' => $totalDue,
-            'filters' => ['search' => $search, 'status' => $status?->value ?? ''],
+            'filters' => [
+                'search' => $search, 'status' => $status?->value ?? '', 'agent' => $agentId,
+                'date_from' => $from?->toDateString() ?? '', 'date_to' => $to?->toDateString() ?? '',
+            ],
         ]);
     }
 

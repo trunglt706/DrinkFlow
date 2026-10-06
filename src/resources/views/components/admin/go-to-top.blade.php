@@ -1,5 +1,5 @@
 <!-- FLOATING ACTION BUTTON (Go To Top) for Admin Workspace -->
-<div class="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3 select-none">
+<div class="admin-fab fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3 select-none">
     <!-- Quick Support Button -->
     <div class="relative flex items-center group">
         <span role="tooltip" class="absolute right-full mr-3 whitespace-nowrap px-2.5 py-1 rounded-lg bg-slate-900/90 backdrop-blur-xs text-white text-xs font-medium shadow-lg opacity-0 pointer-events-none translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200">

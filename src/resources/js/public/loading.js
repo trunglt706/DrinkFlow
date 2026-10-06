@@ -108,10 +108,13 @@ export function initPublicLoading() {
         isInternalNavigation = destination.origin === window.location.origin && destination.href !== window.location.href;
     });
 
-    // Reset loading on bfcache
-    window.addEventListener('pageshow', function() {
+    // Reset loading on bfcache. Only a page restored from it (event.persisted) can still show the submit
+    // state, and only the buttons this script locked (data-original-html) are re-enabled: buttons rendered
+    // disabled on purpose (e.g. an action that is not allowed) must stay disabled on a normal load.
+    window.addEventListener('pageshow', function(event) {
             window.hidePublicLoading();
-            document.querySelectorAll('button[disabled], a.pointer-events-none').forEach(btn => {
+            if (!event.persisted) return;
+            document.querySelectorAll('button[disabled][data-original-html], a.pointer-events-none').forEach(btn => {
                 btn.disabled = false;
                 btn.classList.remove('opacity-75', 'cursor-wait', 'pointer-events-none');
                 if (btn.dataset.originalHtml) {

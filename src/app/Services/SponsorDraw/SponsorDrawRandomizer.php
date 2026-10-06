@@ -54,6 +54,23 @@ final class SponsorDrawRandomizer
     }
 
     /**
+     * Hash of a frozen shop list (positions and names; shops are no personal data).
+     *
+     * @param int $sessionId Session ID.
+     * @param list<string> $names Shop names in position order.
+     * @return string SHA-256 hex digest.
+     */
+    public function namesSnapshotHash(int $sessionId, array $names): string
+    {
+        $lines = ['drinkflow-shop-snapshot-v1', (string) $sessionId];
+        foreach (array_values($names) as $position => $name) {
+            $lines[] = $position.':'.$name;
+        }
+
+        return hash('sha256', implode("\n", $lines));
+    }
+
+    /**
      * Public commitment to the seed, published before the first turn.
      */
     public function commitment(string $seedHex, int $sessionId, string $snapshotHash): string

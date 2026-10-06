@@ -6,9 +6,9 @@ namespace Tests\Feature;
 
 use App\Enums\CampaignStatus;
 use App\Enums\SponsorDrawStatus;
+use App\Enums\SponsorDrawType;
 use App\Models\Admin;
 use App\Models\Campaign;
-use App\Models\CampaignParticipant;
 use App\Models\GlobalUser;
 use App\Models\NotificationChannel;
 use App\Models\Room;
@@ -68,11 +68,16 @@ class SponsorDrawTest extends TestCase
     }
 
     /**
+     * Draft then sponsor settings, like the admin does from the list and the draw page.
+     *
      * @return array{session: SponsorDrawSession, token: string}
      */
-    private function create(int $winners = 2, ?Campaign $target = null): array
+    private function create(int $winners = 2, ?Campaign $target = null, ?Room $room = null): array
     {
-        return app(SponsorDrawService::class)->create($this->room, $this->admin, $this->campaign, $winners, $target);
+        $service = app(SponsorDrawService::class);
+        $draft = $service->createDraft($room ?? $this->room, $this->admin);
+
+        return $service->configure($draft, $this->admin, SponsorDrawType::Sponsors, $winners, $target);
     }
 
     private function landing(string $token): string
@@ -80,80 +85,154 @@ class SponsorDrawTest extends TestCase
         return route('user.sponsor-draws.show', [$this->room, $token]);
     }
 
-    public function test_snapshot_keeps_active_members_who_did_not_decline_and_stays_frozen(): void
+    public function test_snapshot_keeps_the_active_members_of_the_room_and_stays_frozen(): void
     {
         $this->member('Inactive member', 'blocked');
         $this->member('Blocked account', 'active', 'blocked');
-        CampaignParticipant::create(['campaign_id' => $this->campaign->id, 'room_user_id' => $this->members[4]->id, 'status' => CampaignParticipant::STATUS_DECLINED]);
         $this->member('Other room member', 'active', 'active', Room::create(['name' => 'Other', 'slug' => 'other-room', 'status' => 'active']));
 
         $session = $this->create()['session'];
 
-        $this->assertSame(4, $session->eligible_count);
-        $this->assertSame(['An', 'Binh', 'Chi', 'Dung'], $session->eligibleUsers()->pluck('display_name_snapshot')->all());
+        $this->assertSame(SponsorDrawType::Sponsors, $session->type);
+        $this->assertNull($session->campaign_id);
+        $this->assertSame(5, $session->eligible_count);
+        $this->assertSame(['An', 'Binh', 'Chi', 'Dung', 'Em'], $session->eligibleUsers()->pluck('display_name_snapshot')->all());
         // Later changes never alter the published snapshot.
         $this->members[0]->update(['status' => 'blocked']);
         $this->member('Late joiner');
-        $this->assertSame(4, $session->fresh()->eligibleUsers()->count());
+        $this->assertSame(5, $session->fresh()->eligibleUsers()->count());
     }
 
     public function test_creation_is_validated(): void
     {
-        $service = app(SponsorDrawService::class);
-        $empty = Campaign::create(['room_id' => Room::create(['name' => 'Empty', 'slug' => 'empty-room', 'status' => 'active'])->id, 'name' => 'Empty', 'restaurant' => 'X', 'status' => CampaignStatus::Closed]);
+        $emptyRoom = Room::create(['name' => 'Empty', 'slug' => 'empty-room', 'status' => 'active']);
 
-        $this->assertValidationFails(fn () => $service->create($empty->room, $this->admin, $empty, 1), 'campaign_id');
+        $this->assertValidationFails(fn () => $this->create(1, null, $emptyRoom), 'target_winner_count');
         $this->assertValidationFails(fn () => $this->create(6), 'target_winner_count');
         $this->assertValidationFails(fn () => $this->create(0), 'target_winner_count');
         $closedTarget = Campaign::create(['room_id' => $this->room->id, 'name' => 'Closed', 'restaurant' => 'X', 'status' => CampaignStatus::Closed]);
         $this->assertValidationFails(fn () => $this->create(1, $closedTarget), 'target_campaign_id');
         $this->assertValidationFails(fn () => $this->create(1, $this->campaign), 'target_campaign_id');
-        $this->assertSame(0, SponsorDrawSession::query()->count());
+        // Invalid settings leave the drafts untouched: no snapshot, seed or link.
+        $this->assertSame(0, SponsorDrawSession::query()->where('status', '!=', SponsorDrawStatus::Draft->value)->count());
+        $this->assertSame(0, SponsorDrawSession::query()->whereNotNull('seed_commitment')->count());
 
-        $this->actingAs($this->admin, 'admin')->post(route('admin.sponsor-draws.store', $this->room), ['campaign_id' => $this->campaign->id, 'target_winner_count' => 0])
+        $draft = app(SponsorDrawService::class)->createDraft($this->room, $this->admin);
+        $this->actingAs($this->admin, 'admin')->put(route('admin.sponsor-draws.settings', [$this->room, $draft]), ['type' => 'sponsors', 'target_winner_count' => 0])
             ->assertSessionHasErrors('target_winner_count');
+        $this->actingAs($this->admin, 'admin')->put(route('admin.sponsor-draws.settings', [$this->room, $draft]), ['type' => 'lottery'])
+            ->assertSessionHasErrors('type');
+        // A draft cannot draw nor issue a link before its settings exist.
+        $this->assertValidationFails(fn () => app(SponsorDrawService::class)->reissueLink($draft, $this->admin), 'session');
+        $this->actingAs($this->admin, 'admin')->postJson(route('admin.sponsor-draws.draw', [$this->room, $draft]))->assertStatus(422);
     }
 
-    public function test_admin_creates_a_session_with_an_optional_target_campaign(): void
+    public function test_new_session_opens_the_draw_page_with_its_settings_then_sponsor_settings_freeze_it(): void
     {
         $target = Campaign::create(['room_id' => $this->room->id, 'name' => 'Next week', 'restaurant' => 'Y', 'status' => CampaignStatus::Draft]);
 
-        $response = $this->actingAs($this->admin, 'admin')->post(route('admin.sponsor-draws.store', $this->room), [
-            'campaign_id' => $this->campaign->id, 'target_winner_count' => 2, 'target_campaign_id' => $target->id,
-        ]);
+        // The list only offers "New session": the draft opens on the draw page with the settings dialog.
+        $this->actingAs($this->admin, 'admin')->get(route('admin.sponsor-draws.index', $this->room))
+            ->assertOk()->assertSee('data-sponsor-draw-create', false)->assertDontSee('name="campaign_id"', false);
+        $response = $this->actingAs($this->admin, 'admin')->post(route('admin.sponsor-draws.store', $this->room));
         $session = SponsorDrawSession::query()->sole();
-        $response->assertRedirect(route('admin.sponsor-draws.show', [$this->room, $session]));
+        $response->assertRedirect(route('admin.sponsor-draws.show', [$this->room, $session]))->assertSessionHas('open_settings', true);
+        $this->assertSame(SponsorDrawStatus::Draft, $session->status);
+        $this->assertNull($session->link_expires_at);
+        $this->actingAs($this->admin, 'admin')->withSession(['open_settings' => true])->get(route('admin.sponsor-draws.show', [$this->room, $session]))
+            ->assertOk()->assertSee('data-sponsor-draw-draft', false)->assertSee('data-sd-settings-modal', false)
+            ->assertSee('settingsOpen: true', false)->assertDontSee('data-sd-draw>', false);
+
+        $this->actingAs($this->admin, 'admin')->put(route('admin.sponsor-draws.settings', [$this->room, $session]), [
+            'type' => 'sponsors', 'target_winner_count' => 2, 'target_campaign_id' => $target->id,
+        ])->assertRedirect(route('admin.sponsor-draws.show', [$this->room, $session]));
+        $session->refresh();
         $this->assertSame(SponsorDrawStatus::Ready, $session->status);
+        $this->assertSame(2, $session->target_winner_count);
         $this->assertSame($target->id, $session->target_campaign_id);
         $this->assertTrue($session->link_expires_at->between(now()->addMinutes(59), now()->addMinutes(61)));
 
         $this->actingAs($this->admin, 'admin')->get(route('admin.sponsor-draws.show', [$this->room, $session]))
             ->assertOk()->assertSee('Next week')->assertSee('data-sponsor-draw', false)->assertSee('data-sd-draw>', false);
-        $this->actingAs($this->admin, 'admin')->post(route('admin.sponsor-draws.store', $this->room), ['campaign_id' => $this->campaign->id, 'target_winner_count' => 1])
-            ->assertRedirect();
-        $this->assertNull(SponsorDrawSession::query()->latest('id')->first()->target_campaign_id);
     }
 
-    public function test_members_of_the_campaign_see_names_only_others_are_refused(): void
+    public function test_shop_draw_picks_one_shop_among_suggested_and_typed_names(): void
+    {
+        Campaign::create(['room_id' => $this->room->id, 'name' => 'Old lunch', 'restaurant' => 'Pho 24', 'status' => CampaignStatus::Closed]);
+        $service = app(SponsorDrawService::class);
+        $this->assertContains('Pho 24', $service->shopSuggestions($this->room));
+        $this->assertContains('Cafe', $service->shopSuggestions($this->room));
+        $draft = $service->createDraft($this->room, $this->admin);
+
+        $this->actingAs($this->admin, 'admin')->get(route('admin.sponsor-draws.show', [$this->room, $draft]))->assertOk()->assertSee('Pho 24');
+        $this->actingAs($this->admin, 'admin')->put(route('admin.sponsor-draws.settings', [$this->room, $draft]), [
+            'type' => 'shops', 'shops' => ['Pho 24', 'Cafe'], 'new_shops' => "Banh mi Hoi An\n  cafe \n\nBun cha",
+        ])->assertSessionHasNoErrors();
+        $session = $draft->fresh();
+
+        // Duplicates (case-insensitive) and blank lines are dropped; one shop is drawn, nothing is assigned.
+        $this->assertSame(SponsorDrawType::Shops, $session->type);
+        $this->assertSame(1, $session->target_winner_count);
+        $this->assertNull($session->target_campaign_id);
+        $this->assertSame(['Pho 24', 'Cafe', 'Banh mi Hoi An', 'Bun cha'], $session->eligibleUsers()->pluck('display_name_snapshot')->all());
+        $this->assertSame([null, null, null, null], $session->eligibleUsers()->pluck('room_user_id')->all());
+
+        $result = $service->draw($session, $this->admin);
+        $this->assertContains($result->display_name_snapshot, ['Pho 24', 'Cafe', 'Banh mi Hoi An', 'Bun cha']);
+        $this->assertSame(SponsorDrawStatus::Completed, $session->fresh()->status);
+        $this->assertTrue($service->proof($session->fresh())['snapshot_hash_valid']);
+        $this->assertTrue($service->proof($session->fresh())['seed_matches_commitment']);
+        $this->actingAs($this->admin, 'admin')->get(route('admin.sponsor-draws.show', [$this->room, $session]))
+            ->assertOk()->assertSee(__('sponsor_draw.stage_shops.eligible_list'));
+
+        $confirmed = $service->confirm($session->fresh(), $this->admin);
+        $this->assertSame('none', $confirmed->sponsor_assignment['status']);
+
+        // Fewer than two shops is refused.
+        $other = $service->createDraft($this->room, $this->admin);
+        $this->actingAs($this->admin, 'admin')->put(route('admin.sponsor-draws.settings', [$this->room, $other]), ['type' => 'shops', 'new_shops' => 'Only one'])
+            ->assertSessionHasErrors('shops');
+    }
+
+    public function test_settings_change_until_the_first_turn_only(): void
+    {
+        ['session' => $session] = $this->create(2);
+        $firstCommitment = $session->seed_commitment;
+
+        app(SponsorDrawService::class)->configure($session, $this->admin, SponsorDrawType::Sponsors, 3);
+        $session->refresh();
+        $this->assertSame(3, $session->target_winner_count);
+        $this->assertNotSame($firstCommitment, $session->seed_commitment);
+
+        app(SponsorDrawService::class)->draw($session, $this->admin);
+        $this->assertValidationFails(fn () => app(SponsorDrawService::class)->configure($session->fresh(), $this->admin, SponsorDrawType::Sponsors, 1), 'session');
+        $this->actingAs($this->admin, 'admin')->get(route('admin.sponsor-draws.show', [$this->room, $session]))
+            ->assertOk()->assertDontSee('data-sd-settings-open', false);
+    }
+
+    public function test_members_of_the_room_see_names_only_others_are_refused(): void
     {
         ['token' => $token] = $this->create();
         $member = $this->members[0];
+        $title = __('sponsor_draw.types.sponsors');
 
-        $page = $this->actingAs($member->globalUser, 'web')->get($this->landing($token))->assertOk()->assertSee('Friday tea')->assertSee('Binh');
+        $page = $this->actingAs($member->globalUser, 'web')->get($this->landing($token))->assertOk()->assertSee($title)->assertSee('Binh');
         $this->assertStringNotContainsString($this->members[1]->globalUser->email, $page->getContent());
         $this->assertStringNotContainsString('room_user_id', $page->getContent());
         $state = $this->actingAs($member->globalUser, 'web')->getJson(route('user.sponsor-draws.state', [$this->room, $token]))->assertOk()->json('data.state');
         $this->assertSame(['position', 'name', 'is_winner'], array_keys($state['eligible'][0]));
 
-        // Declined the campaign: no access, no session data.
-        CampaignParticipant::create(['campaign_id' => $this->campaign->id, 'room_user_id' => $this->members[1]->id, 'status' => CampaignParticipant::STATUS_DECLINED]);
+        // No longer an active member of the room: refused (already by the room's access check), no session data.
+        $this->members[1]->update(['status' => 'blocked']);
         $this->actingAs($this->members[1]->globalUser, 'web')->get($this->landing($token))
-            ->assertForbidden()->assertSee('data-sponsor-draw-unavailable="forbidden"', false)->assertDontSee('Friday tea');
+            ->assertForbidden()
+            // No session data at all: the stage (and its data-state payload) is not rendered.
+            ->assertDontSee('data-state=', false);
         $this->actingAs($this->members[1]->globalUser, 'web')->getJson(route('user.sponsor-draws.state', [$this->room, $token]))->assertForbidden();
 
         // A member of another room opening this room's link never reaches the session.
         $outsider = $this->member('Outsider', 'active', 'active', Room::create(['name' => 'Other', 'slug' => 'other-room', 'status' => 'active']));
-        $this->actingAs($outsider->globalUser, 'web')->get($this->landing($token))->assertDontSee('Friday tea');
+        $this->actingAs($outsider->globalUser, 'web')->get($this->landing($token))->assertDontSee('Binh');
 
         // Guests are sent to sign in.
         auth('web')->logout();
@@ -172,7 +251,7 @@ class SponsorDrawTest extends TestCase
         $this->actingAs($this->members[0]->globalUser, 'web')->getJson(route('user.sponsor-draws.socket-token', [$this->room, $token]))->assertStatus(410);
         $this->actingAs($this->admin, 'admin')->getJson(route('admin.sponsor-draws.socket-token', [$this->room, $session]))->assertStatus(410);
         // The admin keeps the session and its results.
-        $this->actingAs($this->admin, 'admin')->get(route('admin.sponsor-draws.show', [$this->room, $session]))->assertOk()->assertSee('Friday tea');
+        $this->actingAs($this->admin, 'admin')->get(route('admin.sponsor-draws.show', [$this->room, $session]))->assertOk()->assertSee(__('sponsor_draw.types.sponsors'));
         $this->assertSame(1, SponsorDrawResult::query()->count());
 
         // A new link works, the old one stays dead.
@@ -343,7 +422,8 @@ class SponsorDrawTest extends TestCase
                     throw new \RuntimeException('Telegram is down');
                 }
                 $sent[] = $channel->type;
-                $this->assertStringContainsString('Friday tea', $payload['title']);
+                // Sessions are drawn among the room's members: the title names the room.
+                $this->assertStringContainsString('Draw room', $payload['title']);
                 $this->assertStringNotContainsString('@', $payload['message']);
             });
         });
@@ -432,7 +512,7 @@ class SponsorDrawTest extends TestCase
         app(SponsorDrawService::class)->draw($session, $this->admin);
 
         $this->actingAs($this->admin, 'admin')->get(route('admin.sponsor-draws.index', $this->room))
-            ->assertOk()->assertSee('Friday tea')->assertSee(route('admin.sponsor-draws.show', [$this->room, $session]), false)->assertSee('data-nav-sponsor-draws', false);
+            ->assertOk()->assertSee(__('sponsor_draw.types.sponsors'))->assertSee(route('admin.sponsor-draws.show', [$this->room, $session]), false)->assertSee('data-nav-sponsor-draws', false);
         // Times are shown in the room's timezone, and the stage formats live times with the same zone.
         $this->room->update(['timezone' => 'Asia/Tokyo']);
         $this->actingAs($this->admin, 'admin')->get(route('admin.sponsor-draws.show', [$this->room, $session]))

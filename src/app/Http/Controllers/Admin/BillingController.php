@@ -9,6 +9,7 @@ use App\Models\Admin;
 use App\Models\AdminInvoice;
 use App\Services\Billing\Gateway\PaymentGateway;
 use App\Services\Billing\InvoicePdfService;
+use App\Services\Billing\PaymentRequirementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
@@ -27,17 +28,20 @@ class BillingController extends Controller
      * @param Request $request Incoming request.
      * @param PaymentGateway $gateway Payment gateway (online payment button).
      * @param InvoicePdfService $documents Invoice documents (download file names).
+     * @param PaymentRequirementService $payments First-payment state of the Agent.
      * @return View Billing history.
      */
-    public function index(Request $request, PaymentGateway $gateway, InvoicePdfService $documents): View
+    public function index(Request $request, PaymentGateway $gateway, InvoicePdfService $documents, PaymentRequirementService $payments): View
     {
         /** @var Admin $admin */
         $admin = $request->user('admin');
+        // Self-registered Agent whose first invoice is unpaid: the package starts with the payment.
+        $awaitingFirstPayment = $payments->awaitingFirstPayment($admin);
 
         return view('admin.billing.index', [
             'documents' => $documents,
-            // Self-registered Agent whose first invoice is unpaid: the package starts with the payment.
-            'awaitingFirstPayment' => $admin->subscriptions()->pending()->exists() && ! $admin->subscriptions()->active()->exists(),
+            'awaitingFirstPayment' => $awaitingFirstPayment,
+            'firstInvoice' => $awaitingFirstPayment ? $payments->reminder($admin)['invoice'] ?? null : null,
             'invoices' => $admin->invoices()->with('package:id,name')->latest('period_start')->latest('id')->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE),
             'payments' => $admin->platformPayments()->with('invoice:id,number')->latest('paid_at')->limit(50)->get(),
             'balance' => (int) $admin->invoices()->outstanding()->selectRaw('COALESCE(SUM(total - paid_amount), 0) as due')->value('due'),

@@ -34,12 +34,15 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class AgentController extends Controller
 {
+    /** `package` filter value listing the Agents without a running package. */
+    public const FILTER_NO_PACKAGE = 'none';
+
     public function __construct(private readonly AgentDirectoryService $directory) {}
 
     /**
      * Agents visible to the Superadmin with package, quota, balance and primary manager.
      *
-     * @param Request $request Query string: q, status, package.
+     * @param Request $request Query string: q, status, package (a package ID, or `none` for Agents without one).
      * @param RoomQuotaService $quota Room quota.
      * @return View Agent list.
      */
@@ -48,16 +51,21 @@ class AgentController extends Controller
         $actor = $this->actor($request);
         $search = trim($request->string('q')->toString());
         $status = AdminStatus::tryFrom($request->string('status')->toString());
-        $packageId = $request->integer('package') ?: null;
+        $withoutPackage = $request->string('package')->toString() === self::FILTER_NO_PACKAGE;
+        $packageId = $withoutPackage ? null : ($request->integer('package') ?: null);
+        // Search and status filters, shared by the list and by the "without package" count so both always agree.
+        // Pending and rejected sign-ups live in the registration queue.
+        $filtered = static fn ($q) => $q
+            ->when($status === null, static fn ($q) => $q->whereNotIn('status', [AdminStatus::Pending->value, AdminStatus::Rejected->value]))
+            ->when($status !== null, static fn ($q) => $q->where('status', $status->value))
+            ->when($search !== '', static fn ($q) => $q->where(static fn ($inner) => $inner->where('name', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%")->orWhere('company', 'like', "%{$search}%")));
 
         $agents = Admin::query()->visibleTo($actor)
             ->with(['activeSubscription.package:id,name', 'superadmins:id,name'])
-            // Pending and rejected sign-ups live in the registration queue.
-            ->when($status === null, static fn ($q) => $q->whereNotIn('status', [AdminStatus::Pending->value, AdminStatus::Rejected->value]))
-            ->when($status !== null, static fn ($q) => $q->where('status', $status->value))
+            ->tap($filtered)
             ->when($packageId !== null, static fn ($q) => $q->whereHas('activeSubscription', static fn ($s) => $s->where('package_id', $packageId)))
-            ->when($search !== '', static fn ($q) => $q->where(static fn ($inner) => $inner->where('name', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%")->orWhere('company', 'like', "%{$search}%")))
+            ->when($withoutPackage, static fn ($q) => $q->whereDoesntHave('activeSubscription'))
             ->orderBy('name')
             ->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE)
             ->withQueryString();
@@ -71,7 +79,12 @@ class AgentController extends Controller
                 $admin->id => $this->directory->allows($actor, Permission::SubscriptionView, $admin) ? $quota->usage($admin) : null,
             ])->all(),
             'packages' => Package::query()->ordered()->get(['id', 'name']),
-            'filters' => ['search' => $search, 'status' => $status?->value ?? '', 'package' => $packageId],
+            // Agents of the current search / status with no running package (e.g. awaiting their first payment). Only
+            // Agents whose subscription the viewer may see are counted, like the package column; null hides the chip.
+            'withoutPackageCount' => $actor->hasPermission(Permission::SubscriptionView)
+                ? Admin::query()->visibleTo($actor, Permission::SubscriptionView)->tap($filtered)->whereDoesntHave('activeSubscription')->count()
+                : null,
+            'filters' => ['search' => $search, 'status' => $status?->value ?? '', 'package' => $withoutPackage ? self::FILTER_NO_PACKAGE : $packageId],
         ]);
     }
 
@@ -141,6 +154,8 @@ class AgentController extends Controller
             'tabs' => $tabs,
             'tab' => $tab,
             'canManage' => $this->directory->allows($actor, Permission::AgentManage, $admin),
+            // Billing history is kept: an Agent with invoices or payments can be suspended, not deleted.
+            'deletable' => ! $admin->invoices()->exists() && ! $admin->platformPayments()->exists(),
             'assignableSuperadmins' => Superadmin::query()->where('status', SuperadminStatus::Active->value)->orderBy('name')->get(['id', 'name', 'email']),
         ];
 

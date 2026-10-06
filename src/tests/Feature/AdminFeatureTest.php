@@ -682,8 +682,10 @@ class AdminFeatureTest extends TestCase
         // Step 4b: Access reset password page with tampered signature fails
         $this->get('/admin/reset-password?signature=invalid_tampered_sig')->assertRedirect(route('admin.forgot-password.page'));
 
-        // Step 4c: Access reset password page with valid signed URL succeeds
-        $this->get($targetUrl)->assertOk();
+        // Step 4c: Access reset password page with valid signed URL succeeds; it states the enforced minimum length.
+        $this->get($targetUrl)->assertOk()
+            ->assertSee('minlength="'.\App\Http\Requests\ResetPasswordRequest::MIN_LENGTH.'"', false)
+            ->assertSee(__('admin.req_min_chars', ['count' => \App\Http\Requests\ResetPasswordRequest::MIN_LENGTH]));
 
         // Step 4d: Reset Password with valid signed URL query
         $parsed = parse_url($targetUrl);

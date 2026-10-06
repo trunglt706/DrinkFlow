@@ -13,7 +13,16 @@
         <div class="sa-section-header">
             <div>
                 <h2>{{ __('platform.agents.list') }}</h2>
-                <p>{{ __('superadmin.common.accounts_count', ['count' => $agents->total()]) }}</p>
+                <p class="flex flex-wrap items-center gap-2">
+                    <span>{{ __('superadmin.common.accounts_count', ['count' => $agents->total()]) }}</span>
+                    {{-- Agents with no running package (e.g. awaiting their first payment); the chip filters the list on them. --}}
+                    @if ($withoutPackageCount !== null)
+                    <a href="{{ route('superadmin.agents.index', array_filter(['q' => $filters['search'], 'status' => $filters['status']]) + ['package' => \App\Http\Controllers\Superadmin\AgentController::FILTER_NO_PACKAGE]) }}" data-agents-without-package="{{ $withoutPackageCount }}"
+                        @class(['status-pill no-underline', 'status-pending' => $withoutPackageCount > 0, 'status-active' => $withoutPackageCount === 0])>
+                        <span class="material-symbols-outlined !text-[14px]" aria-hidden="true">package_2</span>{{ __('platform.agents.without_package_count', ['count' => $withoutPackageCount]) }}
+                    </a>
+                    @endif
+                </p>
             </div>
             <form method="GET" class="superadmin-actions">
                 <x-superadmin.search-input :value="$filters['search']" placeholder="{{ __('platform.registrations.search') }}" />
@@ -25,6 +34,7 @@
                 </select>
                 <select name="package" class="sa-input" aria-label="{{ __('platform.packages.package') }}">
                     <option value="">{{ __('platform.subscriptions.all_packages') }}</option>
+                    <option value="{{ \App\Http\Controllers\Superadmin\AgentController::FILTER_NO_PACKAGE }}" @selected($filters['package'] === \App\Http\Controllers\Superadmin\AgentController::FILTER_NO_PACKAGE)>{{ __('platform.agents.filter_no_package') }}</option>
                     @foreach ($packages as $package)
                         <option value="{{ $package->id }}" @selected($filters['package'] === $package->id)>{{ $package->name }}</option>
                     @endforeach
@@ -48,7 +58,8 @@
                 <tbody>
                     @forelse ($agents as $agent)
                         @php
-                            $usage = $usage[$agent->id] ?? null;
+                            // Not $usage: overwriting the per-Agent map would make every following row read the wrong Agent.
+                            $agentUsage = $usage[$agent->id] ?? null;
                             $primary = $agent->superadmins->first(static fn ($manager) => (bool) $manager->pivot->is_primary);
                         @endphp
                         <tr>
@@ -57,8 +68,8 @@
                                 <small class="block truncate text-outline"><x-superadmin.sensitive :value="$agent->email" />@if ($agent->company) · {{ $agent->company }}@endif</small>
                             </td>
                             <td class="col-status"><x-superadmin.status-pill :status="$agent->status" /></td>
-                            <td>{{ $usage !== null ? ($agent->activeSubscription?->package?->name ?? '—') : '•••' }}</td>
-                            <td class="text-right whitespace-nowrap num">{{ $usage !== null ? $usage['used'].' / '.$usage['limit'] : '•••' }}</td>
+                            <td>{{ $agentUsage !== null ? ($agent->activeSubscription?->package?->name ?? '—') : '•••' }}</td>
+                            <td class="text-right whitespace-nowrap num">{{ $agentUsage !== null ? $agentUsage['used'].' / '.$agentUsage['limit'] : '•••' }}</td>
                             <td class="text-right whitespace-nowrap num">{{ array_key_exists($agent->id, $balances) ? $money($balances[$agent->id]) : '•••' }}</td>
                             <td>{{ $primary?->name ?? '—' }}</td>
                             <td class="text-right col-actions"><a class="sa-button secondary" href="{{ route('superadmin.agents.show', $agent) }}"><span class="material-symbols-outlined text-[16px]">visibility</span>{{ __('superadmin.common.details') }}</a></td>

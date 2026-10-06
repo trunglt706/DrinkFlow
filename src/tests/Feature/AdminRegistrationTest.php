@@ -257,6 +257,56 @@ class AdminRegistrationTest extends TestCase
         Mail::assertNothingQueued();
     }
 
+    public function test_emailed_activation_link_opens_on_another_host_of_the_same_app(): void
+    {
+        $this->register();
+        $url = '';
+        Mail::assertQueued(AgentRegistrationMail::class, function (AgentRegistrationMail $mail) use (&$url): bool {
+            $url = $mail->activationUrl;
+
+            return true;
+        });
+        $path = (string) parse_url($url, PHP_URL_PATH).'?'.parse_url($url, PHP_URL_QUERY);
+
+        // localhost vs 127.0.0.1, or http behind an HTTPS proxy: the signature covers the path, not the host.
+        $this->get('http://localhost:8080'.$path)->assertOk()->assertSee('agent@example.test');
+        $this->get('https://drinkflow.example'.$path)->assertOk();
+
+        $this->get('http://localhost:8080'.str_replace('signature=', 'signature=0', $path))->assertForbidden();
+        $this->get('http://localhost:8080'.str_replace('expires=', 'expires=9', $path))->assertForbidden();
+    }
+
+    public function test_activation_email_prints_the_link_with_plain_ampersands(): void
+    {
+        $this->register();
+        Mail::assertQueued(AgentRegistrationMail::class, function (AgentRegistrationMail $mail): bool {
+            $html = $mail->render();
+            $this->assertSame(2, substr_count($html, $mail->activationUrl));
+            $this->assertStringNotContainsString('&amp;signature=', $html);
+
+            return true;
+        });
+    }
+
+    public function test_activation_link_with_html_escaped_ampersands_is_repaired(): void
+    {
+        $this->register();
+        $url = '';
+        Mail::assertQueued(AgentRegistrationMail::class, function (AgentRegistrationMail $mail) use (&$url): bool {
+            $url = $mail->activationUrl;
+
+            return true;
+        });
+
+        foreach (['&amp;', '&amp;amp;'] as $escaped) {
+            $this->get(str_replace('&', $escaped, $url))->assertRedirect($url);
+        }
+        $this->get($url)->assertOk();
+        // The repair only renames the parameters: a forged signature is still refused.
+        $this->get(str_replace(['&', 'signature='], ['&amp;', 'signature=0'], $url))->assertRedirect();
+        $this->get(str_replace('signature=', 'signature=0', $url))->assertForbidden();
+    }
+
     public function test_pending_page_renders(): void
     {
         $this->withSession(['registered_email' => 'agent@example.test'])

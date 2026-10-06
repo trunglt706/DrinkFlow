@@ -92,12 +92,21 @@ class ManageAdminAction
     }
 
     /**
-     * Handle the delete operation.
-     * @param Admin $admin Parameter value.
-     * @return void Result of the operation.
+     * Delete an Agent account and everything tied to it.
+     *
+     * Platform invoices and payments are financial records: an Agent that has any is refused (suspend it
+     * instead), which also avoids the restricting foreign keys of those tables.
+     *
+     * @param Admin $admin Agent to delete.
+     * @return void
+     * @throws ValidationException When the Agent has billing history.
      */
     public function delete(Admin $admin): void
     {
+        if ($admin->invoices()->exists() || $admin->platformPayments()->exists()) {
+            throw ValidationException::withMessages(['admin' => __('platform.agents.delete_blocked_billing')]);
+        }
+
         DB::transaction(function () use ($admin): void {
             app(AuditService::class)->record('admin.deleted', 'admin', $admin->id, null, $admin->only(['name', 'email', 'status']), [], [
                 'room_ids' => $admin->rooms()->pluck('rooms.id')->all(),

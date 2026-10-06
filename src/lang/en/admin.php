@@ -1003,30 +1003,25 @@ return [
 
     // Password Recovery Hero & Details
     'recovery_protocol' => 'RECOVERY CLEARANCE PROTOCOL',
-    'forgot_hero_heading' => 'Restore Room Administrator Access',
-    'forgot_hero_desc' => 'The system will generate a multi-factor authentication (MFA) OTP code and dispatch it to the authorized corporate email.',
     'two_factor_otp' => 'Two-Factor Authentication (2-Factor OTP)',
     'otp_validity_15m' => 'Valid for 15 minutes from issuance',
-    'security_audit_trail' => 'Security Audit Trail',
-    'security_audit_desc' => 'Records IP address, User-Agent, and dispatches security alerts.',
-    'important_note' => 'Important Notice',
     'forgot_note_desc' => 'If you do not receive the code within 2 minutes, please check your Spam/Junk folder or contact your IT Administrator for temporary access.',
 
     // Verify OTP Hero & Details
-    'mfa_challenge' => 'MFA OTP CHALLENGE',
-    'verify_hero_heading' => 'Enter 6-digit Verification Code',
-    'verify_hero_desc' => 'A 6-digit security code has been dispatched to your corporate inbox: :email.',
     'session_challenge_id' => 'SESSION CHALLENGE ID:',
-    'validity_duration' => 'VALIDITY PERIOD:',
+    'validity_duration' => 'Valid for',
     'duration_15_mins' => '15 minutes',
 
     // Reset Password Hero & Requirements
     'credential_protocol' => 'CREDENTIAL UPDATE PROTOCOL',
-    'reset_hero_heading' => 'Set New Password',
-    'reset_hero_desc' => 'Create a secure new password for admin account :email. Must contain at least 8 characters.',
     'security_requirements' => 'Security Requirements:',
     'req_min_8_chars' => 'At least 8 characters',
-    'req_alphanumeric' => 'Must include letters and numbers',
+    'recovery_steps_label' => 'Password recovery steps',
+    'recovery_step_email' => 'Email',
+    'recovery_step_otp' => 'OTP code',
+    'recovery_step_password' => 'New password',
+    'req_min_chars' => 'At least :count characters',
+    'otp_sent_to' => 'The code was sent to :email',
     'req_match_confirmation' => 'Must match password confirmation',
 
     'forgot_password_title' => 'Admin Password Recovery',
@@ -1047,7 +1042,7 @@ return [
     'reset_token_invalid_or_expired' => 'Password reset token is invalid or expired (valid for 30 minutes). Please request a new OTP.',
     'reset_password_title' => 'Admin Password Reset',
     'reset_password_heading' => 'Set New Password',
-    'reset_password_subheading' => 'Please enter a new password with at least 8 characters.',
+    'reset_password_subheading' => 'Please enter a new password with at least :count characters.',
     'save_new_password' => 'Save New Password & Complete',
     'password_reset_success' => 'Password reset successfully. Please log in with your new password.',
     'campaign_closed_invalid_state' => 'Campaign cannot be closed in its current state.',

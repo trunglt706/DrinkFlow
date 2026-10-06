@@ -32,6 +32,30 @@ export function initAdminAuth() {
         });
     }
 
+    // Live password checklist: <ul data-password-rules data-password="#…" data-confirmation="#…"> whose
+    // <li data-rule="length|match"> get data-met="true" once the rule holds (styling is done in the markup).
+    document.querySelectorAll('[data-password-rules]').forEach((list) => {
+        if (list.dataset.bound) return;
+        const password = document.querySelector(list.dataset.password || '');
+        const confirmation = document.querySelector(list.dataset.confirmation || '');
+        if (!password) return;
+        list.dataset.bound = 'true';
+        const minLength = Number(password.getAttribute('minlength')) || 8;
+        const checks = {
+            length: () => password.value.length >= minLength,
+            match: () => confirmation !== null && password.value !== '' && password.value === confirmation.value,
+        };
+        const refresh = () => {
+            list.querySelectorAll('[data-rule]').forEach((item) => {
+                const check = checks[item.dataset.rule];
+                item.dataset.met = check && check() ? 'true' : 'false';
+            });
+        };
+        password.addEventListener('input', refresh);
+        confirmation?.addEventListener('input', refresh);
+        refresh();
+    });
+
     // Captcha Refresh Handler (matching Feedback / Contact captcha)
     const refreshBtn = document.getElementById('refresh-captcha-btn');
     const captchaWrapper = document.getElementById('captcha-img-wrapper');

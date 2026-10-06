@@ -32,12 +32,11 @@
                         <tr>
                             <th class="col-primary">{{ __('superadmin.common.room') }}</th>
                             <th class="col-status">{{ __('superadmin.common.status') }}</th>
-                            <th class="whitespace-nowrap num">{{ __('superadmin.users.devices') }}</th>
                             <th class="text-right col-actions">{{ __('superadmin.common.actions') }}</th>
                         </tr>
                     </thead>
                     <tbody id="membership-list">
-                        <tr><td colspan="4"><x-superadmin.empty-state loading :title="__('superadmin.common.loading_title')" :description="__('superadmin.common.loading_description')" /></td></tr>
+                        <tr><td colspan="3"><x-superadmin.empty-state loading :title="__('superadmin.common.loading_title')" :description="__('superadmin.common.loading_description')" /></td></tr>
                     </tbody>
                 </table>
             </div>

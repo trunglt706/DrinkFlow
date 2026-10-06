@@ -10,6 +10,8 @@ namespace App\Enums;
  */
 enum SponsorDrawStatus: string
 {
+    /** Created from the list and not configured yet: no eligible snapshot, seed or link. */
+    case Draft = 'draft';
     /** Snapshot frozen and seed committed; no turn drawn yet. */
     case Ready = 'ready';
     /** At least one turn drawn. */
@@ -32,7 +34,16 @@ enum SponsorDrawStatus: string
     /** Whether the admin may still cancel the session (results not confirmed yet). */
     public function canCancel(): bool
     {
-        return in_array($this, [self::Ready, self::Drawing, self::Completed], true);
+        return in_array($this, [self::Draft, self::Ready, self::Drawing, self::Completed], true);
+    }
+
+    /**
+     * Whether the settings (type, number of winners, target, shops) may still change. A Ready session may only
+     * be reconfigured before its first turn; SponsorDrawService checks that part.
+     */
+    public function canConfigure(): bool
+    {
+        return $this === self::Draft || $this === self::Ready;
     }
 
     /** Whether the results have been confirmed by an admin. */

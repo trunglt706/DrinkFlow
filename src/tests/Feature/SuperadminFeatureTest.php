@@ -246,7 +246,7 @@ class SuperadminFeatureTest extends TestCase
             ->assertJsonPath('data.status', 'suspended');
         $this->assertDatabaseHas('admins', ['id' => $admin->id, 'status' => 'suspended']);
 
-        $this->actingAs($root, 'superadmin')->get('/superadmin/admins/page?status=suspended')
+        $this->actingAs($root, 'superadmin')->get('/superadmin/agents?status=suspended')
             ->assertOk()
             ->assertSee($this->maskedEmail('operator-block@drinkflow.test'))
             ->assertSee('status-pill status-suspended', false);
@@ -258,34 +258,77 @@ class SuperadminFeatureTest extends TestCase
             ->assertJsonPath('data.status', 'active');
     }
 
-    public function test_admin_management_page_uses_modals_and_block_only_actions(): void
+    public function test_agent_list_counts_and_filters_agents_without_a_package(): void
+    {
+        $root = $this->superadmin();
+        $package = \App\Models\Package::create(['code' => 'std', 'name' => 'Standard', 'monthly_price' => 500000, 'room_limit' => 5, 'status' => 'active']);
+        $subscribed = Admin::create(['name' => 'Subscribed agent', 'email' => 'subscribed@drinkflow.test', 'password' => 'password123', 'status' => 'active']);
+        app(\App\Services\Subscription\SubscriptionService::class)->activate($subscribed, $package);
+        Admin::create(['name' => 'Packageless agent', 'email' => 'packageless@drinkflow.test', 'password' => 'password123', 'status' => 'active']);
+        // Pending sign-ups belong to the registration queue, not to this count.
+        Admin::create(['name' => 'Queued agent', 'email' => 'queued@drinkflow.test', 'password' => 'password123', 'status' => 'pending']);
+
+        $this->actingAs($root, 'superadmin')->get(route('superadmin.agents.index'))
+            ->assertOk()
+            ->assertSee('data-agents-without-package="1"', false)
+            ->assertSee(__('platform.agents.without_package_count', ['count' => 1]))
+            ->assertSee(route('superadmin.agents.index', ['package' => 'none']), false);
+
+        $this->actingAs($root, 'superadmin')->get(route('superadmin.agents.index', ['package' => 'none']))
+            ->assertOk()
+            ->assertSee('Packageless agent')
+            ->assertDontSee('Subscribed agent')
+            ->assertDontSee('Queued agent');
+
+        // The count follows the current search, like the list.
+        $this->actingAs($root, 'superadmin')->get(route('superadmin.agents.index', ['q' => 'Subscribed']))
+            ->assertOk()
+            ->assertSee('data-agents-without-package="0"', false);
+    }
+
+    public function test_agent_list_shows_the_package_of_every_row(): void
+    {
+        $root = $this->superadmin();
+        $package = \App\Models\Package::create(['code' => 'std', 'name' => 'Standard plan', 'monthly_price' => 500000, 'room_limit' => 5, 'status' => 'active']);
+        foreach (['Agent One', 'Agent Two', 'Agent Three'] as $index => $name) {
+            $agent = Admin::create(['name' => $name, 'email' => "agent-{$index}@drinkflow.test", 'password' => 'password123', 'status' => 'active']);
+            app(\App\Services\Subscription\SubscriptionService::class)->activate($agent, $package);
+        }
+
+        // Every row (not only the first) shows its package and quota instead of the out-of-scope mask.
+        $html = $this->actingAs($root, 'superadmin')->get(route('superadmin.agents.index'))->assertOk()->getContent();
+        $this->assertSame(3, substr_count($html, '<td>Standard plan</td>'));
+        $this->assertSame(0, substr_count($html, '>•••<'));
+    }
+
+    public function test_former_admin_pages_redirect_and_the_agent_page_hosts_account_actions(): void
     {
         $root = $this->superadmin();
         $admin = Admin::create(['name' => 'Operator', 'email' => 'operator-page@drinkflow.test', 'password' => 'password123', 'status' => 'active']);
 
-        $this->actingAs($root, 'superadmin')->get('/superadmin/admins/page')
-            ->assertOk()
-            ->assertSee('id="create-admin-modal"', false)
-            ->assertSee('data-password-toggle="create-admin-password"', false)
-            ->assertSee('data-password-toggle="create-admin-password-confirmation"', false)
-            ->assertSee('data-action="block-admin" data-admin-id="'.$admin->id.'"', false)
-            ->assertDontSee(__('superadmin.common.unblock'));
-
+        // The former Agent pages were merged into Agents: they now redirect there, keeping the filters.
+        $this->actingAs($root, 'superadmin')->get('/superadmin/admins/page?q=operator&status=active')
+            ->assertStatus(301)->assertRedirect(route('superadmin.agents.index', ['q' => 'operator', 'status' => 'active']));
         $this->actingAs($root, 'superadmin')->get("/superadmin/admins/{$admin->id}/page")
+            ->assertStatus(301)->assertRedirect(route('superadmin.agents.show', $admin));
+
+        // Room access, password reset and deletion now live on the Agent page (modals of its page script).
+        $this->actingAs($root, 'superadmin')->get(route('superadmin.agents.show', $admin))
             ->assertOk()
             ->assertSee('id="room-access-modal"', false)
             ->assertSee('id="reset-password-modal"', false)
             ->assertSee('data-password-toggle="reset-password"', false)
             ->assertSee('data-password-toggle="reset-password-confirmation"', false)
-            ->assertDontSee('id="room-assignment-panel"', false)
-            ->assertSee(__('superadmin.common.loading_title'))
-            ->assertSee('id="tpl-no-assigned-rooms"', false)
+            ->assertSee('id="tpl-rooms-loading"', false)
+            ->assertSee('id="agent-delete"', false);
+        $this->actingAs($root, 'superadmin')->get(route('superadmin.agents.show', ['admin' => $admin, 'tab' => 'rooms']))
+            ->assertOk()
+            ->assertSee('id="edit-rooms"', false)
             ->assertSee(__('superadmin.admins.no_assigned_rooms_description'));
 
-        $this->actingAs($root, 'superadmin')->get('/superadmin/admins/page?q=no-such-admin')
+        $this->actingAs($root, 'superadmin')->get('/superadmin/agents?q=no-such-admin')
             ->assertOk()
-            ->assertSee(__('superadmin.admins.no_results_title'))
-            ->assertSee(__('superadmin.admins.no_results_description'));
+            ->assertSee(__('platform.agents.empty'));
     }
 
     public function test_global_user_pages_render_empty_states_and_distinct_block_button(): void
@@ -461,8 +504,8 @@ class SuperadminFeatureTest extends TestCase
             '/superadmin',
             '/superadmin/rooms/page',
             "/superadmin/rooms/{$room->slug}/page",
-            '/superadmin/admins/page',
-            "/superadmin/admins/{$admin->id}/page",
+            '/superadmin/agents',
+            "/superadmin/agents/{$admin->id}",
             '/superadmin/global-users/page',
             '/superadmin/global-users/1/page',
             '/superadmin/campaigns/page',

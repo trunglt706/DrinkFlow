@@ -7,6 +7,15 @@
     @endphp
     <x-superadmin.page-header :back="route('superadmin.agents.index')" :back-label="__('platform.agents.title')" :title="$agent->name">
         <x-slot:meta><p class="sa-heading-meta"><x-superadmin.sensitive :value="$agent->email" />@if ($agent->company) · {{ $agent->company }}@endif · <x-superadmin.status-pill :status="$agent->status" /></p></x-slot:meta>
+        @if ($canManage)
+            <button class="sa-button secondary" data-modal-open="reset-password-modal" type="button"><span class="material-symbols-outlined text-[16px]">lock_reset</span>{{ __('superadmin.admins.reset_password') }}</button>
+            @if ($deletable)
+                <button class="sa-button danger" id="agent-delete" type="button"><span class="material-symbols-outlined text-[16px]">delete</span>{{ __('superadmin.admins.delete_account') }}</button>
+            @else
+                {{-- Billing history is kept: suspending is the way to close such an account. --}}
+                <button class="sa-button danger" type="button" disabled aria-disabled="true" data-agent-delete-blocked title="{{ __('platform.agents.delete_unavailable') }}"><span class="material-symbols-outlined text-[16px]">delete</span>{{ __('superadmin.admins.delete_account') }}</button>
+            @endif
+        @endif
     </x-superadmin.page-header>
     <x-superadmin.flash />
 
@@ -142,9 +151,24 @@
                     </tbody>
                 </table>
             </div>
-            @if ($sharedRooms->isNotEmpty())
-                <p class="mt-4 text-xs text-outline">{{ __('platform.rooms.shared') }}: {{ $sharedRooms->pluck('name')->implode(', ') }}</p>
-            @endif
+        </section>
+        <section class="sa-card sa-section">
+            <div class="sa-section-header">
+                <div><h2>{{ __('platform.agents.room_access') }}</h2><p>{{ __('platform.agents.room_access_hint') }}</p></div>
+                @if ($canManage)
+                    <button class="sa-button secondary" id="edit-rooms" type="button"><span class="material-symbols-outlined text-[16px]">tune</span>{{ __('superadmin.admins.manage_access') }}</button>
+                @endif
+            </div>
+            <div class="sa-health-list">
+                @forelse ($sharedRooms as $room)
+                    <a class="sa-health-row" href="{{ route('superadmin.rooms.detail.page', $room) }}">
+                        <div><strong>{{ $room->name }}</strong><small class="font-mono">/{{ $room->slug }}</small></div>
+                        <x-superadmin.status-pill :status="$room->status" />
+                    </a>
+                @empty
+                    <x-superadmin.empty-state icon="meeting_room" :title="__('superadmin.admins.no_assigned_rooms_title')" :description="__('superadmin.admins.no_assigned_rooms_description')" />
+                @endforelse
+            </div>
         </section>
     @elseif ($tab === 'campaigns')
         <section class="sa-card sa-section">
@@ -196,10 +220,7 @@
                         @forelse ($logs as $log)
                             <tr>
                                 <td class="whitespace-nowrap col-date">{{ $log->created_at?->toAppDateTime() }}</td>
-                                <td data-activity-event="{{ $log->event }}">
-                                    <strong class="block text-[13px]">{{ $log->eventLabel() }}</strong>
-                                    <small class="block font-mono text-[11px] text-outline">{{ $log->event }}</small>
-                                </td>
+                                <td data-activity-event="{{ $log->event }}"><strong class="block text-[13px]">{{ $log->eventLabel() }}</strong></td>
                                 <td>
                                     @if ($log->actor_type === \App\Models\AuditLog::ACTOR_SUPERADMIN && $log->actorSuperadmin)
                                         <strong class="block text-[13px]">{{ $log->actorSuperadmin->name }}</strong>
@@ -218,4 +239,66 @@
             </div>
         </section>
     @endif
+
+    @if ($canManage)
+        <div id="notice" class="sa-notice" role="status"></div>
+        <x-superadmin.modal id="room-access-modal" icon="meeting_room" tone="security" :title="__('superadmin.admins.room_access')" :description="__('superadmin.admins.room_access_description')">
+            <form id="room-access-form" class="space-y-4">
+                @csrf
+                <x-superadmin.modal-guide :title="__('superadmin.modals.room_access.guide_title')">
+                    <li>{{ __('superadmin.modals.room_access.guide_check') }}</li>
+                    <li>{{ __('superadmin.modals.room_access.guide_apply') }}</li>
+                </x-superadmin.modal-guide>
+                <div id="room-options" class="sa-check-list !max-h-80 space-y-1"></div>
+                <div class="sa-modal-footer">
+                    <button type="button" class="sa-button secondary" data-modal-close>{{ __('superadmin.common.cancel') }}</button>
+                    <button type="submit" class="sa-button"><span class="material-symbols-outlined text-[16px]">save</span>{{ __('superadmin.admins.save_assignment') }}</button>
+                </div>
+            </form>
+        </x-superadmin.modal>
+
+        <x-superadmin.modal id="reset-password-modal" icon="lock_reset" tone="security" :title="__('superadmin.admins.reset_password')" max-width="max-w-md">
+            <form id="reset-password-form" class="space-y-4">
+                @csrf
+                <p class="sa-confirm-message !text-sm">{{ __('superadmin.admins.reset_password_description', ['name' => $agent->name]) }}</p>
+                <x-superadmin.modal-guide :title="__('superadmin.modals.reset_password.guide_title')" tone="warning">
+                    <li>{{ __('superadmin.modals.reset_password.guide_old') }}</li>
+                    <li>{{ __('superadmin.modals.reset_password.guide_share') }}</li>
+                </x-superadmin.modal-guide>
+                <div>
+                    <label for="reset-password" class="sa-label">{{ __('superadmin.admins.field_password') }} <span class="text-error">*</span></label>
+                    <x-superadmin.password-input id="reset-password" name="password" required minlength="8" />
+                </div>
+                <div>
+                    <label for="reset-password-confirmation" class="sa-label">{{ __('superadmin.admins.field_password_confirmation') }} <span class="text-error">*</span></label>
+                    <x-superadmin.password-input id="reset-password-confirmation" name="password_confirmation" required minlength="8" />
+                    <p class="sa-hint">{{ __('superadmin.admins.password_hint') }}</p>
+                </div>
+                <div class="sa-modal-footer">
+                    <button type="button" class="sa-button secondary" data-modal-close>{{ __('superadmin.common.cancel') }}</button>
+                    <button type="submit" class="sa-button"><span class="material-symbols-outlined text-[16px]">lock_reset</span>{{ __('superadmin.admins.save_password') }}</button>
+                </div>
+            </form>
+        </x-superadmin.modal>
+
+        {{-- Room-access placeholders cloned by the page script, so every string stays translated through __(). --}}
+        <template id="tpl-rooms-loading"><x-superadmin.empty-state loading :bordered="false" :title="__('superadmin.common.loading_title')" :description="__('superadmin.admins.loading_rooms')" /></template>
+        <template id="tpl-no-rooms"><x-superadmin.empty-state icon="domain_disabled" :bordered="false" :title="__('superadmin.admins.no_rooms_title')" :description="__('superadmin.admins.no_rooms_description')" /></template>
+    @endif
 @endsection
+
+@if ($canManage)
+    @push('scripts')
+        <x-superadmin.page-script name="agent-detail" :i18n="[
+            'assignment_updated' => __('superadmin.admins.assignment_updated'), 'password_mismatch' => __('superadmin.admins.password_mismatch'),
+            'password_reset' => __('superadmin.admins.password_reset'), 'confirm_delete' => __('superadmin.admins.confirm_delete'),
+            'delete_description' => __('superadmin.admins.delete_description'), 'delete_account' => __('superadmin.admins.delete_account'),
+            'deleted' => __('superadmin.admins.deleted'),
+        ]" :urls="[
+            'admin' => route('superadmin.admins.show', $agent), 'rooms' => route('superadmin.rooms.index'),
+            'assign_rooms' => route('superadmin.admins.rooms', $agent), 'reset_password' => route('superadmin.admins.reset-password', $agent),
+            'destroy' => route('superadmin.admins.destroy', $agent), 'list' => route('superadmin.agents.index'),
+            'name' => $agent->name,
+        ]" />
+    @endpush
+@endif

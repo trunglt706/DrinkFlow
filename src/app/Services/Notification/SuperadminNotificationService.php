@@ -99,7 +99,7 @@ class SuperadminNotificationService
      * Paginate the notifications of one account.
      *
      * @param Superadmin $superadmin Recipient account.
-     * @param array{status?: ?string, search?: ?string} $filters `status` is unread|read (anything else = all); `search` matches title/body.
+     * @param array{status?: ?string, search?: ?string, from?: ?\DateTimeInterface, to?: ?\DateTimeInterface} $filters `status` is unread|read (anything else = all); `search` matches title/body; `from` / `to` bound the received date.
      * @param int $perPage Page size.
      * @param string $pageName Query-string key for the page number, so it can share a page with another paginator.
      * @return LengthAwarePaginator Notifications, newest first.
@@ -108,6 +108,8 @@ class SuperadminNotificationService
     {
         $status = $filters['status'] ?? null;
         $search = trim((string) ($filters['search'] ?? ''));
+        $from = $filters['from'] ?? null;
+        $to = $filters['to'] ?? null;
 
         if (! $this->tableExists()) {
             return new Paginator([], 0, $perPage, 1, ['pageName' => $pageName]);
@@ -119,6 +121,8 @@ class SuperadminNotificationService
             ->when($search !== '', static fn (Builder $query) => $query->where(
                 static fn (Builder $inner) => $inner->where('title', 'like', "%{$search}%")->orWhere('body', 'like', "%{$search}%")
             ))
+            ->when($from instanceof \DateTimeInterface, static fn (Builder $query) => $query->where('created_at', '>=', $from))
+            ->when($to instanceof \DateTimeInterface, static fn (Builder $query) => $query->where('created_at', '<=', $to))
             ->latest('created_at')
             ->latest('id')
             ->paginate($perPage, ['*'], $pageName);

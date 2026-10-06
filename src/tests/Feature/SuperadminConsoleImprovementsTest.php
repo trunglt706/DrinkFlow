@@ -62,6 +62,8 @@ class SuperadminConsoleImprovementsTest extends TestCase
             ->assertOk()
             ->assertSee(AuditLog::labelForEvent('agent.activated'))
             ->assertSee('data-activity-event="agent.activated"', false)
+            // Only the description is shown, not the raw event key.
+            ->assertDontSeeText('agent.activated')
             ->assertSee('Owner');
         $this->assertNotSame('agent.activated', AuditLog::labelForEvent('agent.activated'));
     }

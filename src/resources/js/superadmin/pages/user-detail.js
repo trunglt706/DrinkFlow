@@ -8,7 +8,7 @@ export default function initUserDetailPage(_root, i18n, urls) {
     const userId = urls.user_id;
     let currentUser = null;
     const formatDateTime = (value) => (value ? new Date(value).toLocaleString(document.documentElement.lang || undefined) : i18n.never_logged_in);
-    const emptyRow = (html) => `<tr><td colspan="4">${html}</td></tr>`;
+    const emptyRow = (html) => `<tr><td colspan="3">${html}</td></tr>`;
     const detailRow = (label, value) => `<div class="sa-detail-row"><span>${escapeHtml(label)}</span><strong>${value}</strong></div>`;
 
     const load = async () => {
@@ -39,11 +39,6 @@ export default function initUserDetailPage(_root, i18n, urls) {
                     </div>
                 </td>
                 <td class="col-status">${statusPill(membership.status)}</td>
-                <td class="num">
-                    <span class="inline-flex items-center gap-1">
-                        <span class="material-symbols-outlined text-[16px]">devices</span>${(membership.devices || []).length}
-                    </span>
-                </td>
                 <td class="col-actions">
                     <div class="sa-row-actions">
                         <button class="sa-button secondary" type="button" data-action="remove-membership" data-room-user-id="${membership.id}"><span class="material-symbols-outlined text-[16px]">person_remove</span>${escapeHtml(i18n.remove)}</button>

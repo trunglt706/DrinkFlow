@@ -7,4 +7,6 @@ return [
     'link_ttl_minutes' => (int) env('SPONSOR_DRAW_LINK_TTL_MINUTES', 60),
     // Upper bound of winners per session (validation of the admin form).
     'max_winners' => (int) env('SPONSOR_DRAW_MAX_WINNERS', 50),
+    // Maximum number of shops a shop draw may hold.
+    'max_shops' => (int) env('SPONSOR_DRAW_MAX_SHOPS', 100),
 ];

@@ -14,7 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * @property int $id
  * @property int $room_id
- * @property int $campaign_id
+ * @property int|null $campaign_id
+ * @property AppnumsSponsorDrawType $type
  * @property int|null $target_campaign_id
  * @property int $target_winner_count
  * @property SponsorDrawStatus $status
@@ -27,7 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class SponsorDrawSession extends Model
 {
     protected $fillable = [
-        'room_id', 'campaign_id', 'target_campaign_id', 'target_winner_count', 'status', 'access_token_hash', 'access_token_encrypted',
+        'room_id', 'type', 'campaign_id', 'target_campaign_id', 'target_winner_count', 'status', 'access_token_hash', 'access_token_encrypted',
         'link_expires_at', 'eligibility_snapshot_at', 'eligible_count', 'snapshot_hash', 'seed_encrypted', 'seed_commitment', 'random_method',
         'seed_revealed_at', 'last_sequence', 'created_by_admin_id', 'confirmed_by_admin_id', 'confirmed_at', 'cancelled_by_admin_id',
         'cancelled_at', 'cancel_reason', 'sponsor_assignment',
@@ -40,6 +41,7 @@ class SponsorDrawSession extends Model
     {
         return [
             'status' => SponsorDrawStatus::class,
+            'type' => \App\Enums\SponsorDrawType::class,
             'target_winner_count' => 'integer',
             'eligible_count' => 'integer',
             'last_sequence' => 'integer',

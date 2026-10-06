@@ -110,9 +110,11 @@ class SuperadminSensitiveDataTest extends TestCase
     {
         $room = \App\Models\Room::create(['name' => 'Shell room', 'slug' => 'shell-room', 'status' => 'active']);
 
+        // The former profile shell now redirects to the server-rendered Agent page, which masks the email too.
         $this->actingAs($this->owner, 'superadmin')->get(route('superadmin.admins.detail.page', $this->agent))
+            ->assertRedirect(route('superadmin.agents.show', $this->agent));
+        $this->actingAs($this->owner, 'superadmin')->get(route('superadmin.agents.show', $this->agent))
             ->assertOk()
-            ->assertSee('&quot;admin_id&quot;:&quot;'.$this->agent->id.'&quot;', false)
             ->assertDontSee('alice.agent@example.test');
         $this->actingAs($this->owner, 'superadmin')->get(route('superadmin.rooms.detail.page', $room))
             ->assertOk()

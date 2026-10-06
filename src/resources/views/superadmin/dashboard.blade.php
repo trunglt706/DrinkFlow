@@ -90,6 +90,18 @@
                         class="material-symbols-outlined">arrow_forward</span>
                 </a>
 @endcan
+
+@can('agent.approve')<a class="sa-health-row" href="{{ route('superadmin.registrations.index') }}" data-quick-access="registrations">
+                    <div><strong>{{ __('platform.nav.registrations') }}</strong><small>{{ __('superadmin.dashboard.pending_registrations_description') }}</small></div><span
+                        class="material-symbols-outlined">arrow_forward</span>
+                </a>
+@endcan
+
+@can('debt.view')<a class="sa-health-row" href="{{ route('superadmin.billing.outstanding') }}" data-quick-access="outstanding">
+                    <div><strong>{{ __('platform.nav.outstanding') }}</strong><small>{{ __('superadmin.dashboard.outstanding_invoices_description') }}</small></div><span
+                        class="material-symbols-outlined">arrow_forward</span>
+                </a>
+@endcan
 </div>
         </section>
     </div>
@@ -106,7 +118,7 @@
         data-trends-url="{{ route('superadmin.dashboard.trends') }}"
         data-contact-topics="{{ json_encode(__('contact.form.topics'), JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}"
         data-security-url="{{ route('superadmin.security.page') }}"
-        data-admin-url="{{ route('superadmin.admins.detail.page', ['admin' => '__ID__']) }}"
+        data-admin-url="{{ route('superadmin.agents.show', ['admin' => '__ID__']) }}"
         data-security-types="{{ json_encode(__('superadmin.security.types'), JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}"
         data-insight-thresholds="{{ json_encode([
             'stale_days' => \App\Services\Dashboard\SuperadminInsightsService::STALE_ADMIN_DAYS,
@@ -133,6 +145,8 @@
                         class="material-symbols-outlined">refresh</span>{{ __('superadmin.analytics.refresh') }}</button>
             </div>
         </div>
+        {{-- Empty table placeholder cloned by resources/js/superadmin/dashboard.js (icon and description set per table). --}}
+        <template id="sa-empty-state-template"><x-superadmin.empty-state :bordered="false" :title="__('superadmin.analytics.empty_title')" description="" /></template>
         <div class="sa-tabs" role="tablist" aria-label="{{ __('superadmin.analytics.tabs_label') }}" data-sa-tablist>
             <button type="button" class="sa-tab" role="tab" id="sa-tab-operations" aria-controls="sa-panel-operations" aria-selected="true" data-sa-tab="operations"><span class="material-symbols-outlined" aria-hidden="true">monitoring</span>{{ __('superadmin.analytics.tab_operations') }}</button>
             <button type="button" class="sa-tab" role="tab" id="sa-tab-security" @unless ($platformAnalytics) hidden @endunless aria-controls="sa-panel-security" aria-selected="false" tabindex="-1" data-sa-tab="security"><span class="material-symbols-outlined" aria-hidden="true">shield</span>{{ __('superadmin.analytics.tab_security') }}</button>
@@ -223,7 +237,7 @@
                         </tr>
                     </thead>
                     <tbody id="sa-stuck-body">
-                        <tr><td colspan="7" class="sa-empty">{{ __('superadmin.common.loading') }}</td></tr>
+                        <tr><td colspan="7" class="sa-empty-cell"><x-superadmin.empty-state loading :bordered="false" :title="__('superadmin.common.loading_title')" :description="__('superadmin.common.loading_description')" /></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -252,7 +266,7 @@
                         </tr>
                     </thead>
                     <tbody id="sa-rooms-body">
-                        <tr><td colspan="9" class="sa-empty">{{ __('superadmin.common.loading') }}</td></tr>
+                        <tr><td colspan="9" class="sa-empty-cell"><x-superadmin.empty-state loading :bordered="false" :title="__('superadmin.common.loading_title')" :description="__('superadmin.common.loading_description')" /></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -341,7 +355,7 @@
                         </tr>
                     </thead>
                     <tbody id="sa-ips-body">
-                        <tr><td colspan="7" class="sa-empty">{{ __('superadmin.common.loading') }}</td></tr>
+                        <tr><td colspan="7" class="sa-empty-cell"><x-superadmin.empty-state loading :bordered="false" :title="__('superadmin.common.loading_title')" :description="__('superadmin.common.loading_description')" /></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -368,7 +382,7 @@
                         </tr>
                     </thead>
                     <tbody id="sa-admins-body">
-                        <tr><td colspan="7" class="sa-empty">{{ __('superadmin.common.loading') }}</td></tr>
+                        <tr><td colspan="7" class="sa-empty-cell"><x-superadmin.empty-state loading :bordered="false" :title="__('superadmin.common.loading_title')" :description="__('superadmin.common.loading_description')" /></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -398,7 +412,7 @@
                         </tr>
                     </thead>
                     <tbody id="sa-cohort-body">
-                        <tr><td colspan="{{ $trends::COHORT_MONTHS + 2 }}" class="sa-empty">{{ __('superadmin.common.loading') }}</td></tr>
+                        <tr><td colspan="{{ $trends::COHORT_MONTHS + 2 }}" class="sa-empty-cell"><x-superadmin.empty-state loading :bordered="false" :title="__('superadmin.common.loading_title')" :description="__('superadmin.common.loading_description')" /></td></tr>
                     </tbody>
                 </table>
             </div>

@@ -161,6 +161,40 @@ class PlatformBillingTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['event' => 'invoice.overdue']);
     }
 
+    public function test_outstanding_list_filters_by_agent_and_due_date(): void
+    {
+        $this->billing->generateInvoices();
+        $alice = $this->invoiceOf($this->alice);
+        $bob = $this->invoiceOf($this->bob);
+        $bob->forceFill(['due_at' => now()->addDays(40)])->save();
+        $page = fn (array $query) => $this->actingAs($this->owner, 'superadmin')->get(route('superadmin.billing.outstanding', $query))->assertOk();
+
+        $page(['agent' => $this->alice->id])->assertSee($alice->number)->assertDontSee($bob->number)
+            // The Agent filter lists the visible Agents.
+            ->assertSee('name="agent"', false)->assertSee('value="'.$this->bob->id.'"', false);
+        $page(['date_from' => now()->addDays(30)->toDateString()])->assertSee($bob->number)->assertDontSee($alice->number);
+        $page(['date_to' => now()->addDays(30)->toDateString()])->assertSee($alice->number)->assertDontSee($bob->number);
+        // An unreadable date is ignored instead of failing.
+        $page(['date_from' => 'not-a-date'])->assertSee($alice->number)->assertSee($bob->number);
+    }
+
+    public function test_agent_billing_page_records_payments_from_a_modal_with_a_grouped_amount(): void
+    {
+        $this->billing->generateInvoices();
+        $invoice = $this->invoiceOf($this->alice);
+
+        $this->actingAs($this->owner, 'superadmin')->get(route('superadmin.billing.agent', $this->alice))
+            ->assertOk()
+            ->assertSee('data-modal-open="payment-modal-'.$invoice->id.'"', false)
+            ->assertSee('id="payment-modal-'.$invoice->id.'"', false)
+            ->assertSee('id="void-modal-'.$invoice->id.'"', false)
+            ->assertSee('value="500.000"', false);
+
+        $this->actingAs($this->owner, 'superadmin')->post(route('superadmin.billing.payments.store', $invoice), ['amount' => '200.000', 'method' => 'bank_transfer'])
+            ->assertRedirect(route('superadmin.billing.agent', $this->alice));
+        $this->assertSame(300000, $invoice->fresh()->remaining());
+    }
+
     public function test_partial_then_full_payment_settles_the_invoice(): void
     {
         $this->billing->generateInvoices();

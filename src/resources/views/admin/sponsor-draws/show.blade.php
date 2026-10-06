@@ -3,21 +3,35 @@
         $status = $session->status;
         $notifications = $state['notifications'] ?? [];
         $assignment = $state['sponsor_assignment'] ?? null;
+        $isDraft = $status === \App\Enums\SponsorDrawStatus::Draft;
+        // The settings dialog opens by itself right after "New session" and when its validation failed.
+        $openSettings = $canConfigure && (session('open_settings') || $errors->hasAny(['type', 'target_winner_count', 'target_campaign_id', 'shops', 'shops.*', 'new_shops']));
     @endphp
-    <div class="space-y-5">
+    <div class="space-y-5" x-data="{ settingsOpen: @js($openSettings), type: @js(old('type', $session->type->value)) }">
         <section class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-outline-variant/40">
             <div class="flex items-center gap-3">
                 <a href="{{ route('admin.sponsor-draws.index', $room) }}" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container"
                     aria-label="{{ __('sponsor_draw.admin.back') }}" title="{{ __('sponsor_draw.admin.back') }}"><span class="material-symbols-outlined text-[18px]">arrow_back</span></a>
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight text-on-surface">{{ __('sponsor_draw.admin.session_title', ['id' => $session->id]) }}</h1>
+                    <h1 class="text-xl font-bold tracking-tight text-on-surface flex items-center gap-2">
+                        {{ __('sponsor_draw.admin.session_title', ['id' => $session->id]) }}
+                        <span class="rounded-full bg-surface-container px-2 py-0.5 text-[11px] font-semibold text-on-surface-variant">{{ __('sponsor_draw.types.'.$session->type->value) }}</span>
+                    </h1>
                     <p class="text-xs text-outline">{{ __('sponsor_draw.admin.created_by', ['name' => $session->createdBy?->name ?? '—', 'time' => $session->localTime($session->created_at, 'd/m/Y H:i')]) }}</p>
                 </div>
             </div>
             <div class="flex flex-wrap items-center gap-2">
+                @if ($canConfigure)
+                    <button type="button" @click="settingsOpen = true" data-sd-settings-open aria-haspopup="dialog"
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-on-primary hover:bg-primary-container cursor-pointer">
+                        <span class="material-symbols-outlined !text-[16px]" aria-hidden="true">tune</span>{{ __('sponsor_draw.admin.settings') }}
+                    </button>
+                @endif
+                @unless ($isDraft)
                 <a href="{{ route('admin.sponsor-draws.proof', [$room, $session]) }}" class="inline-flex items-center gap-1.5 rounded-lg border border-outline-variant px-3 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container" download>
                     <span class="material-symbols-outlined text-[16px]">verified</span>{{ __('sponsor_draw.admin.download_proof') }}
                 </a>
+                @endunless
                 @if ($status->canCancel())
                     <button type="button" data-sd-cancel-open aria-haspopup="dialog"
                         class="inline-flex items-center gap-1.5 rounded-lg border border-error/40 px-3 py-2 text-xs font-semibold text-error hover:bg-error-container/60 cursor-pointer">
@@ -34,6 +48,18 @@
             <div class="rounded-xl border border-error/30 bg-error-container p-3 text-sm text-on-error-container" role="alert">{{ $errors->first() }}</div>
         @endif
 
+        @if ($isDraft)
+            {{-- Not set up yet: no list, seed or link exists until the settings are saved. --}}
+            <section class="rounded-2xl border border-dashed border-outline-variant bg-surface-container-lowest px-6 py-12 text-center" data-sponsor-draw-draft>
+                <span class="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary"><span class="material-symbols-outlined !text-[30px]" aria-hidden="true">casino</span></span>
+                <h2 class="text-lg font-bold text-on-surface">{{ __('sponsor_draw.admin.draft_title') }}</h2>
+                <p class="mx-auto mt-1 max-w-md text-xs text-outline">{{ __('sponsor_draw.admin.draft_hint') }}</p>
+                <button type="button" @click="settingsOpen = true"
+                    class="mt-5 inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-5 text-sm font-semibold text-on-primary hover:bg-primary-container cursor-pointer">
+                    <span class="material-symbols-outlined !text-[18px]" aria-hidden="true">tune</span>{{ __('sponsor_draw.admin.settings') }}
+                </button>
+            </section>
+        @else
         {{-- Access link: shareable while valid; a new link replaces the old one. --}}
         <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 space-y-2" data-sponsor-draw-link>
             <h2 class="text-sm font-bold text-on-surface">{{ __('sponsor_draw.admin.link_title') }}</h2>
@@ -69,11 +95,13 @@
                         <button type="submit" class="sd-btn is-ghost" data-sponsor-draw-confirm><span class="material-symbols-outlined" aria-hidden="true">check_circle</span><span>{{ __('sponsor_draw.stage.confirm_short') }}</span></button>
                     </form>
                 @elseif (! $status->isConfirmed() && $status !== \App\Enums\SponsorDrawStatus::Cancelled)
-                    <button type="button" class="sd-btn is-ghost" disabled title="{{ __('sponsor_draw.admin.confirm_after_draw') }}"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span><span>{{ __('sponsor_draw.stage.confirm_short') }}</span></button>
+                    <button type="button" class="sd-btn is-ghost" disabled title="{{ __($session->type === \App\Enums\SponsorDrawType::Shops ? 'sponsor_draw.admin.confirm_after_draw_shops' : 'sponsor_draw.admin.confirm_after_draw') }}"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span><span>{{ __('sponsor_draw.stage.confirm_short') }}</span></button>
                 @endif
             </x-slot:actions>
         </x-sponsor-draw.stage>
+        @endif
 
+        @unless ($isDraft)
         <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 space-y-3">
             <h2 class="text-sm font-bold text-on-surface">{{ __('sponsor_draw.admin.confirm_title') }}</h2>
             @if ($status === \App\Enums\SponsorDrawStatus::Completed)
@@ -109,9 +137,14 @@
                     </form>
                 @endif
             @else
-                <p class="text-xs text-outline">{{ $status === \App\Enums\SponsorDrawStatus::Cancelled ? __('sponsor_draw.admin.cancelled_reason', ['reason' => $session->cancel_reason]) : __('sponsor_draw.admin.confirm_after_draw') }}</p>
+                <p class="text-xs text-outline">{{ $status === \App\Enums\SponsorDrawStatus::Cancelled ? __('sponsor_draw.admin.cancelled_reason', ['reason' => $session->cancel_reason]) : __($session->type === \App\Enums\SponsorDrawType::Shops ? 'sponsor_draw.admin.confirm_after_draw_shops' : 'sponsor_draw.admin.confirm_after_draw') }}</p>
             @endif
         </section>
+        @endunless
+
+        @if ($canConfigure)
+            @include('admin.sponsor-draws._settings-modal')
+        @endif
 
         @if ($status->canCancel())
             {{-- Cancel asks for the reason in a modal (resources/js/sponsor-draw/cancel-modal.js); it reopens with the error when validation fails. --}}

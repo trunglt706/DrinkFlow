@@ -3,6 +3,9 @@
     $fieldLabel = 'flex flex-col gap-1.5 text-[13px] font-semibold text-on-surface';
     $fieldInput = 'sa-input !min-w-0 w-full';
     $package = $package ?? null;
+    // Grouped like FormatHelper::formatCurrency() (resources/js/superadmin/number-input.js); the request strips the separators.
+    $groupSeparator = '.';
+    $grouped = static fn (mixed $value): string => is_numeric($value) ? number_format((int) $value, 0, ',', $groupSeparator) : (string) $value;
 @endphp
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
     <label class="{{ $fieldLabel }}">{{ __('platform.packages.field_code') }}
@@ -13,11 +16,16 @@
         <input name="name" type="text" required maxlength="255" value="{{ old('name', $package?->name) }}" class="{{ $fieldInput }}">
     </label>
     <label class="{{ $fieldLabel }}">{{ __('platform.packages.field_monthly_price') }}
-        <input name="monthly_price" type="number" required min="0" max="1000000000" step="1000" value="{{ old('monthly_price', $package?->monthly_price ?? 0) }}" class="{{ $fieldInput }}">
+        <span class="relative block">
+            <input name="monthly_price" type="text" inputmode="numeric" required maxlength="13" autocomplete="off" data-number-input data-group-separator="{{ $groupSeparator }}"
+                value="{{ $grouped(old('monthly_price', $package?->monthly_price ?? 0)) }}" class="{{ $fieldInput }} !pr-9 text-right tabular-nums">
+            <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[13px] font-semibold text-outline" aria-hidden="true">{{ __('global.common.money_suffix') }}</span>
+        </span>
         <small class="sa-hint !mt-0">{{ __('superadmin.modals.package.price_hint') }}</small>
     </label>
     <label class="{{ $fieldLabel }}">{{ __('platform.packages.field_room_limit') }}
-        <input name="room_limit" type="number" required min="1" max="10000" value="{{ old('room_limit', $package?->room_limit ?? 1) }}" class="{{ $fieldInput }}">
+        <input name="room_limit" type="text" inputmode="numeric" required maxlength="6" autocomplete="off" data-number-input data-group-separator="{{ $groupSeparator }}"
+            value="{{ $grouped(old('room_limit', $package?->room_limit ?? 1)) }}" class="{{ $fieldInput }} text-right tabular-nums">
         <small class="sa-hint !mt-0">{{ __('superadmin.modals.package.room_limit_hint') }}</small>
     </label>
     <label class="{{ $fieldLabel }}">{{ __('superadmin.common.status') }}

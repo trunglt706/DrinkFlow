@@ -9,6 +9,9 @@ use Illuminate\Validation\Rules\Password;
 
 class ResetPasswordRequest extends FormRequest
 {
+    /** Minimum length of a new admin password (also shown on the reset page's checklist). */
+    public const MIN_LENGTH = 12;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -25,7 +28,7 @@ class ResetPasswordRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'password' => ['required', 'string', 'confirmed', Password::min(12)],
+            'password' => ['required', 'string', 'confirmed', Password::min(self::MIN_LENGTH)],
         ];
     }
 

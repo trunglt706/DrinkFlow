@@ -183,7 +183,6 @@ class AgentManagementTest extends TestCase
 
         $pages = [
             route('superadmin.agents.index'),
-            route('superadmin.admins.page'),
             route('superadmin.rooms.page'),
             route('superadmin.campaigns.page'),
             route('superadmin.subscriptions.index'),

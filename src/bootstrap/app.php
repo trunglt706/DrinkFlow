@@ -43,6 +43,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
             \App\Http\Middleware\EnsureActiveAdmin::class,
+            // A self-registered Agent stays on its billing pages until the first invoice is paid.
+            \App\Http\Middleware\EnsureFirstPaymentSettled::class,
             \App\Http\Middleware\SecurityHeaders::class,
             // Needs the session, the admin guard and the matched route (superadmin bypass, login
             // routes), so it lives in the web group rather than the global stack.

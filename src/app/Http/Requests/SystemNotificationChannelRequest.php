@@ -31,7 +31,7 @@ class SystemNotificationChannelRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => ['required', Rule::in(['chatwork', 'slack', 'telegram', 'webhook'])],
+            'type' => ['required', Rule::in(array_keys(\App\Models\SystemNotificationChannel::TYPES))],
             'name' => ['required', 'string', 'max:255'],
             'status' => ['sometimes', Rule::in(['active', 'disabled'])],
             'config' => ['sometimes', 'array'],

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\AuthorizesUserAndAdmin;
+use App\Http\Requests\Concerns\NormalizesGroupedNumbers;
 use Illuminate\Foundation\Http\FormRequest;
 use App\Enums\PlatformPaymentMethod;
 use Illuminate\Validation\Rule;
@@ -14,7 +15,7 @@ use Illuminate\Validation\Rule;
  */
 class RecordPlatformPaymentRequest extends FormRequest
 {
-    use AuthorizesUserAndAdmin;
+    use AuthorizesUserAndAdmin, NormalizesGroupedNumbers;
 
     /**
      * Determine if the user is authorized to make this request.
@@ -24,6 +25,16 @@ class RecordPlatformPaymentRequest extends FormRequest
     public function authorize(): bool
     {
         return $this->authorizeActiveSuperadmin();
+    }
+
+    /**
+     * The amount field groups its digits (1.500.000): keep only the digits so the integer rules apply.
+     *
+     * @return void
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['amount' => $this->withoutGroupSeparators('amount')]);
     }
 
     /**

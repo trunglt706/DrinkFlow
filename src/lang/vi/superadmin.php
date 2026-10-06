@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 return [
     'common' => [
+        'all_agents' => 'Mọi đại lý',
         'back' => 'Quay lại',
         'governance' => 'Quản trị nền tảng',
         'deleted' => 'Đã xóa',
@@ -45,7 +46,7 @@ return [
         'superadmins' => 'Superadmin & phân quyền',
         'feedbacks' => 'Người dùng góp ý',
         'enterprise_superadmin' => 'Siêu quản trị doanh nghiệp', 'dashboard_health' => 'Tổng quan hệ thống',
-        'room_management' => 'Quản lý phòng', 'admin_assignments' => 'Quản trị viên',
+        'room_management' => 'Quản lý phòng',
         'global_users' => 'Quản lý người dùng', 'global_campaigns' => 'Quản lý chiến dịch',
         'audit_logs' => 'Nhật ký hệ thống',
         'security_center' => 'Trung tâm bảo mật', 'socket_queue' => 'Socket.IO & Hàng đợi',
@@ -72,6 +73,7 @@ return [
         'database' => 'Cơ sở dữ liệu', 'queue' => 'Hàng đợi', 'checking' => 'Đang kiểm tra...',
         'mail' => 'Email', 'storage' => 'Lưu trữ file', 'supervisor' => 'Tiến trình nền (Queue Worker)',
         'quick_access' => 'Truy cập nhanh', 'quick_access_description' => 'Các khu vực cần theo dõi.',
+        'pending_registrations_description' => 'Đại lý tự đăng ký đang chờ kích hoạt hoặc duyệt', 'outstanding_invoices_description' => 'Hóa đơn nền tảng chưa được thanh toán',
         'failed_login_events' => 'Đăng nhập thất bại và sự kiện bảo mật',
         'global_change_history' => 'Lịch sử thay đổi toàn cục', 'failed_jobs' => 'Tác vụ lỗi',
         'failed_jobs_description' => 'Thử lại hoặc xóa tác vụ lỗi', 'active_rooms' => ':count phòng đang hoạt động',
@@ -80,6 +82,7 @@ return [
         'storage_usage_quota' => ':driver · Đã dùng :used / :total (hạn mức)',
     ],
     'analytics' => [
+        'empty_title' => 'Chưa có dữ liệu',
         'title' => 'Phân tích vận hành',
         'tabs_label' => 'Nhóm số liệu phân tích', 'tab_operations' => 'Vận hành', 'tab_security' => 'Bảo mật & hoạt động', 'tab_trends' => 'Xu hướng & hạ tầng',
         'description' => ':days ngày gần nhất so với :days ngày trước đó. Số liệu được lưu tạm 5 phút.',
@@ -219,6 +222,7 @@ return [
         'no_campaigns_title' => 'Chưa có chiến dịch', 'no_campaigns_description' => 'Chiến dịch do quản trị viên phòng tạo sẽ hiển thị tại đây.',
     ],
     'notifications' => [
+        'all_channel_types' => 'Mọi loại kênh',
         'prompt_credential' => 'Thông tin xác thực / Webhook URL',
         'no_results_title' => 'Không tìm thấy kênh',
         'no_results_description' => 'Thử từ khóa khác hoặc xóa bộ lọc tìm kiếm.',
@@ -292,7 +296,7 @@ return [
         'update_status' => 'Cập nhật trạng thái', 'delete_user' => 'Xóa người dùng',
         'identity_metadata' => 'Metadata định danh', 'identity_description' => 'Thông tin OAuth liên kết được che an toàn.',
         'room_memberships' => 'Thành viên theo phòng', 'membership_description' => 'Tư cách thành viên và thiết bị tin cậy theo từng phòng.',
-        'devices' => 'Thiết bị', 'linked_identity' => 'Định danh đã liên kết', 'no_login_metadata' => 'Chưa có metadata đăng nhập',
+        'linked_identity' => 'Định danh đã liên kết', 'no_login_metadata' => 'Chưa có metadata đăng nhập',
         'remove' => 'Gỡ',
         'unblock_user' => 'Mở khóa người dùng', 'block_user' => 'Khóa người dùng',
         'status_updated' => 'Đã cập nhật trạng thái người dùng.',

@@ -26,6 +26,7 @@ import { initAdminUsers } from './admin/users';
 import { initAdminLoading, initAdminReloadButtons, initFilterFormSkeletons } from './admin/loading';
 import { initAdminRealtime } from './admin/realtime';
 import { initAdminBilling } from './admin/billing';
+import { initAdminPaymentReminder } from './admin/payment-reminder';
 import { initSponsorDrawStage } from './sponsor-draw/stage';
 import { initSponsorDrawCancelModal } from './sponsor-draw/cancel-modal';
 
@@ -86,6 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initCampaignOrderingLock();
     initAdminReports();
     initAdminBilling();
+    initAdminPaymentReminder();
     initSponsorDrawStage();
     initSponsorDrawCancelModal();
     initAdminSettings();

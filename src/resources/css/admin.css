@@ -522,3 +522,10 @@ button:not(:disabled), [role="button"]:not([aria-disabled="true"]) { cursor: poi
 .sa-auth .sa-auth-feature > .material-symbols-outlined { display: grid; width: 32px; height: 32px; flex-shrink: 0; place-items: center; border-radius: 8px; background: rgb(129 140 248 / .14); color: #a5b4fc; font-size: 18px; }
 .sa-auth .sa-auth-feature strong { display: block; color: #fafafa; font-size: 14px; font-weight: 600; }
 .sa-auth .sa-auth-feature small { display: block; margin-top: 2px; color: #a1a1aa; font-size: 12.5px; line-height: 1.45; }
+
+/* Bottom payment reminder (components/admin/payment-reminder): lift the floating buttons above the open banner. */
+.admin-fab { transition: bottom 200ms ease; }
+body:has([data-payment-reminder][data-collapsed='false']) .admin-fab { bottom: 9.5rem; }
+@media (min-width: 640px) {
+    body:has([data-payment-reminder][data-collapsed='false']) .admin-fab { bottom: 6.5rem; }
+}

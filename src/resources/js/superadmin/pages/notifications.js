@@ -2,7 +2,7 @@
  * Notification channels (superadmin/notifications.blade.php): create a channel and delete one from the row ⋯ menu.
  * The inbox section is handled by resources/js/superadmin/notifications.js.
  */
-import { dfApi, openSuperadminConfirm, pageNotice, reloadSoon, resetSubmitButton } from './common';
+import { dfApi, openSuperadminConfirm, pageNotice, reloadSoon, renderSubmitLoading, resetSubmitButton } from './common';
 
 export default function initNotificationsPage(_root, i18n, urls) {
     const form = document.querySelector('#create-channel-form');
@@ -46,6 +46,23 @@ export default function initNotificationsPage(_root, i18n, urls) {
                 errorBox.classList.remove('hidden');
             }
             resetSubmitButton(form.querySelector('button[type="submit"]'));
+        }
+    });
+
+    // Test ping: sends the channel's test message (rate limited server side) and reports the outcome.
+    document.addEventListener('click', async (event) => {
+        const testBtn = event.target.closest('[data-action="test-channel"]');
+        if (!testBtn || testBtn.disabled) return;
+        testBtn.dataset.originalHtml = testBtn.innerHTML;
+        testBtn.disabled = true;
+        renderSubmitLoading(testBtn);
+        try {
+            await dfApi(urls.test.replace('__ID__', testBtn.dataset.channelId), { method: 'POST' });
+            pageNotice(i18n.test_sent);
+        } catch (error) {
+            pageNotice(error.message, 'error');
+        } finally {
+            resetSubmitButton(testBtn);
         }
     });
 

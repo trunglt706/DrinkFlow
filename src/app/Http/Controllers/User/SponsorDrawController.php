@@ -86,7 +86,7 @@ class SponsorDrawController extends Controller
         /** @var RoomUser|null $member */
         $member = $request->attributes->get('room_user');
         if ((int) $session->room_id !== (int) $room->id || $member === null
-            || ! $this->draws->eligibleMembersQuery($session->campaign)->whereKey($member->id)->exists()) {
+            || ! $this->draws->eligibleMembersQuery($room)->whereKey($member->id)->exists()) {
             return 'forbidden';
         }
 

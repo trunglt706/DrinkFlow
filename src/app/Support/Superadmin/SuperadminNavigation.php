@@ -26,7 +26,6 @@ final class SuperadminNavigation
         ]],
         ['platform.nav.agents', [
             ['agents', 'superadmin.agents.index', 'storefront', 'platform.nav.agent_list', 'agent.view'],
-            ['admins', 'superadmin.admins.page', 'admin_panel_settings', 'superadmin.layout.admin_assignments', 'agent.view'],
             ['registrations', 'superadmin.registrations.index', 'how_to_reg', 'platform.nav.registrations', 'agent.approve'],
             ['subscriptions', 'superadmin.subscriptions.index', 'workspace_premium', 'platform.nav.subscriptions', 'subscription.view'],
         ]],

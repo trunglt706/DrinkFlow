@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 return [
     'common' => [
+        'all_agents' => 'すべてのエージェント',
         'back' => '戻る',
         'governance' => 'ガバナンス',
         'deleted' => '削除済み',
@@ -45,7 +46,7 @@ return [
         'superadmins' => 'スーパー管理者と権限',
         'feedbacks' => 'ユーザーからのご意見',
         'enterprise_superadmin' => 'エンタープライズスーパー管理者', 'dashboard_health' => 'システム概要',
-        'room_management' => 'ルーム管理', 'admin_assignments' => '管理者',
+        'room_management' => 'ルーム管理',
         'global_users' => 'ユーザー管理', 'global_campaigns' => 'キャンペーン管理',
         'audit_logs' => 'システムログ', 'security_center' => 'セキュリティセンター',
         'socket_queue' => 'Socket.IOとキュー', 'system_settings' => 'システム設定',
@@ -71,6 +72,7 @@ return [
         'telemetry' => 'テレメトリ', 'database' => 'データベース', 'queue' => 'キュー', 'checking' => '確認中...',
         'mail' => 'メール', 'storage' => 'ファイルストレージ', 'supervisor' => 'バックグラウンドワーカー (Supervisor)',
         'quick_access' => 'クイックアクセス', 'quick_access_description' => '監視が必要な領域です。',
+        'pending_registrations_description' => '有効化または審査待ちの自己登録エージェント', 'outstanding_invoices_description' => '未払いのプラットフォーム請求書',
         'failed_login_events' => 'ログイン失敗とセキュリティイベント', 'global_change_history' => '全体変更履歴',
         'failed_jobs' => '失敗ジョブ', 'failed_jobs_description' => '失敗ジョブの再試行または削除',
         'active_rooms' => ':countルームが稼働中', 'active_users' => ':countユーザーが有効', 'failed_count' => ':count件失敗',
@@ -78,6 +80,7 @@ return [
         'storage_usage_quota' => ':driver · 使用量 :used / :total（上限）',
     ],
     'analytics' => [
+        'empty_title' => 'データはまだありません',
         'title' => '運用分析',
         'tabs_label' => '分析グループ', 'tab_operations' => '運用', 'tab_security' => 'セキュリティと操作', 'tab_trends' => 'トレンドとインフラ',
         'description' => '直近:days日間と、その前の:days日間の比較。数値は5分間キャッシュされます。',
@@ -215,6 +218,8 @@ return [
         'no_campaigns_title' => 'キャンペーンはまだありません', 'no_campaigns_description' => 'ルーム管理者が作成したキャンペーンがここに表示されます。',
     ],
     'notifications' => [
+        'all_channel_types' => 'すべてのチャネル種別',
+        'test_ping' => '接続テスト', 'test_sent' => 'テストメッセージを送信しました。',
         'no_channels_title' => 'グローバルチャンネルは未設定です',
         'no_channels_description' => '運用アラートを受け取るには Slack、Telegram、Chatwork または Webhook チャンネルを追加してください。',
         'search' => 'チャンネル名で検索',
@@ -277,7 +282,7 @@ return [
         'profile' => 'グローバルユーザープロフィール', 'loading_profile' => 'ユーザー情報を読み込んでいます...',
         'update_status' => '状態を更新', 'delete_user' => 'ユーザーを削除', 'identity_metadata' => 'IDメタデータ',
         'identity_description' => '連携OAuth情報は安全にマスクされています。', 'room_memberships' => 'ルームメンバーシップ',
-        'membership_description' => 'ルームごとのメンバーシップと信頼済み端末です。', 'devices' => '端末',
+        'membership_description' => 'ルームごとのメンバーシップと信頼済み端末です。',
         'linked_identity' => '連携済みID', 'no_login_metadata' => 'ログインメタデータなし', 'remove' => '削除',
         'unblock_user' => 'ユーザーのブロックを解除', 'block_user' => 'ユーザーをブロック',
         'status_updated' => 'ユーザーの状態を更新しました。',

@@ -80,4 +80,38 @@ class AgentDirectoryService
             ->map(static fn ($due): int => (int) $due)
             ->all() + array_fill_keys($ids, 0);
     }
+
+    /**
+     * Agent ID taken from a list filter, kept only when that Agent is visible for the permission.
+     *
+     * @param Superadmin $superadmin Viewer.
+     * @param int|null $agentId Requested Agent ID (null or 0 = no filter).
+     * @param Permission $permission Permission of the page using the filter.
+     * @return int|null The Agent ID, or null when absent, unknown or outside the scope.
+     */
+    public function visibleAgentId(Superadmin $superadmin, ?int $agentId, Permission $permission = Permission::AgentView): ?int
+    {
+        if (! $agentId || ! $superadmin->hasPermission($permission)) {
+            return null;
+        }
+
+        return Admin::query()->visibleTo($superadmin, $permission)->whereKey($agentId)->exists() ? $agentId : null;
+    }
+
+    /**
+     * Agents a page may offer in its "Agent" filter: only those visible for that page's permission, so the
+     * list never names an Agent outside the Superadmin's scope.
+     *
+     * @param Superadmin $superadmin Viewer.
+     * @param Permission $permission Permission of the page using the filter.
+     * @return Collection<int, Admin> Agents (id, name, company), by name; empty without the permission.
+     */
+    public function filterOptions(Superadmin $superadmin, Permission $permission): Collection
+    {
+        if (! $superadmin->hasPermission($permission)) {
+            return new Collection();
+        }
+
+        return Admin::query()->visibleTo($superadmin, $permission)->orderBy('name')->get(['id', 'name', 'company'])->toBase();
+    }
 }

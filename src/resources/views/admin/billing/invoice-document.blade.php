@@ -28,9 +28,12 @@
         .layout > tbody > tr > td, .layout > tr > td { vertical-align: top; padding: 0; }
         .head { border-bottom: 2px solid #006948; }
         .head td { padding-bottom: 18px; }
-        .brand td { vertical-align: middle; padding: 0 10px 0 0; }
-        .brand-mark { width: 38px; height: 38px; border-radius: 10px; background: #006948; text-align: center; }
-        .brand-mark img { margin-top: 8px; }
+        .brand { border-collapse: collapse; }
+        .brand td { vertical-align: middle; padding: 0; }
+        .brand .brand-text { padding-left: 10px; }
+        /* Fixed square box: the table cell around it grows with the brand text, the mark must not. */
+        .brand-mark { width: 38px; height: 38px; padding: 8px; border-radius: 10px; background: #006948; line-height: 0; }
+        .brand-mark img { display: block; width: 22px; height: 22px; }
         .brand strong { display: block; font-size: 18px; }
         .brand small { color: #006948; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
         .doc-title { text-align: right; }
@@ -71,8 +74,8 @@
             <td>
                 <table class="brand">
                     <tr>
-                        <td class="brand-mark"><img src="{{ $logo }}" width="22" height="22" alt="DrinkFlow" loading="lazy"></td>
-                        <td>
+                        <td><div class="brand-mark"><img src="{{ $logo }}" width="22" height="22" alt="DrinkFlow" loading="lazy"></div></td>
+                        <td class="brand-text">
                             <strong>DrinkFlow</strong>
                             <small>{{ __('admin.brand_subtitle') }}</small>
                         </td>

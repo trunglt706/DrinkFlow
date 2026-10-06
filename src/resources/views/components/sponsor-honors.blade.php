@@ -29,8 +29,10 @@
             @foreach($honors['sponsors'] as $index => $sponsor)
                 @php($metal = ['gold', 'silver', 'bronze'][$index])
                 <article class="honors-sponsor {{ $metal }}" data-sponsor-rank="{{ $index + 1 }}"
-                    x-data="{ flipped: false }">
-                    <button type="button" class="honors-button" @click="flipped = !flipped" :aria-pressed="flipped.toString()" aria-pressed="false"
+                    x-data="{ flipped: false, hover: window.matchMedia('(hover: hover)').matches }">
+                    {{-- Hover devices: the coin turns over on hover and back on leave; touch and keyboard toggle it on click. --}}
+                    <button type="button" class="honors-button" @mouseenter="if (hover) flipped = true" @mouseleave="if (hover) flipped = false"
+                        @click="if (!hover || $event.detail === 0) flipped = !flipped" :aria-pressed="flipped.toString()" aria-pressed="false"
                         aria-label="{{ __('sponsor_honors.flip', ['name' => $sponsor['name']]) }}">
                         <span class="honors-coin" :class="{ 'is-flipped': flipped }">
                             <span class="honors-face" :aria-hidden="flipped.toString()">

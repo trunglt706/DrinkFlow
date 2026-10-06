@@ -56,15 +56,18 @@ class AdminActivationService
     /**
      * Signed activation URL of the Agent.
      *
+     * The signature covers the path and query only (`signed:relative` on the route), so the link keeps working
+     * whichever host serves the app (localhost / 127.0.0.1, or HTTP behind an HTTPS proxy).
+     *
      * @param Admin $admin Agent to activate.
      * @return string Absolute URL.
      */
     public function link(Admin $admin): string
     {
-        return URL::temporarySignedRoute('admin.activate.form', now()->addHours(self::LINK_TTL_HOURS), [
+        return url(URL::temporarySignedRoute('admin.activate.form', now()->addHours(self::LINK_TTL_HOURS), [
             'admin' => $admin->id,
             'hash' => $this->hash($admin),
-        ]);
+        ], absolute: false));
     }
 
     /**

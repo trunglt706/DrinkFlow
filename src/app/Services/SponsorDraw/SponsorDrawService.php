@@ -9,10 +9,10 @@ use App\Enums\CampaignStatus;
 use App\Enums\GlobalUserStatus;
 use App\Enums\RoomUserStatus;
 use App\Enums\SponsorDrawStatus;
+use App\Enums\SponsorDrawType;
 use App\Jobs\SendSponsorDrawNotification;
 use App\Models\Admin;
 use App\Models\Campaign;
-use App\Models\CampaignParticipant;
 use App\Models\NotificationChannel;
 use App\Models\Room;
 use App\Models\RoomUser;
@@ -27,15 +27,17 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Sponsor draw of a campaign: an admin freezes the eligible members, publishes a time-limited link to the
- * campaign's landing page, draws the winners one turn at a time (the backend picks them), confirms the
- * result (optionally making the winners the sponsors of a next campaign) and sends it to the room's
- * notification channels.
+ * Draw sessions of a room. An admin creates a draft, then saves its settings on the draw page, which freezes the
+ * eligible list, commits to a seed and publishes a time-limited link; the admin draws one turn at a time (the
+ * backend picks), confirms the result and it is sent to the room's notification channels.
  *
- * Eligible = active members of the campaign's room (member and global account both active) who did not
- * decline the campaign, frozen when the session is created; later changes never alter that snapshot.
- * Every state change runs in a transaction holding the session row lock, so concurrent admins can never
- * draw the same member twice or exceed the target; unique indexes back that up at database level.
+ * - Sponsors: eligible = active members of the room (member and global account both active); the winners may
+ *   become the sponsors of a target campaign on confirmation.
+ * - Shops: candidates = the shop names saved in the settings; one shop is drawn and only announced.
+ *
+ * The frozen snapshot never changes once a turn is drawn. Every state change runs in a transaction holding the
+ * session row lock, so concurrent admins can never draw twice the same candidate or exceed the target; unique
+ * indexes back that up at database level.
  */
 class SponsorDrawService
 {
@@ -47,18 +49,32 @@ class SponsorDrawService
     ) {}
 
     /**
-     * Members eligible for a draw over the campaign right now.
+     * Members eligible for a sponsor draw of the room right now (also who may watch any draw of the room):
+     * active members whose global account is active too.
      *
      * @return Builder<RoomUser>
      */
-    public function eligibleMembersQuery(Campaign $campaign): Builder
+    public function eligibleMembersQuery(Room $room): Builder
     {
         return RoomUser::query()
-            ->where('room_id', $campaign->room_id)
+            ->where('room_id', $room->id)
             ->where('status', RoomUserStatus::Active->value)
-            ->whereHas('globalUser', static fn (Builder $query) => $query->where('status', GlobalUserStatus::Active->value))
-            ->whereNotIn('id', CampaignParticipant::query()->where('campaign_id', $campaign->id)
-                ->where('status', CampaignParticipant::STATUS_DECLINED)->select('room_user_id'));
+            ->whereHas('globalUser', static fn (Builder $query) => $query->where('status', GlobalUserStatus::Active->value));
+    }
+
+    /**
+     * Shop names suggested for a shop draw: the distinct shops of the room's past campaigns, newest first.
+     *
+     * @return list<string>
+     */
+    public function shopSuggestions(Room $room, int $limit = 50): array
+    {
+        return Campaign::query()->where('room_id', $room->id)
+            ->whereNotNull('restaurant')->where('restaurant', '!=', '')
+            ->selectRaw('restaurant, MAX(id) as latest')->groupBy('restaurant')->orderByDesc('latest')
+            ->limit($limit)->pluck('restaurant')
+            ->map(static fn ($name): string => trim((string) $name))->filter()->unique(static fn (string $name): string => mb_strtolower($name))
+            ->values()->all();
     }
 
     /**
@@ -70,62 +86,121 @@ class SponsorDrawService
     }
 
     /**
-     * Create a session: freeze the snapshot, commit to a seed and issue the access link.
+     * Create a draft session from the list: no snapshot, seed or link yet; the draw page then asks for the settings.
      *
-     * @param Room $room Room of the campaign.
+     * @param Room $room Room of the session.
      * @param Admin $admin Admin creating it.
-     * @param Campaign $campaign Source campaign.
-     * @param int $winners Number of sponsors to draw.
-     * @param Campaign|null $target Optional next campaign receiving the winners as sponsors.
-     * @return array{session: SponsorDrawSession, token: string} Session and the plain link token (shown to the admin).
-     * @throws ValidationException When the campaigns or the number of winners are invalid.
+     * @return SponsorDrawSession Draft session.
      */
-    public function create(Room $room, Admin $admin, Campaign $campaign, int $winners, ?Campaign $target = null): array
+    public function createDraft(Room $room, Admin $admin): SponsorDrawSession
     {
-        if ((int) $campaign->room_id !== (int) $room->id) {
-            throw ValidationException::withMessages(['campaign_id' => __('sponsor_draw.errors.campaign_not_in_room')]);
-        }
-        if ($target !== null && ((int) $target->room_id !== (int) $room->id || (int) $target->id === (int) $campaign->id || ! $this->canBeTarget($target))) {
-            throw ValidationException::withMessages(['target_campaign_id' => __('sponsor_draw.errors.target_invalid')]);
-        }
-
-        return DB::transaction(function () use ($room, $admin, $campaign, $winners, $target): array {
-            Campaign::query()->whereKey($campaign->id)->lockForUpdate()->first();
-            $members = $this->eligibleMembersQuery($campaign)->with('globalUser:id,name')->orderBy('id')->get();
-            if ($members->isEmpty()) {
-                throw ValidationException::withMessages(['campaign_id' => __('sponsor_draw.errors.no_eligible')]);
-            }
-            if ($winners < 1 || $winners > $members->count()) {
-                throw ValidationException::withMessages(['target_winner_count' => __('sponsor_draw.errors.too_many_winners', ['count' => $members->count()])]);
-            }
-
-            $seed = $this->randomizer->newSeed();
+        return DB::transaction(function () use ($room, $admin): SponsorDrawSession {
             $session = SponsorDrawSession::create([
                 'room_id' => $room->id,
-                'campaign_id' => $campaign->id,
+                'type' => SponsorDrawType::Sponsors->value,
+                'target_winner_count' => 1,
+                'status' => SponsorDrawStatus::Draft->value,
+                'eligible_count' => 0,
+                'created_by_admin_id' => $admin->id,
+            ]);
+            $this->events->append($session, 'session.draft', [], $admin);
+            $this->audit->record('sponsor_draw.created', 'sponsor_draw_session', $session->id, $room->id, [], ['status' => SponsorDrawStatus::Draft->value]);
+
+            return $session->refresh();
+        });
+    }
+
+    /**
+     * Save the settings: freeze the eligible list, commit to a new seed and make sure an access link exists.
+     *
+     * - Sponsors: every active member of the room is eligible; `$winners` sponsors are drawn and, when a target
+     *   campaign is given, they become its sponsors on confirmation.
+     * - Shops: the given shop names (trimmed, duplicates removed) are the candidates; one shop is drawn and the
+     *   result is only announced.
+     *
+     * Allowed for a draft, or for a ready session before its first turn (the new snapshot and seed commitment are
+     * appended to the event chain, so a reconfiguration stays visible).
+     *
+     * @param SponsorDrawSession $session Session to configure.
+     * @param Admin $admin Admin saving the settings.
+     * @param SponsorDrawType $type What is drawn.
+     * @param int $winners Number of sponsors (ignored for shops: always one).
+     * @param Campaign|null $target Campaign receiving the sponsors (sponsors only).
+     * @param list<string> $shops Shop names (shops only).
+     * @return array{session: SponsorDrawSession, token: string|null} Session and the plain token when a new link was issued.
+     * @throws ValidationException When the settings are invalid or the session can no longer be configured.
+     */
+    public function configure(SponsorDrawSession $session, Admin $admin, SponsorDrawType $type, int $winners, ?Campaign $target = null, array $shops = []): array
+    {
+        return DB::transaction(function () use ($session, $admin, $type, $winners, $target, $shops): array {
+            $session = $this->lock($session);
+            $room = Room::query()->findOrFail($session->room_id);
+            $alreadyDrawn = SponsorDrawResult::query()->where('sponsor_draw_session_id', $session->id)->exists();
+            if (! $session->status->canConfigure() || $alreadyDrawn) {
+                throw ValidationException::withMessages(['session' => __('sponsor_draw.errors.cannot_configure')]);
+            }
+
+            if ($type === SponsorDrawType::Shops) {
+                $candidates = $this->normalizeShops($shops);
+                $max = (int) config('sponsor_draw.max_shops', 100);
+                if (count($candidates) < 2 || count($candidates) > $max) {
+                    throw ValidationException::withMessages(['shops' => __('sponsor_draw.errors.shops_count', ['max' => $max])]);
+                }
+                $winners = 1;
+                $target = null;
+                $rows = array_map(static fn (string $name): array => ['room_user_id' => null, 'name' => $name], $candidates);
+                $snapshotHash = fn (SponsorDrawSession $s): string => $this->randomizer->namesSnapshotHash($s->id, $candidates);
+            } else {
+                if ($target !== null && ((int) $target->room_id !== (int) $room->id || ! $this->canBeTarget($target))) {
+                    throw ValidationException::withMessages(['target_campaign_id' => __('sponsor_draw.errors.target_invalid')]);
+                }
+                $members = $this->eligibleMembersQuery($room)->with('globalUser:id,name')->orderBy('id')->get();
+                if ($members->isEmpty()) {
+                    throw ValidationException::withMessages(['target_winner_count' => __('sponsor_draw.errors.no_eligible')]);
+                }
+                if ($winners < 1 || $winners > $members->count()) {
+                    throw ValidationException::withMessages(['target_winner_count' => __('sponsor_draw.errors.too_many_winners', ['count' => $members->count()])]);
+                }
+                $rows = $members->values()->map(static fn (RoomUser $member): array => [
+                    'room_user_id' => $member->id,
+                    'name' => $member->payerName() ?: __('sponsor_draw.anonymous'),
+                ])->all();
+                $memberIds = $members->pluck('id')->map(static fn ($id): int => (int) $id)->all();
+                $snapshotHash = fn (SponsorDrawSession $s): string => $this->randomizer->snapshotHash($s->id, $memberIds);
+            }
+
+            $wasDraft = $session->status === SponsorDrawStatus::Draft;
+            SponsorDrawEligibleUser::query()->where('sponsor_draw_session_id', $session->id)->delete();
+            foreach (array_values($rows) as $position => $row) {
+                SponsorDrawEligibleUser::create([
+                    'sponsor_draw_session_id' => $session->id,
+                    'room_user_id' => $row['room_user_id'],
+                    'position' => $position,
+                    'display_name_snapshot' => $row['name'],
+                ]);
+            }
+            $seed = $this->randomizer->newSeed();
+            $hash = $snapshotHash($session);
+            $session->update([
+                'type' => $type->value,
                 'target_campaign_id' => $target?->id,
                 'target_winner_count' => $winners,
                 'status' => SponsorDrawStatus::Ready->value,
                 'eligibility_snapshot_at' => now(),
-                'eligible_count' => $members->count(),
-                'snapshot_hash' => str_repeat('0', 64),
+                'eligible_count' => count($rows),
+                'snapshot_hash' => $hash,
                 'seed_encrypted' => $seed,
-                'seed_commitment' => str_repeat('0', 64),
+                'seed_commitment' => $this->randomizer->commitment($seed, $session->id, $hash),
                 'random_method' => SponsorDrawRandomizer::METHOD,
-                'created_by_admin_id' => $admin->id,
             ]);
-            foreach ($members->values() as $position => $member) {
-                SponsorDrawEligibleUser::create([
-                    'sponsor_draw_session_id' => $session->id,
-                    'room_user_id' => $member->id,
-                    'position' => $position,
-                    'display_name_snapshot' => $member->payerName() ?: __('sponsor_draw.anonymous'),
-                ]);
-            }
-            $snapshotHash = $this->randomizer->snapshotHash($session->id, $members->pluck('id')->map(static fn ($id): int => (int) $id)->all());
-            $session->update(['snapshot_hash' => $snapshotHash, 'seed_commitment' => $this->randomizer->commitment($seed, $session->id, $snapshotHash)]);
-            $token = $this->assignLink($session);
+            $token = $session->linkIsValid() ? null : $this->assignLink($session);
 
+            $this->events->append($session, 'settings.saved', [
+                'type' => $type->value,
+                'target_winner_count' => $winners,
+                'target_campaign' => $target?->name,
+                'reconfigured' => ! $wasDraft,
+            ], $admin);
             $this->events->append($session, 'eligibility.locked', [
                 'eligible_count' => $session->eligible_count,
                 'snapshot_hash' => $session->snapshot_hash,
@@ -134,18 +209,41 @@ class SponsorDrawService
             ], $admin);
             $this->events->append($session, 'session.ready', [
                 'target_winner_count' => $winners,
-                'link_expires_at' => $session->link_expires_at->toIso8601String(),
+                'link_expires_at' => $session->link_expires_at?->toIso8601String(),
             ], $admin);
-            $this->audit->record('sponsor_draw.created', 'sponsor_draw_session', $session->id, $room->id, [], [
-                'campaign_id' => $campaign->id,
+            $this->audit->record('sponsor_draw.configured', 'sponsor_draw_session', $session->id, $room->id, [], [
+                'type' => $type->value,
                 'target_campaign_id' => $target?->id,
                 'target_winner_count' => $winners,
                 'eligible_count' => $session->eligible_count,
-                'snapshot_hash' => $snapshotHash,
+                'snapshot_hash' => $hash,
             ]);
 
             return ['session' => $session->refresh(), 'token' => $token];
         });
+    }
+
+    /**
+     * Clean a shop list: trimmed, inner spaces collapsed, empty and duplicate (case-insensitive) names removed.
+     *
+     * @param list<mixed> $shops Raw names.
+     * @return list<string> Names in the given order.
+     */
+    private function normalizeShops(array $shops): array
+    {
+        $seen = [];
+        $names = [];
+        foreach ($shops as $shop) {
+            $name = trim((string) preg_replace('/\s+/u', ' ', (string) $shop));
+            $key = mb_strtolower($name);
+            if ($name === '' || isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $names[] = mb_substr($name, 0, 120);
+        }
+
+        return $names;
     }
 
     /**
@@ -160,6 +258,9 @@ class SponsorDrawService
             $session = $this->lock($session);
             if ($session->status === SponsorDrawStatus::Cancelled) {
                 throw ValidationException::withMessages(['session' => __('sponsor_draw.errors.cancelled')]);
+            }
+            if ($session->status === SponsorDrawStatus::Draft) {
+                throw ValidationException::withMessages(['session' => __('sponsor_draw.errors.not_configured')]);
             }
             $token = $this->assignLink($session);
             $this->events->append($session, 'session.link_issued', ['link_expires_at' => $session->link_expires_at->toIso8601String()], $admin);
@@ -271,7 +372,7 @@ class SponsorDrawService
                 'cancel_reason' => $reason,
             ]);
             $this->revealSeed($session);
-            $this->events->append($session, 'session.cancelled', ['reason' => $reason, 'seed' => (string) $session->seed_encrypted], $admin);
+            $this->events->append($session, 'session.cancelled', ['reason' => $reason, 'seed' => $session->seed_commitment !== null ? (string) $session->seed_encrypted : null], $admin);
             $this->audit->record('sponsor_draw.cancelled', 'sponsor_draw_session', $session->id, $session->room_id, ['status' => $before], [
                 'status' => SponsorDrawStatus::Cancelled->value,
                 'reason' => $reason,
@@ -403,8 +504,10 @@ class SponsorDrawService
 
         $state = [
             'session_id' => $session->id,
+            'type' => $session->type->value,
             'status' => $session->status->value,
-            'campaign' => $session->campaign?->name,
+            // Older sessions came from a campaign; newer ones are titled by their type.
+            'campaign' => $session->campaign?->name ?? __('sponsor_draw.types.'.$session->type->value),
             'target_campaign' => $session->targetCampaign?->name,
             'link_expires_at' => $session->link_expires_at?->toIso8601String(),
             'link_valid' => $session->linkIsValid(),
@@ -450,25 +553,28 @@ class SponsorDrawService
     {
         $seedRevealed = $session->seed_revealed_at !== null;
 
+        $snapshotRows = SponsorDrawEligibleUser::query()->where('sponsor_draw_session_id', $session->id)->orderBy('position')->get(['room_user_id', 'display_name_snapshot']);
+        $expectedHash = $session->type === SponsorDrawType::Shops
+            ? $this->randomizer->namesSnapshotHash($session->id, $snapshotRows->pluck('display_name_snapshot')->map(static fn ($name): string => (string) $name)->all())
+            : $this->randomizer->snapshotHash($session->id, $snapshotRows->pluck('room_user_id')->map(static fn ($id): int => (int) $id)->all());
+
         return [
             'session_id' => $session->id,
+            'type' => $session->type->value,
             'campaign' => $session->campaign?->name,
             'status' => $session->status->value,
             'random_method' => $session->random_method,
-            'algorithm' => 'snapshot ordered by room_user_id; seed = 32 bytes CSPRNG; stream = HMAC-SHA256(seed, "drinkflow-sponsor-draw-v1:{counter}") as big-endian uint32; uniform(n) by rejection sampling; partial Fisher-Yates over positions',
+            'algorithm' => ($session->type === SponsorDrawType::Shops ? 'snapshot = shop names in the order saved; ' : 'snapshot ordered by room_user_id; ').'seed = 32 bytes CSPRNG; stream = HMAC-SHA256(seed, "drinkflow-sponsor-draw-v1:{counter}") as big-endian uint32; uniform(n) by rejection sampling; partial Fisher-Yates over positions',
             'snapshot' => SponsorDrawEligibleUser::query()->where('sponsor_draw_session_id', $session->id)->orderBy('position')
                 ->get(['position', 'room_user_id', 'display_name_snapshot'])->map(static fn ($user): array => [
                     'position' => $user->position, 'room_user_id' => $user->room_user_id, 'name' => $user->display_name_snapshot,
                 ])->all(),
             'snapshot_hash' => $session->snapshot_hash,
-            'snapshot_hash_valid' => hash_equals($session->snapshot_hash, $this->randomizer->snapshotHash(
-                $session->id,
-                SponsorDrawEligibleUser::query()->where('sponsor_draw_session_id', $session->id)->orderBy('position')->pluck('room_user_id')->map(static fn ($id): int => (int) $id)->all(),
-            )),
+            'snapshot_hash_valid' => $session->snapshot_hash !== null && hash_equals($session->snapshot_hash, $expectedHash),
             'seed_commitment' => $session->seed_commitment,
             'seed' => $seedRevealed ? (string) $session->seed_encrypted : null,
-            'seed_matches_commitment' => $seedRevealed
-                ? hash_equals($session->seed_commitment, $this->randomizer->commitment((string) $session->seed_encrypted, $session->id, $session->snapshot_hash))
+            'seed_matches_commitment' => $seedRevealed && $session->seed_commitment !== null
+                ? hash_equals($session->seed_commitment, $this->randomizer->commitment((string) $session->seed_encrypted, $session->id, (string) $session->snapshot_hash))
                 : null,
             'results' => SponsorDrawResult::query()->where('sponsor_draw_session_id', $session->id)->orderBy('draw_order')
                 ->get(['draw_order', 'snapshot_position', 'room_user_id', 'display_name_snapshot', 'drawn_at'])->toArray(),
@@ -530,7 +636,17 @@ class SponsorDrawService
      */
     private function notificationPayload(SponsorDrawSession $session, array $winners): array
     {
-        $lines = [__('sponsor_draw.notify.campaign', ['name' => $session->campaign?->name])];
+        $room = $session->room()->first(['id', 'name']);
+        if ($session->type === SponsorDrawType::Shops) {
+            return [
+                'event' => 'sponsor_draw.confirmed',
+                'title' => __('sponsor_draw.notify.shop_title', ['room' => $room?->name]),
+                'message' => __('sponsor_draw.notify.shop_winner', ['name' => $winners[0] ?? '']),
+            ];
+        }
+
+        // Older sessions were drawn among the members of a campaign; newer ones among the room's members.
+        $lines = $session->campaign !== null ? [__('sponsor_draw.notify.campaign', ['name' => $session->campaign->name])] : [];
         foreach (array_values($winners) as $index => $name) {
             $lines[] = __('sponsor_draw.notify.winner', ['order' => $index + 1, 'name' => $name]);
         }
@@ -540,7 +656,9 @@ class SponsorDrawService
 
         return [
             'event' => 'sponsor_draw.confirmed',
-            'title' => __('sponsor_draw.notify.title', ['campaign' => $session->campaign?->name]),
+            'title' => $session->campaign !== null
+                ? __('sponsor_draw.notify.title', ['campaign' => $session->campaign->name])
+                : __('sponsor_draw.notify.room_title', ['room' => $room?->name]),
             'message' => implode("\n", $lines),
         ];
     }
@@ -587,7 +705,7 @@ class SponsorDrawService
      */
     private function revealSeed(SponsorDrawSession $session): void
     {
-        if ($session->seed_revealed_at === null) {
+        if ($session->seed_revealed_at === null && $session->seed_commitment !== null) {
             $session->update(['seed_revealed_at' => now()]);
         }
     }

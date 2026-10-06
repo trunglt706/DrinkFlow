@@ -4,7 +4,13 @@
      Layout follows documents/upgrade/stitch_campaign_sponsor_lucky_draw (results · wheel · snapshot). --}}
 @props(['state', 'mode' => 'viewer', 'urls' => [], 'timezone' => null, 'actions' => null])
 @php
-    $i18n = __('sponsor_draw.js');
+    // A shop draw renames the member-oriented labels ("members" → "shops", "winner" → "chosen shop").
+    $isShops = ($state['type'] ?? 'sponsors') === \App\Enums\SponsorDrawType::Shops->value;
+    $stage = static fn (string $key, array $replace = []): string => __(
+        $isShops && \Illuminate\Support\Facades\Lang::has('sponsor_draw.stage_shops.'.$key) ? 'sponsor_draw.stage_shops.'.$key : 'sponsor_draw.stage.'.$key,
+        $replace,
+    );
+    $i18n = $isShops ? array_replace(__('sponsor_draw.js'), __('sponsor_draw.js_shops')) : __('sponsor_draw.js');
     $config = ['mode' => $mode, 'urls' => $urls, 'timezone' => $timezone ?: config('app.display_timezone', config('app.timezone')), 'locale' => str_replace('_', '-', app()->getLocale()), 'realtime' => rtrim((string) config('services.realtime.public_url', 'http://localhost:3001'), '/')];
 @endphp
 @once
@@ -131,13 +137,13 @@
         <div class="sd-brand">
             <span class="sd-logo" aria-hidden="true"><span class="material-symbols-outlined">track_changes</span></span>
             <div class="min-w-0">
-                <p class="sd-sub sd-mono">{{ __('sponsor_draw.stage.eyebrow') }}</p>
+                <p class="sd-sub sd-mono">{{ $stage('eyebrow') }}</p>
                 <h2 class="sd-title sd-display" data-sd-campaign>{{ $state['campaign'] }}</h2>
-                <p class="sd-sub sd-mono" data-sd-target @if (! $state['target_campaign']) hidden @endif>{{ __('sponsor_draw.stage.target', ['name' => $state['target_campaign']]) }}</p>
+                <p class="sd-sub sd-mono" data-sd-target @if (! $state['target_campaign']) hidden @endif>{{ $stage('target', ['name' => $state['target_campaign']]) }}</p>
             </div>
         </div>
         <div class="sd-top-meta">
-            <span class="sd-chip sd-mono">{{ __('sponsor_draw.stage.progress') }} <strong><span data-sd-drawn>{{ $state['drawn_count'] }}</span> / {{ $state['target_winner_count'] }}</strong></span>
+            <span class="sd-chip sd-mono">{{ $stage('progress') }} <strong><span data-sd-drawn>{{ $state['drawn_count'] }}</span> / {{ $state['target_winner_count'] }}</strong></span>
             <span class="sd-pill sd-mono" data-sd-status><span class="sd-dot"></span><span></span></span>
             <span class="sd-pill sd-mono" data-sd-connection><span class="sd-dot"></span><span>{{ $i18n['connection_connecting'] }}</span></span>
         </div>
@@ -150,11 +156,11 @@
         {{-- Results: one slot per sponsor to draw, in drawing order. --}}
         <section class="sd-panel">
             <div class="sd-panel-head">
-                <h3 class="sd-h sd-display"><span class="material-symbols-outlined" aria-hidden="true">military_tech</span>{{ __('sponsor_draw.stage.results') }}</h3>
+                <h3 class="sd-h sd-display"><span class="material-symbols-outlined" aria-hidden="true">military_tech</span>{{ $stage('results') }}</h3>
             </div>
             <ol class="sd-slots" data-sd-results aria-live="polite"></ol>
             <div class="sd-panel-foot sd-mono">
-                <span>{{ __('sponsor_draw.stage.total_slots', ['count' => $state['target_winner_count']]) }}</span>
+                <span>{{ $stage('total_slots', ['count' => $state['target_winner_count']]) }}</span>
                 <span class="is-accent" data-sd-completion></span>
             </div>
         </section>
@@ -163,7 +169,7 @@
         <section class="sd-col-center flex flex-col gap-4 min-w-0">
             <div class="sd-panel sd-wheel-card">
                 <div class="sd-wheel-top">
-                    <span class="sd-wheel-label sd-mono"><span class="sd-dot"></span>{{ __('sponsor_draw.stage.wheel_title') }}</span>
+                    <span class="sd-wheel-label sd-mono"><span class="sd-dot"></span>{{ $stage('wheel_title') }}</span>
                     <span class="sd-turn sd-mono" data-sd-turn></span>
                 </div>
                 <div class="sd-wheel" data-sd-reel aria-live="polite">
@@ -177,19 +183,19 @@
                     </div>
                     <div class="sd-pointer" aria-hidden="true"></div>
                     <div class="sd-hub">
-                        <span class="sd-hub-label sd-mono"><span class="material-symbols-outlined text-[13px]" aria-hidden="true">stars</span><span data-sd-reel-label>{{ __('sponsor_draw.stage.reel_idle') }}</span></span>
+                        <span class="sd-hub-label sd-mono"><span class="material-symbols-outlined text-[13px]" aria-hidden="true">stars</span><span data-sd-reel-label>{{ $stage('reel_idle') }}</span></span>
                         <div class="sd-hub-name" data-sd-reel-name>—</div>
-                        <div class="sd-hub-count sd-mono">{{ __('sponsor_draw.stage.drawn') }}: <strong data-sd-hub-drawn>{{ $state['drawn_count'] }}</strong> / {{ $state['target_winner_count'] }}</div>
+                        <div class="sd-hub-count sd-mono">{{ $stage('drawn') }}: <strong data-sd-hub-drawn>{{ $state['drawn_count'] }}</strong> / {{ $state['target_winner_count'] }}</div>
                     </div>
                 </div>
                 <div class="sd-wheel-foot sd-mono">
-                    <span><span class="material-symbols-outlined" aria-hidden="true">verified_user</span>{{ __('sponsor_draw.stage.method_label') }}</span>
-                    <span>{{ __('sponsor_draw.stage.link_expires') }}: <span class="is-accent" data-sd-expires>—</span></span>
+                    <span><span class="material-symbols-outlined" aria-hidden="true">verified_user</span>{{ $stage('method_label') }}</span>
+                    <span>{{ $stage('link_expires') }}: <span class="is-accent" data-sd-expires>—</span></span>
                 </div>
             </div>
             @if ($mode === 'admin')
                 <div @class(['sd-controls', 'has-side' => $actions !== null && $actions->isNotEmpty()])>
-                    <button type="button" class="sd-btn" data-sd-draw><span class="material-symbols-outlined" aria-hidden="true">track_changes</span><span>{{ __('sponsor_draw.stage.draw_next') }}</span></button>
+                    <button type="button" class="sd-btn" data-sd-draw><span class="material-symbols-outlined" aria-hidden="true">track_changes</span><span>{{ $stage('draw_next') }}</span></button>
                     {{ $actions }}
                 </div>
             @endif
@@ -199,20 +205,20 @@
         <section class="sd-panel">
             <div class="sd-panel-head" style="flex-direction:column;align-items:stretch;gap:2px">
                 <div class="flex items-center justify-between gap-2">
-                    <h3 class="sd-h sd-display"><span class="material-symbols-outlined" aria-hidden="true">groups</span>{{ __('sponsor_draw.stage.eligible_list') }}</h3>
+                    <h3 class="sd-h sd-display"><span class="material-symbols-outlined" aria-hidden="true">groups</span>{{ $stage('eligible_list') }}</h3>
                     <span class="sd-count sd-mono" data-sd-eligible-count></span>
                 </div>
-                <p class="sd-code sd-mono" title="{{ $state['proof']['snapshot_hash'] ?? '' }}">{{ __('sponsor_draw.stage.snapshot_code') }}: <strong>#{{ strtoupper(substr((string) ($state['proof']['snapshot_hash'] ?? ''), 0, 12)) }}</strong></p>
+                <p class="sd-code sd-mono" title="{{ $state['proof']['snapshot_hash'] ?? '' }}">{{ $stage('snapshot_code') }}: <strong>#{{ strtoupper(substr((string) ($state['proof']['snapshot_hash'] ?? ''), 0, 12)) }}</strong></p>
             </div>
             <label class="sd-search">
                 <span class="material-symbols-outlined" aria-hidden="true">search</span>
-                <input type="search" data-sd-search placeholder="{{ __('sponsor_draw.stage.search_placeholder') }}" aria-label="{{ __('sponsor_draw.stage.search_placeholder') }}" autocomplete="off">
+                <input type="search" data-sd-search placeholder="{{ $stage('search_placeholder') }}" aria-label="{{ $stage('search_placeholder') }}" autocomplete="off">
             </label>
             <ol class="sd-people" data-sd-names></ol>
-            <p class="sd-empty" data-sd-names-empty hidden>{{ __('sponsor_draw.stage.no_match') }}</p>
+            <p class="sd-empty" data-sd-names-empty hidden>{{ $stage('no_match') }}</p>
             <div class="sd-panel-foot">
                 <span data-sd-remaining-people></span>
-                <span class="is-accent">{{ __('sponsor_draw.stage.auto_exclude') }}</span>
+                <span class="is-accent">{{ $stage('auto_exclude') }}</span>
             </div>
             <span hidden data-sd-eligible>{{ $state['eligible_count'] }}</span><span hidden data-sd-remaining>{{ $state['remaining_count'] }}</span>
         </section>

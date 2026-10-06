@@ -12,6 +12,8 @@
             </div>
             <form method="GET" class="superadmin-actions">
                 <x-superadmin.search-input :value="$filters['search'] ?? ''" placeholder="{{ __('superadmin.versions.search') }}" />
+                {{-- Release-date window, same picker as the audit log. --}}
+                <x-admin.date-range-filter id="versions-date-range" :dateFrom="$filters['date_from']" :dateTo="$filters['date_to']" />
                 <button class="sa-button secondary" type="submit"><span class="material-symbols-outlined text-[16px]">filter_list</span>{{ __('superadmin.common.filter') }}</button>
             </form>
         </div>

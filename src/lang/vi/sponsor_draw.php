@@ -5,7 +5,15 @@ declare(strict_types=1);
 return [
     'anonymous' => 'Thành viên',
 
+    'types' => [
+        'sponsors' => 'Quay nhà tài trợ',
+        'shops' => 'Quay chọn quán',
+    ],
+
     'fields' => [
+        'type' => 'Loại phiên quay',
+        'shops' => 'Quán tham gia',
+        'new_shops' => 'Thêm quán',
         'campaign' => 'Chiến dịch',
         'target_winner_count' => 'Số nhà tài trợ cần chọn',
         'target_campaign' => 'Chiến dịch nhận tài trợ',
@@ -13,9 +21,12 @@ return [
     ],
 
     'errors' => [
+        'cannot_configure' => 'Không thể đổi cài đặt: phiên đã có lượt quay hoặc đã kết thúc.',
+        'not_configured' => 'Phiên quay chưa được cài đặt.',
+        'shops_count' => 'Cần chọn từ 2 đến :max quán.',
         'campaign_not_in_room' => 'Chiến dịch không thuộc phòng này.',
-        'target_invalid' => 'Chiến dịch nhận tài trợ phải thuộc phòng này, khác chiến dịch nguồn và chưa kết thúc.',
-        'no_eligible' => 'Chiến dịch không có thành viên đang hoạt động nào đủ điều kiện quay.',
+        'target_invalid' => 'Chiến dịch nhận tài trợ phải thuộc phòng này và chưa kết thúc.',
+        'no_eligible' => 'Phòng chưa có thành viên đang hoạt động nào để quay.',
         'too_many_winners' => 'Số nhà tài trợ phải từ 1 đến :count (số thành viên đủ điều kiện).',
         'cancelled' => 'Phiên quay đã bị hủy.',
         'cannot_draw' => 'Phiên quay không còn cho phép quay thêm.',
@@ -29,6 +40,9 @@ return [
     ],
 
     'notify' => [
+        'room_title' => 'Kết quả quay nhà tài trợ · :room',
+        'shop_title' => 'Kết quả quay chọn quán · :room',
+        'shop_winner' => 'Quán được chọn: :name',
         'title' => 'Kết quả quay nhà tài trợ: :campaign',
         'campaign' => 'Chiến dịch: :name',
         'winner' => ':order. :name',
@@ -36,6 +50,8 @@ return [
     ],
 
     'flash' => [
+        'draft_created' => 'Đã tạo phiên mới. Hãy cài đặt loại phiên quay để bắt đầu.',
+        'configured' => 'Đã lưu cài đặt, chốt danh sách và phát hành link.',
         'created' => 'Đã tạo phiên quay và phát hành link truy cập.',
         'link_issued' => 'Đã phát hành link mới; link cũ không còn dùng được.',
         'cancelled' => 'Đã hủy phiên quay.',
@@ -44,14 +60,28 @@ return [
     ],
 
     'admin' => [
+        'confirm_after_draw_shops' => 'Nút xác nhận xuất hiện khi đã quay ra quán.',
+        'new_session' => 'Tạo phiên mới',
+        'col_type' => 'Loại',
+        'settings' => 'Cài đặt',
+        'settings_title' => 'Cài đặt phiên quay',
+        'settings_hint' => 'Danh sách hợp lệ được chốt khi lưu và chỉ đổi được trước lượt quay đầu tiên.',
+        'type_sponsors_hint' => ':count thành viên đang hoạt động của phòng sẽ được đưa vào vòng quay.',
+        'type_shops_hint' => 'Chọn các quán đưa vào vòng quay; hệ thống chọn ngẫu nhiên 1 quán.',
+        'shops_suggested' => 'Quán từ các chiến dịch trước',
+        'shops_none' => 'Chưa có quán nào từ chiến dịch trước. Hãy nhập thêm bên dưới.',
+        'shops_new_hint' => 'Mỗi dòng một quán.',
+        'settings_save' => 'Lưu cài đặt',
+        'draft_title' => 'Phiên quay chưa được cài đặt',
+        'draft_hint' => 'Chọn loại phiên quay (nhà tài trợ hoặc quán) để chốt danh sách và phát hành link cho thành viên.',
+        'settings_locked' => 'Đã có lượt quay nên không thể đổi cài đặt nữa.',
+        'reconfigure_hint' => 'Lưu lại sẽ chốt lại danh sách và tạo seed mới; thay đổi được ghi vào biên bản kiểm chứng.',
+        'shops_selected' => ':count quán',
         'nav' => 'Quay sponsor',
         'title' => 'Quay nhà tài trợ',
-        'description' => 'Tạo phiên quay chọn nhà tài trợ từ thành viên của chiến dịch. Hệ thống chọn ngẫu nhiên ở máy chủ, mỗi người trúng tối đa một lần; thành viên theo dõi trực tiếp qua link có thời hạn.',
-        'create_title' => 'Tạo phiên quay mới',
-        'create_hint' => 'Danh sách đủ điều kiện (thành viên đang hoạt động, chưa từ chối chiến dịch) được chốt ngay khi tạo và không thay đổi trong suốt phiên.',
+        'description' => 'Quay ngẫu nhiên nhà tài trợ trong thành viên của phòng, hoặc quay chọn quán. Hệ thống chọn ở máy chủ, mỗi ứng viên trúng tối đa một lần; thành viên theo dõi trực tiếp qua link có thời hạn.',
         'optional' => 'không bắt buộc',
         'target_none' => 'Không chọn',
-        'create_submit' => 'Tạo phiên & phát hành link',
         'target_hint' => 'Nếu chọn chiến dịch nhận tài trợ, khi xác nhận kết quả hệ thống sẽ đặt chiến dịch đó thành tài trợ toàn phần và chia đều tỷ lệ cho những người trúng.',
         'sessions_title' => 'Các phiên quay',
         'col_progress' => 'Đã chọn',
@@ -114,16 +144,17 @@ return [
     'landing' => [
         'page_title' => 'Quay nhà tài trợ · :campaign',
         'heading' => 'Quay nhà tài trợ trực tiếp',
-        'intro' => 'Bạn đang theo dõi phiên quay của chiến dịch. Chỉ admin được quay; kết quả do máy chủ chọn và hiển thị đồng thời cho mọi người.',
+        'intro' => 'Bạn đang theo dõi phiên quay của phòng. Chỉ admin được quay; kết quả do máy chủ chọn và hiển thị đồng thời cho mọi người.',
         'expired_title' => 'Link đã hết hạn',
         'expired_body' => 'Link phiên quay này không còn hiệu lực. Vui lòng liên hệ admin phòng để nhận link mới.',
         'forbidden_title' => 'Không có quyền truy cập',
-        'forbidden_body' => 'Bạn không thuộc chiến dịch của phiên quay này.',
+        'forbidden_body' => 'Bạn không phải thành viên đang hoạt động của phòng có phiên quay này.',
         'back_to_room' => 'Về trang phòng',
     ],
 
     'js' => [
         'status' => [
+            'draft' => 'Nháp',
             'ready' => 'Sẵn sàng',
             'drawing' => 'Đang quay',
             'completed' => 'Chờ xác nhận',
@@ -157,5 +188,18 @@ return [
         'slot_closed' => '[Không quay]',
         'already_won' => 'Đã trúng',
         'picking' => 'Đang chọn',
+    ],
+    'stage_shops' => [
+        'auto_exclude' => 'Tự động loại quán đã trúng',
+        'eyebrow' => 'Quay chọn quán',
+        'eligible_list' => 'Quán tham gia',
+        'search_placeholder' => 'Tìm nhanh tên quán…',
+        'no_match' => 'Không tìm thấy quán phù hợp.',
+    ],
+    'js_shops' => [
+        'people' => ':count quán',
+        'reel_winner' => 'Quán được chọn',
+        'remaining_people' => 'Còn lại: :count quán',
+        'waiting_confirm' => 'Đã chọn được quán. Đang chờ admin xác nhận và gửi thông báo.',
     ],
 ];

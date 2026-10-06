@@ -19,6 +19,9 @@
                         <option value="{{ $value }}" @selected($filters['status'] === $value)>{{ __('platform.billing.status.'.$value) }}</option>
                     @endforeach
                 </select>
+                <x-superadmin.agent-filter permission="debt.view" :selected="$filters['agent']" />
+                {{-- Due-date window (the list is ordered by due date), same picker as the audit log. --}}
+                <x-admin.date-range-filter id="outstanding-date-range" :dateFrom="$filters['date_from']" :dateTo="$filters['date_to']" />
                 <button class="sa-button secondary" type="submit"><span class="material-symbols-outlined text-[16px]">filter_list</span>{{ __('superadmin.common.filter') }}</button>
             </form>
         </div>

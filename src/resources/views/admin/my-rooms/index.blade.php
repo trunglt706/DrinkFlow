@@ -54,19 +54,19 @@
                                 <td class="px-5 py-3">
                                     <div class="flex flex-wrap justify-end gap-2">
                                         @if ($room->status === \App\Enums\RoomStatus::Active)
-                                            <a href="{{ route('admin.dashboard.page', $room) }}" class="h-8 px-3 inline-flex items-center rounded-lg border border-outline-variant text-xs font-semibold hover:bg-surface-container">{{ __('platform.rooms.open') }}</a>
+                                            <a href="{{ route('admin.dashboard.page', $room) }}" class="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg border border-outline-variant text-xs font-semibold hover:bg-surface-container"><span class="material-symbols-outlined !text-[16px]" aria-hidden="true">open_in_new</span>{{ __('platform.rooms.open') }}</a>
                                         @endif
                                         @if ($archived)
                                             <form method="POST" action="{{ route('admin.rooms.restore', $room) }}" data-loading-form="true">
                                                 @csrf
-                                                <button type="submit" class="h-8 px-3 rounded-lg border border-outline-variant text-xs font-semibold hover:bg-surface-container cursor-pointer" @disabled(! $canAdd)>{{ __('platform.rooms.restore') }}</button>
+                                                <button type="submit" class="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg border border-outline-variant text-xs font-semibold hover:bg-surface-container cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" @disabled(! $canAdd)><span class="material-symbols-outlined !text-[16px]" aria-hidden="true">unarchive</span>{{ __('platform.rooms.restore') }}</button>
                                             </form>
                                         @else
-                                            <a href="{{ route('admin.rooms.edit', $room) }}" class="h-8 px-3 inline-flex items-center rounded-lg border border-outline-variant text-xs font-semibold hover:bg-surface-container">{{ __('platform.rooms.edit') }}</a>
+                                            <a href="{{ route('admin.rooms.edit', $room) }}" class="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg border border-outline-variant text-xs font-semibold hover:bg-surface-container"><span class="material-symbols-outlined !text-[16px]" aria-hidden="true">edit</span>{{ __('platform.rooms.edit') }}</a>
                                             <form method="POST" action="{{ route('admin.rooms.archive', $room) }}" data-loading-form="true"
                                                 data-confirm-message="{{ __('platform.rooms.archive_confirm', ['name' => $room->name]) }}" data-confirm-button="{{ __('platform.rooms.archive') }}" data-confirm-tone="danger">
                                                 @csrf
-                                                <button type="submit" class="h-8 px-3 rounded-lg border border-error/40 text-error text-xs font-semibold hover:bg-error-container/40 cursor-pointer">{{ __('platform.rooms.archive') }}</button>
+                                                <button type="submit" class="h-8 px-3 inline-flex items-center gap-1.5 rounded-lg border border-error/40 text-error text-xs font-semibold hover:bg-error-container/40 cursor-pointer"><span class="material-symbols-outlined !text-[16px]" aria-hidden="true">archive</span>{{ __('platform.rooms.archive') }}</button>
                                             </form>
                                         @endif
                                     </div>

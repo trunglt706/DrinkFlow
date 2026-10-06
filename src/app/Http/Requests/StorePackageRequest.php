@@ -6,6 +6,7 @@ namespace App\Http\Requests;
 
 use App\Enums\PackageStatus;
 use App\Http\Requests\Concerns\AuthorizesUserAndAdmin;
+use App\Http\Requests\Concerns\NormalizesGroupedNumbers;
 use App\Models\Package;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -15,7 +16,7 @@ use Illuminate\Validation\Rule;
  */
 class StorePackageRequest extends FormRequest
 {
-    use AuthorizesUserAndAdmin;
+    use AuthorizesUserAndAdmin, NormalizesGroupedNumbers;
 
     /**
      * Determine if the user is authorized to make this request.
@@ -28,7 +29,7 @@ class StorePackageRequest extends FormRequest
     }
 
     /**
-     * Normalize the code and the optional sort order before validation.
+     * Normalize the code, the grouped numbers and the optional sort order before validation.
      *
      * @return void
      */
@@ -36,6 +37,9 @@ class StorePackageRequest extends FormRequest
     {
         $this->merge([
             'code' => mb_strtolower(trim((string) $this->input('code'))),
+            // The form groups the digits (1.000.000): keep only the digits, so the integer rules apply.
+            'monthly_price' => $this->withoutGroupSeparators('monthly_price'),
+            'room_limit' => $this->withoutGroupSeparators('room_limit'),
             'sort_order' => $this->filled('sort_order') ? $this->input('sort_order') : 0,
         ]);
     }

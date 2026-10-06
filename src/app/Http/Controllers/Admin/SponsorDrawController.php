@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\CampaignStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ManageSponsorDrawRequest;
-use App\Http\Requests\StoreSponsorDrawRequest;
+use App\Http\Requests\ConfigureSponsorDrawRequest;
 use App\Models\Admin;
 use App\Models\Campaign;
 use App\Models\Room;
@@ -21,15 +21,15 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
- * Sponsor draws of a room (/admin/{room}/sponsor-draws): create a session, share its link, draw the turns,
- * confirm and notify, and review past sessions. The admin.room middleware has checked access to the room.
+ * Draws of a room (/admin/{room}/sponsor-draws): create a draft, save its settings (sponsors or shops), share its
+ * link, draw the turns, confirm and notify, and review past sessions. The admin.room middleware has checked access to the room.
  */
 class SponsorDrawController extends Controller
 {
     public function __construct(private readonly SponsorDrawService $draws) {}
 
     /**
-     * Sessions of the room and the creation form.
+     * Sessions of the room; a new one is created from the "New session" button.
      */
     public function index(Room $room): View
     {
@@ -39,46 +39,67 @@ class SponsorDrawController extends Controller
                 ->with(['campaign:id,name', 'targetCampaign:id,name', 'createdBy:id,name'])->withCount('results')
                 ->latest('id')->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE)
                 ->through(fn (SponsorDrawSession $session): SponsorDrawSession => $session->setRelation('room', $room)),
-            'campaigns' => Campaign::query()->where('room_id', $room->id)->where('status', '!=', CampaignStatus::Cancelled->value)
-                ->latest('id')->limit(100)->get(['id', 'name', 'status']),
-            'targetCampaigns' => Campaign::query()->where('room_id', $room->id)
-                ->whereIn('status', [CampaignStatus::Draft->value, CampaignStatus::Scheduled->value, CampaignStatus::Active->value])
-                ->latest('id')->get(['id', 'name', 'status']),
-            'maxWinners' => (int) config('sponsor_draw.max_winners', 50),
         ]);
     }
 
     /**
-     * Create a session (snapshot frozen, link issued) and open its draw page.
+     * Create a draft session and open its draw page with the settings dialog.
      */
-    public function store(StoreSponsorDrawRequest $request, Room $room): RedirectResponse
+    public function store(ManageSponsorDrawRequest $request, Room $room): RedirectResponse
     {
-        $data = $request->validated();
-        $result = $this->draws->create(
-            $room,
-            $this->admin($request),
-            Campaign::query()->findOrFail((int) $data['campaign_id']),
-            (int) $data['target_winner_count'],
-            isset($data['target_campaign_id']) ? Campaign::query()->findOrFail((int) $data['target_campaign_id']) : null,
-        );
+        $session = $this->draws->createDraft($room, $this->admin($request));
 
-        return redirect()->route('admin.sponsor-draws.show', [$room, $result['session']])
-            ->with('status', __('sponsor_draw.flash.created'));
+        return redirect()->route('admin.sponsor-draws.show', [$room, $session])
+            ->with('status', __('sponsor_draw.flash.draft_created'))
+            ->with('open_settings', true);
     }
 
     /**
-     * Draw page of a session (controls, link, proof and delivery status).
+     * Save the settings of a session (draft, or ready before its first turn) and open its draw page.
+     */
+    public function settings(ConfigureSponsorDrawRequest $request, Room $room, SponsorDrawSession $sponsorDraw): RedirectResponse
+    {
+        $this->ensureRoom($room, $sponsorDraw);
+        $targetId = $request->validated('target_campaign_id');
+        $this->draws->configure(
+            $sponsorDraw,
+            $this->admin($request),
+            $request->type(),
+            (int) ($request->validated('target_winner_count') ?? 1),
+            $targetId !== null ? Campaign::query()->findOrFail((int) $targetId) : null,
+            $request->shopNames(),
+        );
+
+        return redirect()->route('admin.sponsor-draws.show', [$room, $sponsorDraw])
+            ->with('status', __('sponsor_draw.flash.configured'));
+    }
+
+    /**
+     * Draw page of a session (settings, controls, link, proof and delivery status).
      */
     public function show(Room $room, SponsorDrawSession $sponsorDraw): View
     {
         $this->ensureRoom($room, $sponsorDraw);
         $token = $this->draws->currentToken($sponsorDraw);
+        $hasResults = $sponsorDraw->results()->exists();
 
         return view('admin.sponsor-draws.show', [
             'room' => $room,
             'session' => $sponsorDraw->loadMissing(['campaign:id,name', 'targetCampaign:id,name', 'createdBy:id,name', 'confirmedBy:id,name']),
             'state' => $this->draws->state($sponsorDraw, true),
             'linkUrl' => $token !== null ? route('user.sponsor-draws.show', [$room, $token]) : null,
+            // Settings stay editable until the first turn is drawn.
+            'canConfigure' => $sponsorDraw->status->canConfigure() && ! $hasResults,
+            'targetCampaigns' => Campaign::query()->where('room_id', $room->id)
+                ->whereIn('status', [CampaignStatus::Draft->value, CampaignStatus::Scheduled->value, CampaignStatus::Active->value])
+                ->latest('id')->get(['id', 'name', 'status']),
+            'shopSuggestions' => $this->draws->shopSuggestions($room),
+            'eligibleMembers' => $this->draws->eligibleMembersQuery($room)->count(),
+            'currentShops' => $sponsorDraw->type === \App\Enums\SponsorDrawType::Shops
+                ? $sponsorDraw->eligibleUsers()->orderBy('position')->pluck('display_name_snapshot')->all()
+                : [],
+            'maxWinners' => (int) config('sponsor_draw.max_winners', 50),
+            'maxShops' => (int) config('sponsor_draw.max_shops', 100),
         ]);
     }
 

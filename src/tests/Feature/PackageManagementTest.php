@@ -100,6 +100,34 @@ class PackageManagementTest extends TestCase
         $this->assertSame(1, Package::query()->count());
     }
 
+    public function test_grouped_price_and_room_limit_are_saved_as_integers(): void
+    {
+        $this->actingAs($this->owner, 'superadmin')
+            ->post(route('superadmin.packages.store'), $this->payload(['code' => 'grouped', 'monthly_price' => '1.500.000', 'room_limit' => '1.200']))
+            ->assertRedirect(route('superadmin.packages.index'));
+
+        $package = Package::query()->where('code', 'grouped')->firstOrFail();
+        $this->assertSame(1500000, $package->monthly_price);
+        $this->assertSame(1200, $package->room_limit);
+
+        // Only the separators are dropped: a sign or letters are still rejected.
+        $this->actingAs($this->owner, 'superadmin')
+            ->post(route('superadmin.packages.store'), $this->payload(['code' => 'signed', 'monthly_price' => '-5.000', 'room_limit' => '3 rooms']))
+            ->assertSessionHasErrors(['monthly_price', 'room_limit']);
+    }
+
+    public function test_package_form_groups_the_price_and_room_limit(): void
+    {
+        $package = $this->package(['monthly_price' => 2500000, 'room_limit' => 1500]);
+
+        $this->actingAs($this->owner, 'superadmin')->get(route('superadmin.packages.show', $package))
+            ->assertOk()
+            ->assertSee('data-number-input', false)
+            ->assertSee('value="2.500.000"', false)
+            ->assertSee('value="1.500"', false)
+            ->assertSee(__('global.common.money_suffix'));
+    }
+
     public function test_list_and_detail_pages_render_for_viewers(): void
     {
         $package = $this->package();

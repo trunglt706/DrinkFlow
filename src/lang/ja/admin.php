@@ -1004,30 +1004,25 @@ return [
 
     // Password Recovery Hero & Details
     'recovery_protocol' => 'アクセス権復旧プロトコル',
-    'forgot_hero_heading' => 'ルーム管理者アクセス権の復旧',
-    'forgot_hero_desc' => 'システムは多要素認証（MFA）OTPコードを生成し、権限のある業務メールアドレス宛に直接送信します。',
     'two_factor_otp' => '2要素認証（2-Factor OTP）',
     'otp_validity_15m' => '発行から15分間有効',
-    'security_audit_trail' => 'セキュリティ監査ログ',
-    'security_audit_desc' => 'IPアドレス、User-Agentを記録し、セキュリティ警告をシステムに送信します。',
-    'important_note' => '重要なお知らせ',
     'forgot_note_desc' => '2分経過してもコードが届かない場合は、迷惑メールフォルダをご確認いただくか、IT管理者にお問い合わせください。',
 
     // Verify OTP Hero & Details
-    'mfa_challenge' => 'MFA OTP 認証チャレンジ',
-    'verify_hero_heading' => '6桁の認証コードを入力',
-    'verify_hero_desc' => '6桁のセキュリティコードを業務メールアドレス（:email）に送信しました。',
     'session_challenge_id' => 'SESSION CHALLENGE ID:',
-    'validity_duration' => '有効期間:',
+    'validity_duration' => '有効期間',
     'duration_15_mins' => '15分',
 
     // Reset Password Hero & Requirements
     'credential_protocol' => 'ログイン情報更新プロトコル',
-    'reset_hero_heading' => '新しいパスワードの設定',
-    'reset_hero_desc' => '管理者アカウント（:email）の安全な新しいパスワードを作成してください。最低8文字必要です。',
     'security_requirements' => 'セキュリティ要件:',
     'req_min_8_chars' => '最低8文字',
-    'req_alphanumeric' => '英数字を含む',
+    'recovery_steps_label' => 'パスワード再設定の手順',
+    'recovery_step_email' => 'メール',
+    'recovery_step_otp' => 'OTP コード',
+    'recovery_step_password' => '新しいパスワード',
+    'req_min_chars' => ':count 文字以上',
+    'otp_sent_to' => 'コードを :email に送信しました',
     'req_match_confirmation' => '確認用パスワードと一致していること',
 
     'forgot_password_title' => '管理者パスワードの復元',
@@ -1048,7 +1043,7 @@ return [
     'reset_token_invalid_or_expired' => 'パスワード再設定用トークンが無効または有効期限（30分）切れです。OTPを再送信してください。',
     'reset_password_title' => '管理者パスワードの再設定',
     'reset_password_heading' => '新しいパスワードの設定',
-    'reset_password_subheading' => '8文字以上の新しいパスワードを入力してください。',
+    'reset_password_subheading' => ':count文字以上の新しいパスワードを入力してください。',
     'save_new_password' => '新しいパスワードを保存して完了',
     'password_reset_success' => 'パスワードの再設定が完了しました。新しいパスワードでログインしてください。',
     'campaign_closed_invalid_state' => '現在の状態ではキャンペーンを終了できません。',

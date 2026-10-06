@@ -16,12 +16,15 @@
             <div class="superadmin-actions">
                 <form method="GET" action="{{ route('superadmin.notifications.page') }}#inbox" class="superadmin-actions">
                     @if(($filters['search'] ?? '') !== '')<input type="hidden" name="q" value="{{ $filters['search'] }}">@endif
+                    @if($filters['channelType'] !== '')<input type="hidden" name="channel_type" value="{{ $filters['channelType'] }}">@endif
                     <select name="inbox_status" class="sa-input" aria-label="{{ __('superadmin.common.status') }}">
                         <option value="">{{ __('superadmin.inbox.status_all') }}</option>
-                        <option value="{{ \App\Services\Notification\AdminNotificationService::FILTER_UNREAD }}" @selected($filters['inboxStatus'] === \App\Services\Notification\AdminNotificationService::FILTER_UNREAD)>{{ __('superadmin.inbox.status_unread') }}</option>
-                        <option value="{{ \App\Services\Notification\AdminNotificationService::FILTER_READ }}" @selected($filters['inboxStatus'] === \App\Services\Notification\AdminNotificationService::FILTER_READ)>{{ __('superadmin.inbox.status_read') }}</option>
+                        <option value="{{ \App\Services\Notification\SuperadminNotificationService::FILTER_UNREAD }}" @selected($filters['inboxStatus'] === \App\Services\Notification\SuperadminNotificationService::FILTER_UNREAD)>{{ __('superadmin.inbox.status_unread') }}</option>
+                        <option value="{{ \App\Services\Notification\SuperadminNotificationService::FILTER_READ }}" @selected($filters['inboxStatus'] === \App\Services\Notification\SuperadminNotificationService::FILTER_READ)>{{ __('superadmin.inbox.status_read') }}</option>
                     </select>
                     <x-superadmin.search-input name="inbox_q" :value="$filters['inboxSearch']" placeholder="{{ __('superadmin.inbox.search') }}" />
+                    {{-- Received date, same picker as the audit log. --}}
+                    <x-admin.date-range-filter id="inbox-date-range" :dateFrom="$filters['inboxFrom']" :dateTo="$filters['inboxTo']" />
                     <button class="sa-button secondary" type="submit"><span class="material-symbols-outlined text-[16px]">filter_alt</span>{{ __('superadmin.common.filter') }}</button>
                 </form>
                 @if($inboxUnreadCount > 0)
@@ -67,7 +70,15 @@
             <form method="GET" class="superadmin-actions">
                 @if($filters['inboxStatus'] !== '')<input type="hidden" name="inbox_status" value="{{ $filters['inboxStatus'] }}">@endif
                 @if($filters['inboxSearch'] !== '')<input type="hidden" name="inbox_q" value="{{ $filters['inboxSearch'] }}">@endif
+                @if($filters['inboxFrom'] !== '')<input type="hidden" name="date_from" value="{{ $filters['inboxFrom'] }}">@endif
+                @if($filters['inboxTo'] !== '')<input type="hidden" name="date_to" value="{{ $filters['inboxTo'] }}">@endif
                 <x-superadmin.search-input :value="$filters['search'] ?? ''" placeholder="{{ __('superadmin.notifications.search') }}" />
+                <select name="channel_type" class="sa-input" aria-label="{{ __('superadmin.common.type') }}">
+                    <option value="">{{ __('superadmin.notifications.all_channel_types') }}</option>
+                    @foreach (\App\Models\SystemNotificationChannel::TYPES as $typeValue => $typeLabel)
+                        <option value="{{ $typeValue }}" @selected($filters['channelType'] === $typeValue)>{{ $typeLabel }}</option>
+                    @endforeach
+                </select>
                 <button class="sa-button secondary" type="submit"><span class="material-symbols-outlined text-[16px]">filter_alt</span>{{ __('superadmin.common.filter') }}</button>
             </form>
         </div>
@@ -91,6 +102,9 @@
                             <td class="col-mono">••••••••</td>
                             <td class="col-actions">
                                 <x-superadmin.row-actions>
+                                    @can('settings.manage')
+                                        <button class="sa-button secondary" type="button" data-action="test-channel" data-channel-id="{{ $channel->id }}"><span class="material-symbols-outlined text-[16px]">network_ping</span>{{ __('superadmin.notifications.test_ping') }}</button>
+                                    @endcan
                                     <x-slot:menu>
                                         <button class="sa-menu-item is-danger" type="button" data-action="delete-channel" data-channel-id="{{ $channel->id }}" role="menuitem"><span class="material-symbols-outlined">delete</span>{{ __('superadmin.common.delete') }}</button>
                                     </x-slot:menu>
@@ -129,10 +143,9 @@
                 <div>
                     <label for="create-channel-type" class="sa-label">{{ __('superadmin.common.type') }} <span class="text-error">*</span></label>
                     <select id="create-channel-type" name="type" required class="sa-field" data-channel-type>
-                        <option value="slack">Slack</option>
-                        <option value="telegram">Telegram</option>
-                        <option value="chatwork">Chatwork</option>
-                        <option value="webhook">Webhook</option>
+                        @foreach (\App\Models\SystemNotificationChannel::TYPES as $typeValue => $typeLabel)
+                            <option value="{{ $typeValue }}">{{ $typeLabel }}</option>
+                        @endforeach
                     </select>
                 </div>
             </div>
@@ -191,6 +204,6 @@
 @endsection
 @push('scripts')
     <x-superadmin.page-script name="notifications"
-        :i18n="['confirm_delete' => __('superadmin.notifications.confirm_delete'), 'deleted' => __('superadmin.common.delete'), 'delete_description' => __('superadmin.modals.confirm.channel_delete')]"
-        :urls="['store' => route('superadmin.notifications.store')]" />
+        :i18n="['confirm_delete' => __('superadmin.notifications.confirm_delete'), 'deleted' => __('superadmin.common.delete'), 'delete_description' => __('superadmin.modals.confirm.channel_delete'), 'test_sent' => __('superadmin.notifications.test_sent')]"
+        :urls="['store' => route('superadmin.notifications.store'), 'test' => route('superadmin.notifications.test', ['channel' => '__ID__'])]" />
 @endpush
