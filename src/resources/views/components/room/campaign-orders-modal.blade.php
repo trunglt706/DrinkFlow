@@ -1,15 +1,6 @@
 {{-- Modal hiển thị toàn bộ đơn hàng của một chiến dịch trong phòng (dùng chung bởi trang Công nợ, Chiến dịch và Đơn hàng của tôi). --}}
 {{-- Yêu cầu component cha có sẵn Alpine state: campaignModalOpen, campaignLoading, campaignData, openCampaignDetail(campaignId). --}}
 {{-- Danh sách rút gọn theo hàng ngang (họ tên, email, món & topping) vì số lượng thành viên trong phòng có thể lên tới hàng trăm. --}}
-@once
-<style>
-    .df-sponsor-mark{position:relative;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:999px;background:#fef3c7;color:#b45309;flex-shrink:0;cursor:default}
-    .df-sponsor-mark .material-symbols-outlined{font-size:13px;font-variation-settings:'FILL' 1}
-    .df-sponsor-mark .df-sponsor-mark-tip{position:absolute;left:calc(100% + 6px);top:50%;transform:translateY(-50%);white-space:nowrap;background:#0f172a;color:#fff;font-size:11px;font-weight:600;padding:4px 8px;border-radius:6px;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .15s;z-index:30}
-    .df-sponsor-mark:hover .df-sponsor-mark-tip,.df-sponsor-mark:focus-visible .df-sponsor-mark-tip{opacity:1;visibility:visible}
-    .df-sponsor-mark:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
-</style>
-@endonce
 <template x-teleport="body">
     <div x-show="campaignModalOpen" x-cloak @keydown.escape.window="campaignModalOpen = false"
         class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-md transition-opacity duration-200"
@@ -84,10 +75,7 @@
                                         <div class="font-semibold text-on-surface text-xs leading-snug flex items-center gap-1">
                                             <span x-text="order.orderer_name"></span>
                                             <template x-if="order.is_sponsor">
-                                                <span class="df-sponsor-mark" role="img" tabindex="0" aria-label="{{ __('room.debts.campaign_sponsor_tooltip') }}" data-campaign-sponsor-mark>
-                                                    <span class="material-symbols-outlined" aria-hidden="true">volunteer_activism</span>
-                                                    <span class="df-sponsor-mark-tip" aria-hidden="true">{{ __('room.debts.campaign_sponsor_tooltip') }}</span>
-                                                </span>
+                                                <x-room.sponsor-mark />
                                             </template>
                                         </div>
                                         <template x-if="order.orderer_email">

@@ -39,6 +39,8 @@
 
     $orderSponsorAllocations = collect($orderCampaign?->sponsor_allocations ?? []);
     $orderSponsorUserIds = $orderSponsorAllocations->pluck('room_user_id')->filter()->map(fn($id) => (int) $id);
+    // Members sponsoring the order's campaign get a sponsor icon after their name (also while the campaign is live).
+    $orderSponsorPercentages = $orderCampaign?->sponsorPercentages() ?? [];
     $orderSponsorRoomUsers = $orderSponsorUserIds->isNotEmpty()
         ? $room->roomUsers()->with('globalUser')->whereIn('id', $orderSponsorUserIds)->get()->keyBy('id')
         : collect();
@@ -318,8 +320,12 @@
                             <div class="flex flex-col pr-space-sm min-w-0 flex-1 lg:flex-none">
                                 <span
                                     class="font-label-sm text-label-sm text-on-surface-variant">{{ __('room.orders.orderer_label') }}</span>
-                                <span
-                                    class="font-label-md text-label-md text-on-surface font-semibold truncate">{{ $user->name }}</span>
+                                <span class="flex items-center gap-1 min-w-0">
+                                    <span class="font-label-md text-label-md text-on-surface font-semibold truncate">{{ $user->name }}</span>
+                                    @if (isset($orderSponsorPercentages[(int) $roomUser->id]))
+                                        <x-room.sponsor-mark />
+                                    @endif
+                                </span>
                                 <span
                                     class="font-tabular-nums text-tabular-nums text-[11px] text-secondary">{{ $roomUser->room_user_code }}</span>
                             </div>
@@ -479,6 +485,9 @@
                                         @foreach($proxyOrder->items as $proxyItem)
                                             <x-room.order-item-card :item="$proxyItem">
                                                 <span class="font-semibold text-on-surface">{{ $proxyName }}</span>
+                                                @if (isset($orderSponsorPercentages[(int) $proxyOrder->room_user_id]))
+                                                    <x-room.sponsor-mark />
+                                                @endif
                                                 @if($proxyGlobalUser?->email)
                                                     <span>({{ $proxyGlobalUser->email }})</span>
                                                 @endif

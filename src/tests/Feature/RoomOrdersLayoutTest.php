@@ -22,6 +22,41 @@ class RoomOrdersLayoutTest extends TestCase
     use RefreshDatabase;
 
     /**
+     * While the campaign is live, the order page marks the orderer with the sponsor icon only when they sponsor it.
+     *
+     * @return void
+     */
+    public function test_live_order_page_marks_sponsors_of_the_campaign(): void
+    {
+        $room = Room::create(['name' => 'Live Room', 'slug' => 'live-room', 'status' => 'active']);
+        $members = [];
+        foreach (['sponsor', 'member'] as $name) {
+            $user = GlobalUser::create(['name' => ucfirst($name), 'normalized_name' => strtoupper($name), 'email' => $name.'@company.com', 'status' => 'active']);
+            $members[$name] = [$user, app(JoinRoomAction::class)->execute($user, $room, 'Chrome', $name.'-hash')];
+        }
+        $campaign = Campaign::create([
+            'room_id' => $room->id,
+            'name' => 'Live Tea',
+            'restaurant' => 'Cafe',
+            'status' => CampaignStatus::Active,
+            'sponsor_type' => Campaign::SPONSOR_TYPE_PER_ITEM,
+            'sponsor_allocations' => [['room_user_id' => $members['sponsor'][1]->id, 'percentage' => 100]],
+        ]);
+        foreach ($members as [$user, $roomUser]) {
+            $order = Order::create(['room_id' => $room->id, 'campaign_id' => $campaign->id, 'room_user_id' => $roomUser->id, 'subtotal' => 30000, 'final_amount' => 30000, 'status' => OrderStatus::Submitted]);
+            OrderItem::create(['order_id' => $order->id, 'item_name' => 'Tea', 'unit_price' => 30000, 'quantity' => 1, 'line_subtotal' => 30000]);
+        }
+
+        // The campaign orders modal always carries one (Alpine x-if) copy of the icon; the order card adds one for a sponsor.
+        $marks = fn (GlobalUser $user): int => substr_count(
+            (string) $this->actingAs($user, 'web')->get(route('user.orders.index', $room->slug))->assertOk()->getContent(),
+            'data-campaign-sponsor-mark'
+        );
+        $this->assertSame(1, $marks($members['member'][0]));
+        $this->assertSame(2, $marks($members['sponsor'][0]));
+    }
+
+    /**
      * Ensure the room order page uses the compact item layout and four-stage progress.
      *
      * @return void
