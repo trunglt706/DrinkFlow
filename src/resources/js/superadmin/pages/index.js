@@ -4,6 +4,7 @@
  */
 import initAdminDetailPage from './admin-detail';
 import initAdminsPage from './admins';
+import initAuditPage from './audit';
 import initCampaignsPage from './campaigns';
 import initDashboardPage from './dashboard';
 import initFeedbacksPage from './feedbacks';
@@ -19,6 +20,7 @@ import initUsersPage from './users';
 const PAGES = {
     'admin-detail': initAdminDetailPage,
     admins: initAdminsPage,
+    audit: initAuditPage,
     campaigns: initCampaignsPage,
     dashboard: initDashboardPage,
     feedbacks: initFeedbacksPage,

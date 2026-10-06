@@ -13,11 +13,16 @@ Route::post('/superadmin/logout', [\App\Http\Controllers\Superadmin\AuthControll
     ->middleware(['auth:superadmin', 'throttle:admin-login'])
     ->name('superadmin.logout');
 
-Route::middleware(['auth:superadmin', 'superadmin'])->prefix('superadmin')->group(function () {
+Route::middleware(['auth:superadmin', 'superadmin', 'superadmin.mask'])->prefix('superadmin')->group(function () {
+    // Reveal one masked email / phone number (SensitiveDataService token issued to this Superadmin).
+    Route::post('/sensitive/reveal', [\App\Http\Controllers\Superadmin\SensitiveDataController::class, 'reveal'])->middleware('throttle:60,1')->name('superadmin.sensitive.reveal');
     Route::get('/', [\App\Http\Controllers\Superadmin\DashboardController::class, 'index'])->name('superadmin.dashboard');
     Route::get('/dashboard/analytics', [\App\Http\Controllers\Superadmin\DashboardController::class, 'analytics'])->name('superadmin.dashboard.analytics');
     Route::get('/dashboard/insights', [\App\Http\Controllers\Superadmin\DashboardController::class, 'insights'])->name('superadmin.dashboard.insights');
     Route::get('/dashboard/trends', [\App\Http\Controllers\Superadmin\DashboardController::class, 'trends'])->name('superadmin.dashboard.trends');
+    // Internal Superadmin handbook (Markdown in resources/guide-content/superadmin, never served statically).
+    Route::get('/guides', [\App\Http\Controllers\Superadmin\GuideController::class, 'index'])->name('superadmin.guides.index');
+    Route::get('/guides/{slug}', [\App\Http\Controllers\Superadmin\GuideController::class, 'show'])->where('slug', '[a-z0-9\-]+')->name('superadmin.guides.show');
     Route::get('/rooms/page', [\App\Http\Controllers\Superadmin\PageController::class, 'rooms'])->middleware('permission:room.view')->name('superadmin.rooms.page');
     Route::get('/rooms', [\App\Http\Controllers\Superadmin\RoomController::class, 'index'])->middleware('permission:room.view')->name('superadmin.rooms.index');
     Route::post('/rooms', [\App\Http\Controllers\Superadmin\RoomController::class, 'store'])->middleware('permission:room.manage')->name('superadmin.rooms.store');
@@ -80,6 +85,8 @@ Route::middleware(['auth:superadmin', 'superadmin'])->prefix('superadmin')->grou
     Route::delete('/queue/failed/{failedJob}', [\App\Http\Controllers\Superadmin\QueueController::class, 'forget'])->middleware('permission:queue.manage')->name('superadmin.queue.failed.forget');
     Route::get('/feedbacks/page', [\App\Http\Controllers\Superadmin\PageController::class, 'feedbacks'])->middleware('permission:feedback.view')->name('superadmin.feedbacks.page');
     Route::patch('/feedbacks/{feedback}/status', [\App\Http\Controllers\Superadmin\FeedbackController::class, 'status'])->middleware('permission:feedback.manage')->name('superadmin.feedbacks.status');
+    Route::put('/feedbacks/{feedback}', [\App\Http\Controllers\Superadmin\FeedbackController::class, 'update'])->middleware('permission:feedback.manage')->name('superadmin.feedbacks.update');
+    Route::delete('/feedbacks/{feedback}', [\App\Http\Controllers\Superadmin\FeedbackController::class, 'destroy'])->middleware('permission:feedback.manage')->name('superadmin.feedbacks.destroy');
     // Agents: list, detail tabs, manager assignment and suspension.
     Route::get('/agents', [\App\Http\Controllers\Superadmin\AgentController::class, 'index'])->middleware('permission:agent.view')->name('superadmin.agents.index');
     // Agents: a Superadmin creates an Agent, which stays pending until it activates its account.
@@ -127,6 +134,7 @@ Route::middleware(['auth:superadmin', 'superadmin'])->prefix('superadmin')->grou
     Route::post('/superadmins', [\App\Http\Controllers\Superadmin\SuperadminController::class, 'store'])->middleware('permission:superadmin.manage')->name('superadmin.superadmins.store');
     Route::get('/superadmins/{superadmin}', [\App\Http\Controllers\Superadmin\SuperadminController::class, 'show'])->middleware('permission:superadmin.view')->name('superadmin.superadmins.show');
     Route::put('/superadmins/{superadmin}', [\App\Http\Controllers\Superadmin\SuperadminController::class, 'update'])->middleware('permission:superadmin.manage')->name('superadmin.superadmins.update');
+    Route::post('/permissions/sync', [\App\Http\Controllers\Superadmin\SuperadminController::class, 'syncCatalog'])->middleware(['permission:superadmin.manage', 'throttle:10,1'])->name('superadmin.permissions.sync');
     Route::put('/superadmins/{superadmin}/permissions', [\App\Http\Controllers\Superadmin\SuperadminController::class, 'permissions'])->middleware('permission:superadmin.manage')->name('superadmin.superadmins.permissions');
     Route::delete('/superadmins/{superadmin}', [\App\Http\Controllers\Superadmin\SuperadminController::class, 'destroy'])->middleware('permission:superadmin.manage')->name('superadmin.superadmins.destroy');
     Route::get('/versions/page', [\App\Http\Controllers\Superadmin\PageController::class, 'versions'])->middleware('permission:version.view')->name('superadmin.versions.page');

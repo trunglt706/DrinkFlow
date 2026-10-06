@@ -34,7 +34,7 @@
                         <tr>
                             <td class="col-primary">
                                 <strong class="block truncate">{{ $registration->name }}</strong>
-                                <small class="block truncate text-outline">{{ $registration->email }}@if ($registration->company) · {{ $registration->company }}@endif</small>
+                                <small class="block truncate text-outline"><x-superadmin.sensitive :value="$registration->email" />@if ($registration->company) · {{ $registration->company }}@endif</small>
                             </td>
                             <td>{{ $registration->requestedPackage?->name ?? '—' }}</td>
                             <td class="col-status">

@@ -167,6 +167,7 @@ class AgentController extends Controller
                 'logs' => AuditLog::query()
                     ->where(static fn ($q) => $q->where(static fn ($t) => $t->where('target_type', 'admin')->where('target_id', $admin->id))
                         ->orWhere(static fn ($a) => $a->where('actor_type', AuditLog::ACTOR_ADMIN)->where('actor_id', $admin->id)))
+                    ->with('actorSuperadmin:id,name')
                     ->latest('created_at')->latest('id')->limit(50)->get(),
             ],
             default => [

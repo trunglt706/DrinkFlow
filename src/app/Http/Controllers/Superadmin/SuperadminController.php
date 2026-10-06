@@ -13,6 +13,8 @@ use App\Http\Requests\SyncSuperadminPermissionsRequest;
 use App\Http\Requests\UpdateSuperadminRequest;
 use App\Models\PermissionRecord;
 use App\Models\Superadmin;
+use App\Services\Audit\AuditService;
+use App\Services\Authorization\PermissionCatalogService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -109,6 +111,30 @@ class SuperadminController extends Controller
         $this->action->syncPermissions($superadmin, $this->actor($request), $request->grants());
 
         return redirect()->route('superadmin.superadmins.show', $superadmin)->with('status', __('superadmin.superadmins.permissions_saved'));
+    }
+
+    /**
+     * Load the permissions added to the code (App\Enums\Permission) into the database, like
+     * `php artisan permissions:sync` without --prune: grants of every account stay untouched.
+     *
+     * @param Request $request Incoming request.
+     * @param PermissionCatalogService $catalog Permission catalog.
+     * @param AuditService $audit Audit trail.
+     * @return RedirectResponse Back with the sync result.
+     */
+    public function syncCatalog(Request $request, PermissionCatalogService $catalog, AuditService $audit): RedirectResponse
+    {
+        $result = $catalog->sync();
+        $audit->record('permissions.catalog_synced', 'permission', 0, null, [], ['added' => $result['added'], 'stale' => $result['stale']]);
+
+        $status = $result['added'] === []
+            ? __('superadmin.permissions.synced_none')
+            : __('superadmin.permissions.synced_added', ['count' => count($result['added']), 'keys' => implode(', ', $result['added'])]);
+        if ($result['stale'] !== []) {
+            $status .= ' '.__('superadmin.permissions.synced_stale', ['count' => count($result['stale']), 'keys' => implode(', ', $result['stale'])]);
+        }
+
+        return back()->with('status', $status);
     }
 
     /**

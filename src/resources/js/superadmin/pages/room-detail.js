@@ -3,7 +3,7 @@
  */
 import {
     dfApi, emptyStateHtml, escapeHtml, fetchAllPages, openSuperadminConfirm, pageNotice, renderSubmitLoading, resetSubmitButton,
-    statusPill,
+    sensitiveHtml, statusPill,
 } from './common';
 
 export default function initRoomDetailPage(_root, i18n, urls) {
@@ -69,7 +69,7 @@ export default function initRoomDetailPage(_root, i18n, urls) {
                         <span class="superadmin-avatar shrink-0">${escapeHtml(admin.name.slice(0, 1).toUpperCase())}</span>
                         <span class="min-w-0">
                             <strong class="block truncate">${escapeHtml(admin.name)}</strong>
-                            <small class="block truncate text-outline">${escapeHtml(admin.email)}</small>
+                            <small class="block truncate text-outline">${sensitiveHtml(admin.email, admin.email_reveal)}</small>
                         </span>
                     </div>
                 </td>
@@ -82,7 +82,14 @@ export default function initRoomDetailPage(_root, i18n, urls) {
         statusBtn.disabled = false;
         statusBtn.classList.remove('opacity-75', 'cursor-wait');
         delete statusBtn.dataset.originalHtml;
-        statusBtn.onclick = () => updateStatus(willEnable ? 'active' : 'inactive');
+        statusBtn.onclick = () => openSuperadminConfirm({
+            message: (willEnable ? i18n.confirm_enable : i18n.confirm_disable).replace(':name', room.name),
+            description: willEnable ? i18n.enable_description : i18n.disable_description,
+            tone: willEnable ? 'success' : 'warning',
+            confirmLabel: willEnable ? i18n.enable_room : i18n.disable_room,
+            confirmIcon: willEnable ? 'toggle_on' : 'toggle_off',
+            onConfirm: () => updateStatus(willEnable ? 'active' : 'inactive'),
+        });
         populateEditForm(room);
     }
 

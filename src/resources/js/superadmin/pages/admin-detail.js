@@ -4,7 +4,7 @@
  */
 import {
     dfApi, escapeHtml, fetchAllPages, openSuperadminConfirm, pageNotice, renderEmpty, renderSubmitLoading, resetSubmitButton,
-    statusPill, trans,
+    sensitiveHtml, statusPill, trans,
 } from './common';
 
 export default function initAdminDetailPage(_root, i18n, urls) {
@@ -54,11 +54,11 @@ export default function initAdminDetailPage(_root, i18n, urls) {
         const { data: admin } = await dfApi(`/superadmin/admins/${adminId}`);
         currentAdmin = admin;
         document.querySelector('#admin-name').textContent = admin.name;
-        document.querySelector('#admin-meta').innerHTML = `${escapeHtml(admin.email)} · ${statusPill(admin.status)}`;
+        document.querySelector('#admin-meta').innerHTML = `${sensitiveHtml(admin.email, admin.email_reveal)} · ${statusPill(admin.status)}`;
         document.querySelector('#admin-summary').innerHTML = [
             detailRow(i18n.name, escapeHtml(admin.name)),
-            detailRow(i18n.email, escapeHtml(admin.email)),
-            detailRow(i18n.phone, escapeHtml(admin.phone || i18n.not_provided)),
+            detailRow(i18n.email, sensitiveHtml(admin.email, admin.email_reveal)),
+            detailRow(i18n.phone, sensitiveHtml(admin.phone, admin.phone_reveal, i18n.not_provided)),
             detailRow(i18n.status, statusPill(admin.status)),
             detailRow(i18n.created_at, escapeHtml(formatDateTime(admin.created_at, '—'))),
             detailRow(i18n.last_login, escapeHtml(formatDateTime(admin.last_login_at, i18n.never_logged_in))),

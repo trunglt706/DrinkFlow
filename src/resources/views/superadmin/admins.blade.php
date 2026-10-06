@@ -44,7 +44,7 @@
                                     <span class="superadmin-avatar shrink-0">{{ mb_strtoupper(mb_substr($admin->name, 0, 1)) }}</span>
                                     <span class="min-w-0">
                                         <strong class="block truncate">{{ $admin->name }}</strong>
-                                        <small class="block truncate text-outline">{{ $admin->email }}</small>
+                                        <small class="block truncate text-outline"><x-superadmin.sensitive :value="$admin->email" /></small>
                                     </span>
                                 </div>
                             </td>

@@ -2,7 +2,7 @@
  * Global user profile (superadmin/user-detail.blade.php): identity, room memberships, block / unblock, delete and
  * membership removal.
  */
-import { dfApi, emptyStateHtml, escapeHtml, openSuperadminConfirm, pageNotice, statusPill, trans } from './common';
+import { dfApi, emptyStateHtml, escapeHtml, openSuperadminConfirm, pageNotice, sensitiveHtml, statusPill, trans } from './common';
 
 export default function initUserDetailPage(_root, i18n, urls) {
     const userId = urls.user_id;
@@ -15,10 +15,10 @@ export default function initUserDetailPage(_root, i18n, urls) {
         const { data: user } = await dfApi(`/superadmin/global-users/${userId}`);
         currentUser = user;
         document.querySelector('#user-name').textContent = user.name;
-        document.querySelector('#user-meta').innerHTML = `<span class="font-mono">${escapeHtml(user.email)}</span> · ${statusPill(user.status)}`;
+        document.querySelector('#user-meta').innerHTML = `<span class="font-mono">${sensitiveHtml(user.email, user.email_reveal)}</span> · ${statusPill(user.status)}`;
         document.querySelector('#identity-list').innerHTML = [
             detailRow(i18n.name, escapeHtml(user.name)),
-            detailRow(i18n.email, escapeHtml(user.email)),
+            detailRow(i18n.email, sensitiveHtml(user.email, user.email_reveal)),
             detailRow(i18n.status, statusPill(user.status)),
             detailRow(i18n.created_at, formatDateTime(user.created_at)),
             detailRow(i18n.last_login, user.last_login_at ? formatDateTime(user.last_login_at) : escapeHtml(i18n.never_logged_in)),

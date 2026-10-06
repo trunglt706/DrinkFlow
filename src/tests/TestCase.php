@@ -40,4 +40,16 @@ abstract class TestCase extends BaseTestCase
 
         return $superadmin;
     }
+
+    /**
+     * Masked form of an email as the Superadmin console shows it (the raw value is never rendered there),
+     * so list / isolation assertions keep telling one person's row from another's.
+     *
+     * @param string $email Real email.
+     * @return string Masked email, e.g. "al***@d***.test".
+     */
+    protected function maskedEmail(string $email): string
+    {
+        return app(\App\Services\Security\SensitiveDataService::class)->mask($email, \App\Services\Security\SensitiveDataService::TYPE_EMAIL);
+    }
 }

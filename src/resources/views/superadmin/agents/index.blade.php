@@ -54,7 +54,7 @@
                         <tr>
                             <td class="col-primary">
                                 <strong class="block truncate">{{ $agent->name }}</strong>
-                                <small class="block truncate text-outline">{{ $agent->email }}@if ($agent->company) · {{ $agent->company }}@endif</small>
+                                <small class="block truncate text-outline"><x-superadmin.sensitive :value="$agent->email" />@if ($agent->company) · {{ $agent->company }}@endif</small>
                             </td>
                             <td class="col-status"><x-superadmin.status-pill :status="$agent->status" /></td>
                             <td>{{ $usage !== null ? ($agent->activeSubscription?->package?->name ?? '—') : '•••' }}</td>

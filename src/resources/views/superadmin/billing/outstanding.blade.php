@@ -39,7 +39,7 @@
                     @forelse ($invoices as $invoice)
                         <tr>
                             <td class="col-mono"><strong class="font-mono">{{ $invoice->number }}</strong><small class="block text-outline">{{ $invoice->package?->name }}</small></td>
-                            <td class="col-primary"><strong class="block truncate">{{ $invoice->admin?->name }}</strong><small class="block truncate text-outline">{{ $invoice->admin?->email }}</small></td>
+                            <td class="col-primary"><strong class="block truncate">{{ $invoice->admin?->name }}</strong><small class="block truncate text-outline"><x-superadmin.sensitive :value="$invoice->admin?->email" /></small></td>
                             <td class="text-right whitespace-nowrap num">{{ $money($invoice->total) }}</td>
                             <td class="text-right whitespace-nowrap font-semibold num">{{ $money($invoice->remaining()) }}</td>
                             <td class="whitespace-nowrap col-date">{{ $invoice->due_at->toAppDate() }}</td>

@@ -4,7 +4,7 @@
         $money = static fn (int $amount): string => \App\Support\Helpers\FormatHelper::formatCurrency($amount);
     @endphp
     <x-superadmin.page-header :back="route('superadmin.subscriptions.index')" :back-label="__('platform.subscriptions.admin_title')" :title="$agent->name">
-        <x-slot:meta><p class="sa-heading-meta">{{ $agent->email }} · <x-superadmin.status-pill :status="$agent->status" /></p></x-slot:meta>
+        <x-slot:meta><p class="sa-heading-meta"><x-superadmin.sensitive :value="$agent->email" /> · <x-superadmin.status-pill :status="$agent->status" /></p></x-slot:meta>
     </x-superadmin.page-header>
     <x-superadmin.flash />
 

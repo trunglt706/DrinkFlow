@@ -7,7 +7,7 @@
         $isSelf = $superadmin->is(request()->user('superadmin'));
     @endphp
     <x-superadmin.page-header :back="route('superadmin.superadmins.index')" :back-label="__('superadmin.superadmins.title')" :title="$superadmin->name">
-        <x-slot:meta><p class="sa-heading-meta">{{ $superadmin->email }} · <x-superadmin.status-pill :status="$superadmin->status" /></p></x-slot:meta>
+        <x-slot:meta><p class="sa-heading-meta"><x-superadmin.sensitive :value="$superadmin->email" /> · <x-superadmin.status-pill :status="$superadmin->status" /></p></x-slot:meta>
             @if ($canManage && ! $isSelf)
                 <form method="POST" action="{{ route('superadmin.superadmins.destroy', $superadmin) }}"
                     data-confirm-tone="danger" data-confirm-description="{{ __('superadmin.modals.confirm.delete_superadmin') }}" data-confirm-irreversible="1" data-confirm="{{ __('superadmin.superadmins.delete_confirm', ['name' => $superadmin->name]) }}">
@@ -19,7 +19,8 @@
     </x-superadmin.page-header>
     <x-superadmin.flash />
 
-    <div class="sa-split">
+    {{-- Profile form first, then the permission matrix on the full width below it. --}}
+    <div class="space-y-5">
         <section class="sa-card sa-section">
             <div class="sa-section-header">
                 <div>
@@ -60,12 +61,21 @@
             </form>
         </section>
 
-        <section class="sa-card sa-section">
+        <section class="sa-card sa-section" data-superadmin-permissions>
             <div class="sa-section-header">
                 <div>
                     <h2>{{ __('superadmin.superadmins.permissions') }}</h2>
                     <p>{{ __('superadmin.superadmins.permissions_description') }}</p>
                 </div>
+                @if ($canManage)
+                    <form method="POST" action="{{ route('superadmin.permissions.sync') }}"
+                        data-confirm-tone="info" data-confirm-icon="sync" data-confirm-description="{{ __('superadmin.permissions.sync_hint') }}" data-confirm="{{ __('superadmin.permissions.sync_confirm') }}">
+                        @csrf
+                        <button type="submit" class="sa-button secondary" title="{{ __('superadmin.permissions.sync_hint') }}">
+                            <span class="material-symbols-outlined text-[16px]">sync</span>{{ __('superadmin.permissions.sync') }}
+                        </button>
+                    </form>
+                @endif
             </div>
             @php($roles = \App\Models\SuperadminRole::query()->orderBy('name')->get(['id', 'name']))
             @if ($canManage && $roles->isNotEmpty())

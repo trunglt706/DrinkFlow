@@ -7,8 +7,6 @@
         $rows = [
             [__('platform.registration.field_name'), $registration->name],
             [__('platform.registration.field_company'), $registration->company ?: '—'],
-            [__('platform.registration.field_email'), $registration->email],
-            [__('platform.registration.field_phone'), $registration->phone ?: '—'],
             [__('platform.registrations.registered_at'), $registration->registered_at?->toAppDateTime()],
             [__('platform.registrations.email_status'), $registration->hasVerifiedEmail()
                 ? __('platform.registrations.email_verified_on', ['date' => $registration->email_verified_at->toAppDateTime()])
@@ -16,7 +14,7 @@
         ];
     @endphp
     <x-superadmin.page-header :back="route('superadmin.registrations.index')" :back-label="__('platform.registrations.title')" :title="$registration->name">
-        <x-slot:meta><p class="sa-heading-meta">{{ $registration->email }} · <x-superadmin.status-pill :status="$registration->status" /></p></x-slot:meta>
+        <x-slot:meta><p class="sa-heading-meta"><x-superadmin.sensitive :value="$registration->email" /> · <x-superadmin.status-pill :status="$registration->status" /></p></x-slot:meta>
     </x-superadmin.page-header>
     <x-superadmin.flash />
 
@@ -29,6 +27,9 @@
                 @foreach ($rows as [$label, $value])
                     <div class="flex justify-between gap-3"><dt class="text-outline">{{ $label }}</dt><dd class="font-semibold text-right break-all">{{ $value }}</dd></div>
                 @endforeach
+                {{-- Personal data: masked, revealed one value at a time. --}}
+                <div class="flex justify-between gap-3"><dt class="text-outline">{{ __('platform.registration.field_email') }}</dt><dd class="font-semibold text-right break-all"><x-superadmin.sensitive :value="$registration->email" /></dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-outline">{{ __('platform.registration.field_phone') }}</dt><dd class="font-semibold text-right break-all"><x-superadmin.sensitive :value="$registration->phone" type="phone" /></dd></div>
                 <div class="flex justify-between gap-3">
                     <dt class="text-outline">{{ __('platform.registrations.requested_package') }}</dt>
                     <dd class="font-semibold text-right">
@@ -104,7 +105,7 @@
                                     <select name="manager_superadmin_id" class="{{ $fieldInput }}">
                                         <option value="">{{ __('platform.registrations.no_manager') }}</option>
                                         @foreach ($managers as $manager)
-                                            <option value="{{ $manager->id }}" @selected((string) old('manager_superadmin_id') === (string) $manager->id)>{{ $manager->name }} ({{ $manager->email }})</option>
+                                            <option value="{{ $manager->id }}" @selected((string) old('manager_superadmin_id') === (string) $manager->id)>{{ $manager->name }} ({{ app(\App\Services\Security\SensitiveDataService::class)->mask($manager->email, 'email') }})</option>
                                         @endforeach
                                     </select>
                                 </label>

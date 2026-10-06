@@ -94,10 +94,12 @@
         </section>
     </div>
 
-    @if ($platformAnalytics)
+    {{-- Full Superadmins see the platform-wide analytics; a restricted one sees the operations tab only,
+         computed over the rooms of its managed Agents (security and trends are platform-wide figures). --}}
+    @if ($platformAnalytics || $scopedAnalytics)
     @php($analyticsDays = \App\Services\Dashboard\SuperadminDashboardService::PERIOD_DAYS)
     <section id="sa-analytics" class="sa-analytics" aria-labelledby="sa-analytics-title"
-        data-url="{{ route('superadmin.dashboard.analytics') }}"
+        data-url="{{ route('superadmin.dashboard.analytics') }}" data-platform="{{ $platformAnalytics ? '1' : '0' }}"
         data-room-url="{{ route('superadmin.rooms.detail.page', ['room' => '__SLUG__']) }}"
         data-campaigns-url="{{ route('superadmin.campaigns.page') }}"
         data-insights-url="{{ route('superadmin.dashboard.insights') }}"
@@ -133,8 +135,8 @@
         </div>
         <div class="sa-tabs" role="tablist" aria-label="{{ __('superadmin.analytics.tabs_label') }}" data-sa-tablist>
             <button type="button" class="sa-tab" role="tab" id="sa-tab-operations" aria-controls="sa-panel-operations" aria-selected="true" data-sa-tab="operations"><span class="material-symbols-outlined" aria-hidden="true">monitoring</span>{{ __('superadmin.analytics.tab_operations') }}</button>
-            <button type="button" class="sa-tab" role="tab" id="sa-tab-security" aria-controls="sa-panel-security" aria-selected="false" tabindex="-1" data-sa-tab="security"><span class="material-symbols-outlined" aria-hidden="true">shield</span>{{ __('superadmin.analytics.tab_security') }}</button>
-            <button type="button" class="sa-tab" role="tab" id="sa-tab-trends" aria-controls="sa-panel-trends" aria-selected="false" tabindex="-1" data-sa-tab="trends"><span class="material-symbols-outlined" aria-hidden="true">insights</span>{{ __('superadmin.analytics.tab_trends') }}</button>
+            <button type="button" class="sa-tab" role="tab" id="sa-tab-security" @unless ($platformAnalytics) hidden @endunless aria-controls="sa-panel-security" aria-selected="false" tabindex="-1" data-sa-tab="security"><span class="material-symbols-outlined" aria-hidden="true">shield</span>{{ __('superadmin.analytics.tab_security') }}</button>
+            <button type="button" class="sa-tab" role="tab" id="sa-tab-trends" @unless ($platformAnalytics) hidden @endunless aria-controls="sa-panel-trends" aria-selected="false" tabindex="-1" data-sa-tab="trends"><span class="material-symbols-outlined" aria-hidden="true">insights</span>{{ __('superadmin.analytics.tab_trends') }}</button>
         </div>
 
         <div class="sa-tab-panel" role="tabpanel" id="sa-panel-operations" aria-labelledby="sa-tab-operations" data-sa-tab-panel="operations">

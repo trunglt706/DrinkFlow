@@ -5,7 +5,7 @@
         $fieldInput = 'sa-input !min-w-0 w-full';
     @endphp
     <x-superadmin.page-header :back="route('superadmin.billing.outstanding')" :back-label="__('platform.billing.outstanding_title')" :title="$agent->name">
-        <x-slot:meta><p class="sa-heading-meta">{{ $agent->email }} · {{ __('platform.billing.balance', ['amount' => $money($balance)]) }}</p></x-slot:meta>
+        <x-slot:meta><p class="sa-heading-meta"><x-superadmin.sensitive :value="$agent->email" /> · {{ __('platform.billing.balance', ['amount' => $money($balance)]) }}</p></x-slot:meta>
     </x-superadmin.page-header>
     <x-superadmin.flash />
 

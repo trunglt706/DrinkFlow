@@ -285,7 +285,7 @@ class SubscriptionManagementTest extends TestCase
         $scoped->managedAdmins()->attach($this->agent->id, ['is_primary' => true, 'assigned_at' => now()]);
 
         $this->actingAs($scoped, 'superadmin')->get(route('superadmin.subscriptions.index'))
-            ->assertOk()->assertSee('agent@drinkflow.test')->assertDontSee('other@drinkflow.test');
+            ->assertOk()->assertSee($this->maskedEmail('agent@drinkflow.test'))->assertDontSee($this->maskedEmail('other@drinkflow.test'));
         $this->actingAs($scoped, 'superadmin')->get(route('superadmin.subscriptions.show', $other))->assertForbidden();
         $this->actingAs($scoped, 'superadmin')->post(route('superadmin.subscriptions.change', $other), ['package_id' => $this->large->id])->assertForbidden();
 

@@ -28,6 +28,10 @@ class SuperadminAuthorizationTest extends TestCase
         'superadmin.dashboard', 'superadmin.dashboard.analytics', 'superadmin.dashboard.insights', 'superadmin.dashboard.trends',
         'superadmin.admin-notifications.read-all', 'superadmin.admin-notifications.read', 'superadmin.socket-token',
         'superadmin.login.page', 'superadmin.login', 'superadmin.logout',
+        // The internal handbook is part of the shell: every signed-in Superadmin may read it.
+        'superadmin.guides.index', 'superadmin.guides.show',
+        // Revealing a masked value needs a token issued to the same Superadmin by a page it could open.
+        'superadmin.sensitive.reveal',
     ];
 
     protected function setUp(): void

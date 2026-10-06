@@ -116,7 +116,7 @@ class AgentVisibilityTest extends TestCase
         $this->getJson(route('superadmin.admins.index'))->assertOk()
             ->assertJsonCount(1, 'data.data')->assertJsonPath('data.data.0.id', $this->mine->id);
         $this->get(route('superadmin.admins.page'))->assertOk()
-            ->assertSee('mine@drinkflow.test')->assertDontSee('theirs@drinkflow.test');
+            ->assertSee($this->maskedEmail('mine@drinkflow.test'))->assertDontSee($this->maskedEmail('theirs@drinkflow.test'));
     }
 
     public function test_dashboard_agent_total_is_scoped_and_hidden_without_permission(): void

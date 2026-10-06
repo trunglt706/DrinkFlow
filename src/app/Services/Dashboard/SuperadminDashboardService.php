@@ -81,20 +81,80 @@ class SuperadminDashboardService
      */
     public function analytics(bool $fresh = false): array
     {
+        return $this->analyticsFor(null, true, $fresh);
+    }
+
+    /**
+     * Analytics restricted to some rooms (a Superadmin whose room scope is "managed Agents").
+     *
+     * Every operational figure (KPIs, daily series, debt aging, room health, stuck campaigns) only counts
+     * the given rooms; the platform-wide security KPI is left out (null) unless asked for. Each room set is
+     * cached under its own key, so one Superadmin never reads another scope's figures.
+     *
+     * @param list<int>|null $roomIds Rooms to count; null = every room of the platform.
+     * @param bool $includeSecurity Include the high-severity security KPI (platform-wide figure).
+     * @param bool $fresh Bypass and refresh the cache.
+     * @return array<string, mixed> Payload with keys kpis, daily, debt_aging, rooms, stuck_campaigns, generated_at.
+     */
+    public function analyticsFor(?array $roomIds, bool $includeSecurity, bool $fresh = false): array
+    {
+        $ids = $roomIds === null ? null : array_values(array_unique(array_map('intval', $roomIds)));
+        if ($ids !== null) {
+            sort($ids);
+        }
+        $key = self::CACHE_KEY.($ids === null ? '' : ':rooms:'.sha1(implode(',', $ids))).($includeSecurity ? '' : ':nosec');
         if ($fresh) {
-            Cache::forget(self::CACHE_KEY);
+            Cache::forget($key);
         }
 
-        return Cache::remember(self::CACHE_KEY, self::CACHE_TTL, fn(): array => $this->compute(CarbonImmutable::now()));
+        return Cache::remember($key, self::CACHE_TTL, function () use ($ids, $includeSecurity): array {
+            $payload = $this->compute(CarbonImmutable::now(), $ids);
+            if (! $includeSecurity) {
+                $payload['kpis']['high_security_events'] = ['value' => null, 'previous' => null];
+            }
+
+            return $payload;
+        });
+    }
+
+    /** Rooms the current computation is restricted to (null = all rooms). */
+    private ?array $roomIds = null;
+
+    /**
+     * Restrict a query to the rooms of the current computation.
+     *
+     * @param Builder<\Illuminate\Database\Eloquent\Model> $query Query.
+     * @param string $column Room ID column.
+     * @return Builder<\Illuminate\Database\Eloquent\Model> Restricted query.
+     */
+    private function inScope(Builder $query, string $column): Builder
+    {
+        return $this->roomIds === null ? $query : $query->whereIn($column, $this->roomIds);
     }
 
     /**
      * Compute the analytics payload at a given moment.
      *
      * @param CarbonImmutable $now Reference time.
+     * @param list<int>|null $roomIds Rooms to count; null = every room.
      * @return array<string, mixed> Analytics payload.
      */
-    public function compute(CarbonImmutable $now): array
+    public function compute(CarbonImmutable $now, ?array $roomIds = null): array
+    {
+        $this->roomIds = $roomIds;
+
+        try {
+            return $this->computePayload($now);
+        } finally {
+            $this->roomIds = null;
+        }
+    }
+
+    /**
+     * @param CarbonImmutable $now Reference time.
+     * @return array<string, mixed> Analytics payload for the current room restriction.
+     */
+    private function computePayload(CarbonImmutable $now): array
     {
         return [
             'period_days' => self::PERIOD_DAYS,
@@ -118,7 +178,7 @@ class SuperadminDashboardService
         $start = $now->subDays(self::PERIOD_DAYS);
         $previousStart = $start->subDays(self::PERIOD_DAYS);
 
-        $activeRooms = fn(CarbonImmutable $from, CarbonImmutable $to): int => Campaign::query()
+        $activeRooms = fn(CarbonImmutable $from, CarbonImmutable $to): int => $this->inScope(Campaign::query(), 'room_id')
             ->where('created_at', '>=', $from)->where('created_at', '<', $to)
             ->distinct()->count('room_id');
 
@@ -132,7 +192,7 @@ class SuperadminDashboardService
             ->sum('final_amount');
 
         $collectionRate = function (CarbonImmutable $from, CarbonImmutable $to): ?float {
-            $totals = Debt::query()
+            $totals = $this->inScope(Debt::query(), 'room_id')
                 ->where('created_at', '>=', $from)->where('created_at', '<', $to)
                 ->where('status', '!=', DebtStatus::Waived->value)
                 ->selectRaw('COALESCE(SUM(paid_amount), 0) AS paid, COALESCE(SUM(remaining_amount), 0) AS remaining')
@@ -240,7 +300,7 @@ class SuperadminDashboardService
         $outstandingStatuses = $this->outstandingStatuses();
         $cancelled = OrderStatus::Cancelled->value;
 
-        $rooms = Room::query()
+        $rooms = $this->inScope(Room::query(), 'id')
             ->where('status', '!=', RoomStatus::Archived->value)
             ->select(['id', 'name', 'slug', 'status', 'created_at'])
             ->withCount([
@@ -319,7 +379,7 @@ class SuperadminDashboardService
      */
     public function stuckCampaigns(CarbonImmutable $now): array
     {
-        return Campaign::query()
+        return $this->inScope(Campaign::query(), 'room_id')
             ->whereIn('status', [CampaignStatus::Active->value, CampaignStatus::Closing->value])
             ->whereNotNull('deadline')
             ->where('deadline', '<', $now->subHours(self::STUCK_CAMPAIGN_GRACE_HOURS))
@@ -349,7 +409,7 @@ class SuperadminDashboardService
      */
     private function validOrders(): Builder
     {
-        return Order::query()->where('orders.status', '!=', OrderStatus::Cancelled->value);
+        return $this->inScope(Order::query(), 'orders.room_id')->where('orders.status', '!=', OrderStatus::Cancelled->value);
     }
 
     /**
@@ -359,7 +419,7 @@ class SuperadminDashboardService
      */
     private function outstandingDebts(): Builder
     {
-        return Debt::query()->whereIn('status', $this->outstandingStatuses())->where('remaining_amount', '>', 0);
+        return $this->inScope(Debt::query(), 'room_id')->whereIn('status', $this->outstandingStatuses())->where('remaining_amount', '>', 0);
     }
 
     /**

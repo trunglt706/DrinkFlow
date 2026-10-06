@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './partials/guide-article.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -937,6 +938,13 @@ a.sa-health-row { color: inherit; text-decoration: none; transition: border-colo
 a.sa-health-row:hover { border-color: var(--sa-border-strong); background: var(--sa-hover); }
 a.sa-health-row:hover > .material-symbols-outlined { background: var(--sa-accent-soft); color: var(--sa-accent-soft-text); }
 .sa-health-row small.sa-health-detail { display: block; margin-top: 4px; font-family: var(--sa-mono); font-size: 12px; }
+/* System health (superadmin/system.blade.php): compact two-column grid, each item about half the width. */
+.sa-health-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 10px; }
+.sa-health-grid > :not(.sa-health-row) { grid-column: 1 / -1; }
+.sa-health-grid .sa-health-row { padding: 9px 12px; min-width: 0; }
+.sa-health-grid .sa-health-row > div { min-width: 0; }
+.sa-health-grid .sa-health-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 760px) { .sa-health-grid { grid-template-columns: 1fr; } }
 .sa-health-row small.sa-health-detail:empty { display: none; }
 
 .sa-empty { padding: 28px; color: var(--sa-text-3); font-size: 13.5px; text-align: center; }
@@ -1195,3 +1203,22 @@ a.sa-tab { text-decoration: none; white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) {
     .superadmin-shell *, .superadmin-shell *::before, .superadmin-shell *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* Superadmin handbook (superadmin/guides): the Markdown article keeps a light "paper" in both themes. */
+.sa-guide-paper { background: #ffffff; color-scheme: light; border: 1px solid var(--sa-border); border-radius: 14px; padding: 28px 32px; }
+@media (max-width: 640px) { .sa-guide-paper { padding: 18px 16px; } }
+
+/* "Back to top" floating button (components/superadmin/go-to-top.blade.php + resources/js/superadmin/go-to-top.js). */
+.sa-go-top { position: fixed; right: 20px; bottom: 20px; z-index: 40; display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 999px; border: 1px solid var(--sa-border); background: var(--sa-surface); color: var(--sa-text); box-shadow: 0 6px 18px rgba(15, 23, 42, .16); cursor: pointer; transition: opacity .2s, transform .2s; }
+.sa-go-top:hover { background: var(--sa-hover); }
+.sa-go-top[hidden] { display: none; }
+.sa-go-top .material-symbols-outlined { font-size: 22px; }
+
+/* Masked personal value + reveal button (components/superadmin/sensitive.blade.php, resources/js/superadmin/sensitive.js). */
+.sa-sensitive { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-width: 0; vertical-align: middle; }
+.sa-sensitive [data-sensitive-text] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sa-sensitive-toggle { display: inline-grid; place-items: center; flex-shrink: 0; width: 22px; height: 22px; border: 0; border-radius: 6px; background: transparent; color: var(--sa-text-3); cursor: pointer; }
+.sa-sensitive-toggle:hover { background: var(--sa-hover); color: var(--sa-text); }
+.sa-sensitive-toggle:focus-visible { outline: 2px solid var(--sa-accent, #6366f1); outline-offset: 1px; }
+.sa-sensitive-toggle[disabled] { opacity: .5; cursor: wait; }
+.sa-sensitive-toggle .material-symbols-outlined { font-size: 16px; }

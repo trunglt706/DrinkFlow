@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\AuthorizesUserAndAdmin;
+use App\Models\Feedback;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreFeedbackRequest extends FormRequest
 {
@@ -30,7 +32,7 @@ class StoreFeedbackRequest extends FormRequest
     {
         $rules = [
             'rating' => ['required', 'integer', 'min:1', 'max:5'],
-            'subsystem' => ['required', 'string', 'in:all,room,split_qr,socket,sponsor'],
+            'subsystem' => ['required', 'string', Rule::in(Feedback::SUBSYSTEMS)],
             'content' => ['required', 'string', 'min:3', 'max:1000'],
         ];
 

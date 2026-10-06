@@ -26,14 +26,27 @@ class UserGuideService
     /** Bộ hướng dẫn dành cho Đại lý quản trị phòng ban (Agent). */
     public const AUDIENCE_AGENT = 'agent';
 
+    /** Bộ hướng dẫn nội bộ dành cho Superadmin (chỉ xem sau khi đăng nhập trang superadmin). */
+    public const AUDIENCE_SUPERADMIN = 'superadmin';
+
     /**
-     * Thư mục (tương đối trong public/) của từng bộ hướng dẫn.
+     * Thư mục (tương đối trong public/) của từng bộ hướng dẫn công khai.
      *
      * @var array<string, string>
      */
     private const DIRECTORIES = [
         self::AUDIENCE_CLIENT => 'guide-content/user',
         self::AUDIENCE_AGENT => 'guide-content/admin',
+    ];
+
+    /**
+     * Thư mục (tương đối trong resources/) của các bộ hướng dẫn nội bộ: không nằm trong public/ nên
+     * không thể tải trực tiếp qua URL tĩnh, chỉ được render qua route có xác thực.
+     *
+     * @var array<string, string>
+     */
+    private const PRIVATE_DIRECTORIES = [
+        self::AUDIENCE_SUPERADMIN => 'guide-content/superadmin',
     ];
 
     /**
@@ -154,6 +167,10 @@ class UserGuideService
      */
     public function directory(string $audience): string
     {
+        if (isset(self::PRIVATE_DIRECTORIES[$audience])) {
+            return resource_path(self::PRIVATE_DIRECTORIES[$audience]);
+        }
+
         return public_path(self::DIRECTORIES[$audience] ?? self::DIRECTORIES[self::AUDIENCE_CLIENT]);
     }
 

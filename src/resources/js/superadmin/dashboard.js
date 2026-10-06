@@ -1,4 +1,5 @@
 import { dfApi, escapeHtml, money, statusPill } from './shared';
+import { sensitiveHtml } from './sensitive';
 
 /**
  * Superadmin dashboard analytics (resources/views/superadmin/dashboard.blade.php, #sa-analytics).
@@ -83,6 +84,9 @@ function renderKpis(root, kpis, i18n) {
     Object.entries(kpis).forEach(([key, kpi]) => {
         const tile = root.querySelector(`[data-kpi="${key}"]`);
         if (!tile) return;
+        // The security KPI is a platform-wide figure: null (hidden) for a restricted Superadmin.
+        tile.hidden = key === 'high_security_events' && kpi.value === null;
+        if (tile.hidden) return;
         tile.querySelector('[data-kpi-value]').textContent = format[key](kpi.value);
 
         if (key === 'outstanding_debt') {
@@ -477,7 +481,7 @@ function renderAdmins(tbody, admins, i18n, adminUrl, staleDays) {
                 + `<span class="material-symbols-outlined" aria-hidden="true">${ADMIN_FLAG_ICONS[flag] || 'warning'}</span>${escapeHtml(i18n[`admin_flag_${flag}`] || flag)}</span>`).join('')
             : `<span class="sa-flag sa-flag-ok"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span>${escapeHtml(i18n.flag_ok)}</span>`;
         return `<tr><td><a class="sa-link" href="${escapeHtml(adminUrl.replace('__ID__', encodeURIComponent(admin.id)))}"><strong>${escapeHtml(admin.name)}</strong></a>`
-            + `<br><small class="sa-muted">${escapeHtml(admin.email)}</small></td>`
+            + `<br><small class="sa-muted">${sensitiveHtml(admin.email, admin.email_reveal)}</small></td>`
             + `<td class="num">${escapeHtml(number(admin.rooms))}</td>`
             + `<td class="num">${escapeHtml(number(admin.campaigns_created))}</td>`
             + `<td class="num">${escapeHtml(number(admin.payments_confirmed))}</td>`
@@ -732,9 +736,11 @@ export function initSuperadminDashboard() {
         }
     };
 
+    // A restricted Superadmin only gets the operations figures of its own rooms (security / trends are platform-wide).
+    const platform = root.dataset.platform !== '0';
     const load = async (fresh = false) => {
         refreshButton.disabled = true;
-        await Promise.all([loadAnalytics(fresh), loadInsights(fresh), loadTrends(fresh)]);
+        await Promise.all(platform ? [loadAnalytics(fresh), loadInsights(fresh), loadTrends(fresh)] : [loadAnalytics(fresh)]);
         refreshButton.disabled = false;
     };
 

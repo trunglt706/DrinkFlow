@@ -6,7 +6,7 @@
         $fieldInput = 'sa-input !min-w-0 w-full';
     @endphp
     <x-superadmin.page-header :back="route('superadmin.agents.index')" :back-label="__('platform.agents.title')" :title="$agent->name">
-        <x-slot:meta><p class="sa-heading-meta">{{ $agent->email }}@if ($agent->company) · {{ $agent->company }}@endif · <x-superadmin.status-pill :status="$agent->status" /></p></x-slot:meta>
+        <x-slot:meta><p class="sa-heading-meta"><x-superadmin.sensitive :value="$agent->email" />@if ($agent->company) · {{ $agent->company }}@endif · <x-superadmin.status-pill :status="$agent->status" /></p></x-slot:meta>
     </x-superadmin.page-header>
     <x-superadmin.flash />
 
@@ -24,7 +24,7 @@
             <section class="sa-card sa-section">
                 <div class="sa-section-header"><div><h2>{{ __('platform.agents.profile') }}</h2></div></div>
                 <dl class="sa-detail-list">
-                    <div class="sa-detail-row"><dt>{{ __('platform.registration.field_phone') }}</dt><dd>{{ $agent->phone ?: '—' }}</dd></div>
+                    <div class="sa-detail-row"><dt>{{ __('platform.registration.field_phone') }}</dt><dd><x-superadmin.sensitive :value="$agent->phone" type="phone" /></dd></div>
                     <div class="sa-detail-row"><dt>{{ __('platform.registrations.registered_at') }}</dt><dd>{{ ($agent->registered_at ?? $agent->created_at)?->toAppDateTime() }}</dd></div>
                     <div class="sa-detail-row"><dt>{{ __('platform.registrations.reviewed_by') }}</dt><dd>{{ $agent->reviewedBy?->name ?? '—' }}</dd></div>
                     <div class="sa-detail-row"><dt>{{ __('platform.agents.last_login') }}</dt><dd>{{ $agent->last_login_at?->toAppDateTime() ?? '—' }}</dd></div>
@@ -43,7 +43,7 @@
                     <ul class="space-y-2 text-sm">
                         @forelse ($agent->superadmins as $manager)
                             <li class="flex items-center justify-between gap-2">
-                                <span>{{ $manager->name }} <small class="text-outline">{{ $manager->email }}</small>@if ($manager->pivot->is_primary) <span class="status-pill status-active"><span class="status-dot"></span>{{ __('platform.agents.primary') }}</span>@endif</span>
+                                <span>{{ $manager->name }} <small class="text-outline"><x-superadmin.sensitive :value="$manager->email" /></small>@if ($manager->pivot->is_primary) <span class="status-pill status-active"><span class="status-dot"></span>{{ __('platform.agents.primary') }}</span>@endif</span>
                                 @if ($canManage)
                                     <form method="POST" action="{{ route('superadmin.agents.unassign', ['admin' => $agent, 'superadmin' => $manager]) }}" data-confirm-tone="warning" data-confirm-description="{{ __('superadmin.modals.confirm.unassign_manager') }}" data-confirm-icon="person_remove" data-confirm-label="{{ __('platform.agents.unassign') }}" data-confirm="{{ __('platform.agents.unassign_confirm', ['name' => $manager->name]) }}">
                                         @csrf
@@ -61,7 +61,7 @@
                             @csrf
                             <select name="superadmin_id" class="{{ $fieldInput }}" aria-label="{{ __('platform.registrations.manager') }}">
                                 @foreach ($assignableSuperadmins as $candidate)
-                                    <option value="{{ $candidate->id }}">{{ $candidate->name }} ({{ $candidate->email }})</option>
+                                    <option value="{{ $candidate->id }}">{{ $candidate->name }} ({{ app(\App\Services\Security\SensitiveDataService::class)->mask($candidate->email, 'email') }})</option>
                                 @endforeach
                             </select>
                             <label class="flex items-center gap-2 text-xs"><input type="checkbox" name="is_primary" value="1"> {{ __('platform.agents.make_primary') }}</label>
@@ -191,13 +191,23 @@
             <div class="sa-section-header"><div><h2>{{ __('platform.agents.tabs.activity') }}</h2><p>{{ __('platform.agents.activity_hint') }}</p></div></div>
             <div class="sa-table-wrap">
                 <table class="sa-table">
-                    <thead><tr><th class="col-date">{{ __('superadmin.common.time') }}</th><th class="col-mono">{{ __('platform.agents.event') }}</th><th>{{ __('platform.agents.actor') }}</th><th class="col-mono">{{ __('platform.agents.ip') }}</th></tr></thead>
+                    <thead><tr><th class="col-date">{{ __('superadmin.common.time') }}</th><th>{{ __('platform.agents.event') }}</th><th>{{ __('platform.agents.actor') }}</th><th class="col-mono">{{ __('platform.agents.ip') }}</th></tr></thead>
                     <tbody>
                         @forelse ($logs as $log)
                             <tr>
                                 <td class="whitespace-nowrap col-date">{{ $log->created_at?->toAppDateTime() }}</td>
-                                <td class="font-mono text-xs col-mono">{{ $log->event }}</td>
-                                <td>{{ __('superadmin.common.actor_'.$log->actor_type) }}</td>
+                                <td data-activity-event="{{ $log->event }}">
+                                    <strong class="block text-[13px]">{{ $log->eventLabel() }}</strong>
+                                    <small class="block font-mono text-[11px] text-outline">{{ $log->event }}</small>
+                                </td>
+                                <td>
+                                    @if ($log->actor_type === \App\Models\AuditLog::ACTOR_SUPERADMIN && $log->actorSuperadmin)
+                                        <strong class="block text-[13px]">{{ $log->actorSuperadmin->name }}</strong>
+                                    @elseif ($log->actor_type === \App\Models\AuditLog::ACTOR_ADMIN && (int) $log->actor_id === (int) $agent->id)
+                                        <strong class="block text-[13px]">{{ $agent->name }}</strong>
+                                    @endif
+                                    <small class="block text-outline">{{ __('superadmin.common.actor_'.$log->actor_type) }}</small>
+                                </td>
                                 <td class="font-mono text-xs col-mono">{{ $log->ip_address ?? '—' }}</td>
                             </tr>
                         @empty

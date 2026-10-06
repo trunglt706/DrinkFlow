@@ -51,11 +51,11 @@ class SuperadminManagementTest extends TestCase
         $this->actingAs($this->owner, 'superadmin');
 
         $this->get(route('superadmin.superadmins.index'))->assertOk()
-            ->assertSee('member@drinkflow.test')
+            ->assertSee($this->maskedEmail('member@drinkflow.test'))
             ->assertSee(__('superadmin.superadmins.title'));
         $this->get(route('superadmin.superadmins.index', ['q' => 'owner']))->assertOk()
-            ->assertSee('owner@drinkflow.test')
-            ->assertDontSee('member@drinkflow.test');
+            ->assertSee($this->maskedEmail('owner@drinkflow.test'))
+            ->assertDontSee($this->maskedEmail('member@drinkflow.test'));
         $this->get(route('superadmin.superadmins.show', $member))->assertOk()
             ->assertSee(Permission::AgentView->value)
             ->assertSee(route('superadmin.superadmins.permissions', $member), false);

@@ -76,12 +76,12 @@ class AgentManagementTest extends TestCase
 
         $this->actingAs($this->owner, 'superadmin')->get(route('superadmin.agents.index'))
             ->assertOk()
-            ->assertSee('alice@drinkflow.test')
+            ->assertSee($this->maskedEmail('alice@drinkflow.test'))
             ->assertSee('Standard plan')
             ->assertSee('1 / 5')
             ->assertSee('500.000')
             ->assertSee('Owner')
-            ->assertDontSee('waiting@drinkflow.test');
+            ->assertDontSee($this->maskedEmail('waiting@drinkflow.test'));
     }
 
     public function test_every_tab_renders_for_a_full_superadmin(): void
@@ -96,7 +96,7 @@ class AgentManagementTest extends TestCase
     {
         $scoped = $this->scoped(['agent.view' => PermissionScope::Managed]);
 
-        $this->actingAs($scoped, 'superadmin')->get(route('superadmin.agents.index'))->assertOk()->assertSee('alice@drinkflow.test')->assertDontSee('bob@drinkflow.test');
+        $this->actingAs($scoped, 'superadmin')->get(route('superadmin.agents.index'))->assertOk()->assertSee($this->maskedEmail('alice@drinkflow.test'))->assertDontSee($this->maskedEmail('bob@drinkflow.test'));
         $this->actingAs($scoped, 'superadmin')->get(route('superadmin.agents.show', $this->alice))->assertOk();
         $this->actingAs($scoped, 'superadmin')->get(route('superadmin.agents.show', $this->bob))->assertForbidden();
     }
@@ -111,7 +111,7 @@ class AgentManagementTest extends TestCase
         ]);
 
         $list = $this->actingAs($scoped, 'superadmin')->get(route('superadmin.agents.index'))->assertOk();
-        $list->assertSee('bob@drinkflow.test')->assertSee('•••');
+        $list->assertSee($this->maskedEmail('bob@drinkflow.test'))->assertSee('•••');
 
         $this->actingAs($scoped, 'superadmin')->get(route('superadmin.agents.show', ['admin' => $this->alice, 'tab' => 'billing']))->assertOk();
         $this->actingAs($scoped, 'superadmin')->get(route('superadmin.agents.show', ['admin' => $this->bob, 'tab' => 'billing']))->assertForbidden();
@@ -190,7 +190,7 @@ class AgentManagementTest extends TestCase
             route('superadmin.billing.outstanding'),
         ];
         foreach ($pages as $page) {
-            $this->actingAs($scoped, 'superadmin')->get($page)->assertOk()->assertDontSee('bob@drinkflow.test')->assertDontSee('Bob room')->assertDontSee('Bob Friday');
+            $this->actingAs($scoped, 'superadmin')->get($page)->assertOk()->assertDontSee($this->maskedEmail('bob@drinkflow.test'))->assertDontSee('Bob room')->assertDontSee('Bob Friday');
         }
         $this->actingAs($scoped, 'superadmin')->getJson(route('superadmin.admins.show', $this->bob))->assertForbidden();
         $this->actingAs($scoped, 'superadmin')->getJson(route('superadmin.rooms.show', $bobRoom))->assertForbidden();

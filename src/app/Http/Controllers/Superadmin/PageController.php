@@ -16,6 +16,7 @@ use App\Models\Campaign;
 use App\Models\GlobalUser;
 use App\Models\Room;
 use App\Models\SecurityEvent;
+use App\Models\Superadmin;
 use App\Models\SystemNotificationChannel;
 use App\Models\Version;
 use App\Services\Notification\AdminNotificationService;
@@ -48,12 +49,18 @@ class PageController extends Controller
         return view('superadmin.rooms', ['rooms' => $query->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE)->withQueryString(), 'filters' => compact('search', 'status', 'sort')]);
     }
     /**
-     * Handle the room operation.
-     * @return View Result of the operation.
+     * Room profile shell (data loads from the room API). Scope-checked here too, so an out-of-scope
+     * room ID is refused at once instead of rendering an empty page.
+     *
+     * @param Room $room Room from the URL.
+     * @return View Room profile page.
      */
-    public function room(): View
+    public function room(Room $room): View
     {
-        return view('superadmin.room-detail');
+        \Illuminate\Support\Facades\Gate::authorize('view', $room);
+
+        // Only the key goes to the page script: the room data itself loads from the (scoped) room API.
+        return view('superadmin.room-detail', ['roomKey' => $room->slug]);
     }
     /**
      * Handle the admins operation.
@@ -69,12 +76,18 @@ class PageController extends Controller
         return view('superadmin.admins', ['admins' => $query->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE)->withQueryString(), 'filters' => compact('search', 'status')]);
     }
     /**
-     * Handle the admin operation.
-     * @return View Result of the operation.
+     * Admin (Agent account) profile shell (data loads from the admin API). Scope-checked here too, so an
+     * out-of-scope Agent ID is refused at once.
+     *
+     * @param Admin $admin Agent from the URL.
+     * @return View Admin profile page.
      */
-    public function admin(): View
+    public function admin(Admin $admin): View
     {
-        return view('superadmin.admin-detail');
+        \Illuminate\Support\Facades\Gate::authorize('view', $admin);
+
+        // Only the ID goes to the page script: the account data itself loads from the (masked, scoped) admin API.
+        return view('superadmin.admin-detail', ['adminId' => $admin->id]);
     }
     /**
      * Handle the users operation.
@@ -199,6 +212,9 @@ class PageController extends Controller
         if ($event !== '') $query->where('event', $event);
         $targetType = trim($request->string('target_type')->toString());
         if ($targetType !== '') $query->where('target_type', $targetType);
+        // Actor filter: one Superadmin's actions only (ignored unless it is a positive ID).
+        $actorId = $request->integer('actor_id');
+        if ($actorId > 0) $query->where('actor_id', $actorId);
         $dateFrom = $request->string('date_from')->toString();
         $dateTo = $request->string('date_to')->toString();
         if ($dateFrom !== '') $query->whereDate('created_at', '>=', $dateFrom);
@@ -218,11 +234,18 @@ class PageController extends Controller
             ->mapWithKeys(fn (string $type): array => [$type => (new AuditLog(['target_type' => $type]))->targetLabel()])
             ->sort();
 
+        // Superadmins that appear in the log (deleted accounts drop out of the list but their rows stay).
+        $actorOptions = Superadmin::query()
+            ->whereIn('id', AuditLog::query()->whereIn('actor_type', $actorTypes)->whereNotNull('actor_id')->distinct()->select('actor_id'))
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
         return view('superadmin.audit', [
             'audits' => $query->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE)->withQueryString(),
             'eventOptions' => $eventOptions,
             'targetOptions' => $targetOptions,
-            'filters' => ['event' => $event, 'target_type' => $targetType, 'date_from' => $dateFrom, 'date_to' => $dateTo],
+            'actorOptions' => $actorOptions,
+            'filters' => ['event' => $event, 'target_type' => $targetType, 'actor_id' => $actorId > 0 ? $actorId : null, 'date_from' => $dateFrom, 'date_to' => $dateTo],
         ]);
     }
     /**

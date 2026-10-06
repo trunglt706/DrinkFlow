@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.room' => \App\Http\Middleware\EnsureAdminRoomAccess::class,
             'room.subscription' => \App\Http\Middleware\EnsureRoomSubscriptionActive::class,
             'superadmin' => \App\Http\Middleware\EnsureSuperadmin::class,
+            'superadmin.mask' => \App\Http\Middleware\MaskSuperadminSensitiveData::class,
             'permission' => \App\Http\Middleware\EnsureSuperadminPermission::class,
             'maintenance' => \App\Http\Middleware\CheckMaintenanceMode::class,
             'json.only' => \App\Http\Middleware\EnsureJsonRequest::class,

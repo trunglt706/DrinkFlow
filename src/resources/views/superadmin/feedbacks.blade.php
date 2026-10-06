@@ -43,6 +43,7 @@
                             $belowMinimum = $feedback->rating < \App\Models\Feedback::MIN_VISIBLE_RATING;
                             $displayName = $feedback->user_display_name ?: __('global.feedback.anonymous_user');
                             $userMeta = collect([$feedback->globalUser?->email, $feedback->department_name])->filter()->join(' · ');
+                            $editPayload = ['rating' => $feedback->rating, 'subsystem' => $feedback->subsystem ?: 'all', 'content' => $feedback->content, 'user_display_name' => $feedback->user_display_name];
                         @endphp
                         <tr>
                             <td class="col-primary">
@@ -72,7 +73,12 @@
                                 @endif
                             </td>
                             <td class="col-actions">
-                                <div class="flex items-center justify-end whitespace-nowrap">
+                                <div class="sa-row-actions whitespace-nowrap">
+                                    <button class="sa-icon-btn" type="button" data-action="feedback-edit" data-feedback-id="{{ $feedback->id }}"
+                                        data-feedback="{{ json_encode($editPayload, JSON_UNESCAPED_UNICODE) }}"
+                                        title="{{ __('superadmin.feedbacks.edit') }}" aria-label="{{ __('superadmin.feedbacks.edit') }}"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+                                    <button class="sa-icon-btn text-error" type="button" data-action="feedback-delete" data-feedback-id="{{ $feedback->id }}"
+                                        title="{{ __('superadmin.feedbacks.delete') }}" aria-label="{{ __('superadmin.feedbacks.delete') }}"><span class="material-symbols-outlined text-[18px]">delete</span></button>
                                     @if ($isActive)
                                         <button class="sa-button warning" type="button" data-action="feedback-status" data-feedback-id="{{ $feedback->id }}" data-status="inactive"><span class="material-symbols-outlined text-[16px]">unpublished</span>{{ __('superadmin.feedbacks.deactivate') }}</button>
                                     @else
@@ -98,7 +104,48 @@
         </div>
         {{ $feedbacks->links('components.superadmin.pagination') }}
     </section>
+
+    <x-superadmin.modal id="edit-feedback-modal" icon="edit" tone="edit" :title="__('superadmin.feedbacks.edit_title')" :description="__('superadmin.feedbacks.edit_description')">
+        <form id="edit-feedback-form" class="space-y-4" novalidate>
+            @csrf
+            <p id="edit-feedback-error" class="sa-notice error hidden" role="alert"></p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label for="edit-feedback-rating" class="sa-label">{{ __('superadmin.feedbacks.rating') }} <span class="text-error">*</span></label>
+                    <select id="edit-feedback-rating" name="rating" required class="sa-field">
+                        @for ($stars = 5; $stars >= 1; $stars--)
+                            <option value="{{ $stars }}">{{ $stars }} ★</option>
+                        @endfor
+                    </select>
+                </div>
+                <div>
+                    <label for="edit-feedback-subsystem" class="sa-label">{{ __('global.feedback.subsystem_label') }} <span class="text-error">*</span></label>
+                    <select id="edit-feedback-subsystem" name="subsystem" required class="sa-field">
+                        @foreach (\App\Models\Feedback::SUBSYSTEMS as $subsystem)
+                            <option value="{{ $subsystem }}">{{ __('global.feedback.subsystem_'.$subsystem) }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label for="edit-feedback-name" class="sa-label">{{ __('superadmin.feedbacks.display_name') }}</label>
+                <input type="text" id="edit-feedback-name" name="user_display_name" maxlength="255" class="sa-field">
+            </div>
+            <div>
+                <label for="edit-feedback-content" class="sa-label">{{ __('superadmin.feedbacks.content') }} <span class="text-error">*</span></label>
+                <textarea id="edit-feedback-content" name="content" rows="5" required minlength="3" maxlength="1000" class="sa-field"></textarea>
+            </div>
+            <div class="sa-modal-footer">
+                <button type="button" class="sa-button secondary" data-modal-close>{{ __('superadmin.common.cancel') }}</button>
+                <button type="submit" class="sa-button"><span class="material-symbols-outlined text-[16px]">save</span>{{ __('superadmin.common.save') }}</button>
+            </div>
+        </form>
+    </x-superadmin.modal>
 @endsection
 @push('scripts')
-    <x-superadmin.page-script name="feedbacks" :i18n="['status_updated' => __('superadmin.feedbacks.status_updated')]" />
+    <x-superadmin.page-script name="feedbacks" :i18n="[
+        'status_updated' => __('superadmin.feedbacks.status_updated'), 'updated' => __('superadmin.feedbacks.updated'),
+        'deleted' => __('superadmin.feedbacks.deleted'), 'confirm_delete' => __('superadmin.feedbacks.confirm_delete'),
+        'delete_description' => __('superadmin.feedbacks.delete_description'), 'delete' => __('superadmin.feedbacks.delete'),
+    ]" />
 @endpush

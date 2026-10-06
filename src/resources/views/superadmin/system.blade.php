@@ -10,7 +10,7 @@
             </div>
             <button class="sa-button secondary" type="button" data-modal-open="mail-test-modal"><span class="material-symbols-outlined text-[16px]">outgoing_mail</span>{{ __('superadmin.system.send_test_mail') }}</button>
         </div>
-        <div id="system-health" class="sa-health-list">
+        <div id="system-health" class="sa-health-list sa-health-grid">
             <x-superadmin.empty-state loading :title="__('superadmin.common.loading_title')" :description="__('superadmin.common.loading_description')" />
         </div>
     </section>

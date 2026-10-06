@@ -6,6 +6,7 @@ import { dfApi } from '../shared';
 export { dfApi, escapeHtml, money, statusPill } from '../shared';
 export { openSuperadminConfirm } from '../modal';
 export { renderSubmitLoading } from '../../shared/submit-loading';
+export { sensitiveHtml } from '../sensitive';
 
 /**
  * Show a message in the page-level #notice box (success messages are also shown as a toast by shell.js).

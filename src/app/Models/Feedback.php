@@ -17,6 +17,9 @@ class Feedback extends Model
     /** Minimum rating for an approved feedback to be shown on the /me/feedback page. */
     public const MIN_VISIBLE_RATING = 3;
 
+    /** Subsystem codes a feedback can be about (public form and Superadmin correction). */
+    public const SUBSYSTEMS = ['all', 'room', 'split_qr', 'socket', 'sponsor'];
+
     protected $table = 'feedbacks';
 
     protected $fillable = [

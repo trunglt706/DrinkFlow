@@ -149,13 +149,29 @@ class PlatformDashboardTest extends TestCase
         $this->actingAs($this->owner, 'superadmin')->getJson(route('superadmin.dashboard'))->assertOk()->assertJsonPath('data.total_rooms', 3);
     }
 
-    public function test_platform_wide_analytics_require_unrestricted_access(): void
+    public function test_restricted_superadmin_gets_analytics_of_its_own_rooms_only(): void
     {
         $scoped = $this->scoped(['room.view' => PermissionScope::Managed, 'agent.view' => PermissionScope::Managed]);
 
-        $this->actingAs($scoped, 'superadmin')->getJson(route('superadmin.dashboard.analytics'))->assertForbidden();
+        // Operations figures are counted over the managed Agents' rooms only; the security KPI is hidden.
+        $scopedRooms = $this->actingAs($scoped, 'superadmin')->getJson(route('superadmin.dashboard.analytics', ['fresh' => 1]))
+            ->assertOk()
+            ->assertJsonPath('data.kpis.high_security_events.value', null)
+            ->json('data.rooms');
+        $allRooms = $this->actingAs($this->owner, 'superadmin')->getJson(route('superadmin.dashboard.analytics', ['fresh' => 1]))->assertOk()->json('data.rooms');
+        $this->assertCount(1, $scopedRooms);
+        $this->assertGreaterThan(1, count($allRooms));
+        // Platform-wide trends stay reserved to unrestricted Superadmins.
         $this->actingAs($scoped, 'superadmin')->getJson(route('superadmin.dashboard.trends'))->assertForbidden();
-        $this->actingAs($this->owner, 'superadmin')->getJson(route('superadmin.dashboard.analytics'))->assertOk();
+        // Without room access there is nothing to count.
+        $noRooms = Superadmin::create(['name' => 'No rooms', 'email' => 'norooms@drinkflow.test', 'password' => 'password123', 'status' => 'active']);
+        $noRooms->permissions()->attach(PermissionRecord::query()->where('key', 'agent.view')->value('id'), ['scope' => PermissionScope::Managed->value]);
+        $this->actingAs($noRooms, 'superadmin')->getJson(route('superadmin.dashboard.analytics'))->assertForbidden();
+
+        $this->actingAs($scoped, 'superadmin')->get(route('superadmin.dashboard'))
+            ->assertOk()
+            ->assertSee('id="sa-analytics"', false)
+            ->assertSee('data-platform="0"', false);
     }
 
     public function test_insights_hide_security_and_heatmap_without_permission(): void

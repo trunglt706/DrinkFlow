@@ -28,6 +28,9 @@ import { initSuperadminShell } from './superadmin/shell';
 import { initSuperadminVersions } from './superadmin/versions';
 import { initSuperadminDashboard } from './superadmin/dashboard';
 import { initSuperadminPages } from './superadmin/pages';
+import { initSuperadminPermissionMatrix } from './superadmin/permission-matrix';
+import { initSuperadminGoToTop } from './superadmin/go-to-top';
+import { initSuperadminSensitive } from './superadmin/sensitive';
 import { initDateRangePickers } from './admin/ui-enhancements';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -58,5 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initSuperadminVersions();
     initSuperadminDashboard();
     initSuperadminPages();
+    initSuperadminPermissionMatrix();
+    initSuperadminGoToTop();
+    initSuperadminSensitive();
     initDateRangePickers();
 });

@@ -169,7 +169,7 @@ class PlatformSecurityIsolationTest extends TestCase
         $managed = $this->superadmin($permission, PermissionScope::Managed);
 
         $page = $this->actingAs($managed, 'superadmin')->get(route($listRoute))->assertOk();
-        $page->assertDontSee('bob@drinkflow.test')->assertDontSee('Bob room')->assertDontSee((string) $this->bob->invoices()->value('number'));
+        $page->assertDontSee($this->maskedEmail('bob@drinkflow.test'))->assertDontSee('Bob room')->assertDontSee((string) $this->bob->invoices()->value('number'));
         if ($agentRoute !== null) {
             $this->actingAs($managed, 'superadmin')->get(route($agentRoute, $this->alice))->assertOk();
             $this->actingAs($managed, 'superadmin')->get(route($agentRoute, $this->bob))->assertForbidden();

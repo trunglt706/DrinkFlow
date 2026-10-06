@@ -94,5 +94,7 @@
         'disable_room' => __('superadmin.rooms.disable_room'), 'updated' => __('superadmin.rooms.updated'),
         'status_updated' => __('superadmin.rooms.status_updated'), 'confirm_delete' => __('superadmin.rooms.confirm_delete'),
         'deleted' => __('superadmin.rooms.deleted'), 'delete_description' => __('superadmin.modals.confirm.room_delete'),
-    ]" :urls="['room_id' => (string) request()->route('room'), 'admins' => route('superadmin.admins.index'), 'list' => route('superadmin.rooms.page')]" />
+        'confirm_enable' => __('superadmin.rooms.confirm_enable_room'), 'confirm_disable' => __('superadmin.rooms.confirm_disable_room'),
+        'enable_description' => __('superadmin.modals.confirm.room_enable'), 'disable_description' => __('superadmin.modals.confirm.room_disable'),
+    ]" :urls="['room_id' => (string) $roomKey, 'admins' => route('superadmin.admins.index'), 'list' => route('superadmin.rooms.page')]" />
 @endpush

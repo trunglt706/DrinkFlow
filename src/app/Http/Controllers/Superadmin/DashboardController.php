@@ -41,6 +41,8 @@ class DashboardController extends Controller
             return view('superadmin.dashboard', [
                 'widgets' => $platform->widgetsFor($superadmin),
                 'platformAnalytics' => $platform->canSeePlatformAnalytics($superadmin),
+                // Restricted Superadmins with room access get the operations analytics of their own rooms.
+                'scopedAnalytics' => $superadmin->hasPermission(Permission::RoomView),
             ]);
         }
 
@@ -69,12 +71,25 @@ class DashboardController extends Controller
      *
      * @param Request $request Current request; `?fresh=1` bypasses the analytics cache.
      * @param SuperadminDashboardService $dashboard Analytics aggregator.
-     * @return JsonResponse Analytics payload under `data`.
+     * @param PlatformDashboardService $platform Decides who sees the platform-wide figures.
+     * @param AgentScope $scope Room scope of a restricted Superadmin.
+     * @return JsonResponse Analytics payload under `data` (scoped to the viewer's rooms when restricted).
      */
-    public function analytics(Request $request, SuperadminDashboardService $dashboard): JsonResponse
+    public function analytics(Request $request, SuperadminDashboardService $dashboard, PlatformDashboardService $platform, AgentScope $scope): JsonResponse
     {
-        $this->ensurePlatformAnalytics($request);
-        return response()->json(['data' => $dashboard->analytics($request->boolean('fresh'))]);
+        /** @var \App\Models\Superadmin $superadmin */
+        $superadmin = $request->user('superadmin');
+        if ($platform->canSeePlatformAnalytics($superadmin)) {
+            return response()->json(['data' => $dashboard->analytics($request->boolean('fresh'))]);
+        }
+
+        // Restricted Superadmin: the same operational figures, counted only over the rooms in its scope.
+        abort_unless($superadmin->hasPermission(Permission::RoomView), 403);
+        $roomIds = $scope->adminIds($superadmin, Permission::RoomView) === null
+            ? null
+            : $scope->applyToRooms(Room::query(), $superadmin, Permission::RoomView)->pluck('rooms.id')->map(static fn ($id): int => (int) $id)->all();
+
+        return response()->json(['data' => $dashboard->analyticsFor($roomIds, $superadmin->hasPermission(Permission::SecurityView), $request->boolean('fresh'))]);
     }
 
     /**

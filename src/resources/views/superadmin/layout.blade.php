@@ -36,7 +36,9 @@
 
 <body data-submit-loading-text="{{ __('global.common.loading') }}"
     data-sa-realtime-url="{{ rtrim((string) config('services.realtime.public_url', 'http://localhost:3001'), '/') }}"
-    @auth('superadmin') data-sa-socket-token-url="{{ route('superadmin.socket-token') }}" @endauth
+    @auth('superadmin') data-sa-socket-token-url="{{ route('superadmin.socket-token') }}"
+        data-sensitive-reveal-url="{{ route('superadmin.sensitive.reveal') }}"
+        data-sensitive-i18n="{{ json_encode(['reveal' => __('superadmin.sensitive.reveal'), 'hide' => __('superadmin.sensitive.hide'), 'failed' => __('superadmin.sensitive.expired')], JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}" @endauth
     data-status-labels="{{ json_encode([
         'active' => __('superadmin.common.active'), 'disabled' => __('superadmin.common.disabled'),
         'inactive' => __('superadmin.common.inactive'),
@@ -158,6 +160,10 @@
                         @endforeach
                     </div>
                 </div>
+                <a href="{{ route('superadmin.guides.index') }}" class="sa-icon-btn" data-sa-guide-link
+                    title="{{ __('superadmin.guides.open') }}" aria-label="{{ __('superadmin.guides.open') }}">
+                    <span class="material-symbols-outlined" aria-hidden="true">menu_book</span>
+                </a>
                 <x-superadmin.notification-bell :notifications="$headerNotifications" :presentations="$headerNotificationPresentations" :unread-count="$headerUnreadCount" />
                 <div class="sa-dropdown" data-sa-dropdown>
                     <button type="button" class="sa-user-toggle" data-sa-dropdown-toggle aria-haspopup="menu" aria-expanded="false"
@@ -212,6 +218,10 @@
         </div>
     </div>
     <div class="sa-toast-region" data-sa-toasts aria-live="polite" aria-atomic="false"></div>
+    {{-- Back to top: shown once the page is scrolled (resources/js/superadmin/go-to-top.js). --}}
+    <button type="button" class="sa-go-top" data-sa-go-top hidden title="{{ __('superadmin.layout.go_to_top') }}" aria-label="{{ __('superadmin.layout.go_to_top') }}">
+        <span class="material-symbols-outlined" aria-hidden="true">arrow_upward</span>
+    </button>
 
     <x-superadmin.confirm-modal />
     <x-superadmin.logout-modal />

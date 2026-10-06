@@ -95,9 +95,9 @@ class SuperadminConsoleFixesTest extends TestCase
         GlobalUser::create(['name' => 'Visible Person', 'email' => 'visible-fixes@drinkflow.test']);
 
         $this->actingAs($this->root, 'superadmin')->get('/superadmin/global-users/page')
-            ->assertOk()->assertSee('Visible Person')->assertDontSee('member-fixes@drinkflow.test');
+            ->assertOk()->assertSee('Visible Person')->assertDontSee($this->maskedEmail('member-fixes@drinkflow.test'));
         $this->actingAs($this->root, 'superadmin')->get('/superadmin/global-users/page?status=deleted')
-            ->assertOk()->assertSee('member-fixes@drinkflow.test')->assertDontSee('Visible Person');
+            ->assertOk()->assertSee($this->maskedEmail('member-fixes@drinkflow.test'))->assertDontSee('Visible Person');
         $this->actingAs($this->root, 'superadmin')->getJson('/superadmin/global-users')
             ->assertOk()->assertJsonMissing(['email' => 'member-fixes@drinkflow.test']);
     }

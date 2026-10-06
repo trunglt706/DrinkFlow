@@ -59,7 +59,7 @@ export default function initSystemPage(_root, i18n, urls) {
         ];
         if (health.supervisor) rows.push(['supervisor', statusPill(health.supervisor.status)]);
         document.querySelector('#system-health').innerHTML = rows.map(([key, markup, hint]) =>
-            `<div class="sa-health-row"><div><strong>${escapeHtml(i18n.health[key] || key)}</strong>${hint ? `<small>${escapeHtml(hint)}</small>` : ''}</div>${markup}</div>`,
+            `<div class="sa-health-row"><div><strong>${escapeHtml(i18n.health[key] || key)}</strong>${hint ? `<small title="${escapeHtml(hint)}">${escapeHtml(hint)}</small>` : ''}</div>${markup}</div>`,
         ).join('');
     };
 

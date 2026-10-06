@@ -43,7 +43,7 @@
                         <tr>
                             <td class="col-primary">
                                 <strong class="block truncate">{{ $subscription->admin?->name }}</strong>
-                                <small class="block truncate text-outline">{{ $subscription->admin?->email }}</small>
+                                <small class="block truncate text-outline"><x-superadmin.sensitive :value="$subscription->admin?->email" /></small>
                             </td>
                             <td>{{ $subscription->package?->name }}</td>
                             <td class="text-right whitespace-nowrap num">{{ \App\Support\Helpers\FormatHelper::formatCurrency($subscription->price_snapshot) }}</td>

@@ -248,7 +248,7 @@ class SuperadminFeatureTest extends TestCase
 
         $this->actingAs($root, 'superadmin')->get('/superadmin/admins/page?status=suspended')
             ->assertOk()
-            ->assertSee('operator-block@drinkflow.test')
+            ->assertSee($this->maskedEmail('operator-block@drinkflow.test'))
             ->assertSee('status-pill status-suspended', false);
 
         $this->actingAs($root, 'superadmin')->patchJson("/superadmin/admins/{$admin->id}/status", ['status' => 'unknown'])->assertStatus(422);
@@ -453,13 +453,16 @@ class SuperadminFeatureTest extends TestCase
     public function test_superadmin_page_routes_render_for_active_superadmin(): void
     {
         $root = $this->superadmin();
+        // Profile pages check the record (and the scope) before rendering, so they need real ones.
+        $room = Room::create(['name' => 'Page room', 'slug' => 'page-room', 'status' => 'active']);
+        $admin = Admin::create(['name' => 'Page admin', 'email' => 'page-admin@drinkflow.test', 'password' => 'password123', 'status' => 'active']);
 
         foreach ([
             '/superadmin',
             '/superadmin/rooms/page',
-            '/superadmin/rooms/1/page',
+            "/superadmin/rooms/{$room->slug}/page",
             '/superadmin/admins/page',
-            '/superadmin/admins/1/page',
+            "/superadmin/admins/{$admin->id}/page",
             '/superadmin/global-users/page',
             '/superadmin/global-users/1/page',
             '/superadmin/campaigns/page',
@@ -473,5 +476,8 @@ class SuperadminFeatureTest extends TestCase
         ] as $uri) {
             $this->actingAs($root, 'superadmin')->get($uri)->assertOk();
         }
+        // An unknown record is not found instead of an empty profile shell.
+        $this->actingAs($root, 'superadmin')->get('/superadmin/rooms/missing-room/page')->assertNotFound();
+        $this->actingAs($root, 'superadmin')->get('/superadmin/admins/999999/page')->assertNotFound();
     }
 }

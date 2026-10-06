@@ -99,5 +99,5 @@
         'block_description' => __('superadmin.admins.block_description'), 'confirm_delete' => __('superadmin.admins.confirm_delete'),
         'delete_description' => __('superadmin.admins.delete_description'), 'delete_account' => __('superadmin.admins.delete_account'),
         'deleted' => __('superadmin.admins.deleted'), 'updated' => __('superadmin.admins.updated'),
-    ]" :urls="['admin_id' => (string) request()->route('admin'), 'rooms' => route('superadmin.rooms.index'), 'list' => route('superadmin.admins.page')]" />
+    ]" :urls="['admin_id' => (string) $adminId, 'rooms' => route('superadmin.rooms.index'), 'list' => route('superadmin.admins.page')]" />
 @endpush
