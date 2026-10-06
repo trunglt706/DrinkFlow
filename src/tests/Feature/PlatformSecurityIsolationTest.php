@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\CampaignStatus;
+use App\Enums\InvoiceType;
 use App\Enums\PermissionScope;
+use App\Enums\PlatformPaymentMethod;
 use App\Models\Admin;
 use App\Models\Campaign;
 use App\Models\Package;
@@ -88,8 +90,17 @@ class PlatformSecurityIsolationTest extends TestCase
     {
         $this->actingAs($this->alice, 'admin')->post(route('admin.subscription.change'), ['package_id' => $this->large->id])->assertRedirect();
 
+        // The upgrade is invoiced to Alice only, and applies to her account once paid.
+        $upgrade = $this->alice->invoices()->where('type', InvoiceType::Upgrade->value)->firstOrFail();
+        $this->assertSame(0, $this->bob->invoices()->where('type', InvoiceType::Upgrade->value)->count());
+        $owner = $this->createSuperadmin(['name' => 'Owner', 'email' => 'owner@drinkflow.test', 'password' => 'password123', 'status' => 'active']);
+        app(PlatformBillingService::class)->recordPayment($upgrade, $owner, $upgrade->total, PlatformPaymentMethod::BankTransfer);
+
         $this->assertSame(30, $this->alice->activeSubscription()->firstOrFail()->room_limit_snapshot);
         $this->assertSame(3, $this->bob->activeSubscription()->firstOrFail()->room_limit_snapshot);
+        $this->flushSession();
+        $this->actingAs($this->bob, 'admin')->get(route('admin.billing.index'))->assertOk()->assertDontSee($upgrade->number);
+        $this->flushSession();
         $this->actingAs($this->alice, 'admin')->get(route('admin.billing.index'))->assertOk()->assertDontSee($this->bob->invoices()->value('number'));
         $this->actingAs($this->alice, 'admin')->get(route('admin.subscription.show'))->assertOk()->assertDontSee('bob@drinkflow.test');
     }

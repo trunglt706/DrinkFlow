@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Enums\InvoiceStatus;
+use App\Enums\InvoiceType;
 use App\Enums\PermissionScope;
+use App\Enums\PlatformPaymentMethod;
 use App\Enums\SubscriptionStatus;
 use App\Models\Admin;
+use App\Models\AdminInvoice;
 use App\Models\AdminSubscription;
 use App\Models\Package;
 use App\Models\PermissionRecord;
 use App\Models\Room;
 use App\Models\Superadmin;
+use App\Services\Billing\PlatformBillingService;
 use App\Services\Subscription\SubscriptionService;
+use App\Services\Subscription\SubscriptionUpgradeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -112,14 +118,26 @@ class SubscriptionManagementTest extends TestCase
             ->assertSee('material-symbols-outlined text-[26px]">meeting_room', false);
     }
 
-    public function test_upgrade_applies_now_with_a_proration_credit(): void
+    public function test_upgrade_is_invoiced_first_and_applies_with_a_proration_credit_once_paid(): void
     {
         $old = $this->current();
         $this->travel(15)->days();
 
-        $this->actingAs($this->agent, 'admin')->post(route('admin.subscription.change'), ['package_id' => $this->large->id])->assertRedirect(route('admin.subscription.show'));
+        // An Agent's upgrade is billed first: the current package stays until the upgrade invoice is paid.
+        $this->actingAs($this->agent, 'admin')->post(route('admin.subscription.change'), ['package_id' => $this->large->id])
+            ->assertRedirect(route('admin.subscription.show'))->assertSessionHas('status');
+        $this->assertSame($old->id, $this->current()->id);
+        $invoice = AdminInvoice::query()->where('admin_id', $this->agent->id)->where('type', InvoiceType::Upgrade->value)->firstOrFail();
+        $this->assertSame(InvoiceStatus::Open, $invoice->status);
+        $this->assertSame($this->large->id, $invoice->package_id);
+        $this->assertSame(900000 - $invoice->credit, $invoice->total);
+
+        $owner = $this->createSuperadmin(['name' => 'Owner', 'email' => 'owner@drinkflow.test', 'password' => 'password123', 'status' => 'active']);
+        app(PlatformBillingService::class)->recordPayment($invoice, $owner, $invoice->total, PlatformPaymentMethod::BankTransfer);
 
         $new = $this->current();
+        $this->assertSame($new->id, $invoice->fresh()->admin_subscription_id);
+        $this->assertSame($invoice->credit, $new->proration_credit);
         $this->assertSame($this->large->id, $new->package_id);
         $this->assertSame(10, $new->room_limit_snapshot);
         $this->assertSame($old->id, $new->previous_subscription_id);
@@ -127,6 +145,20 @@ class SubscriptionManagementTest extends TestCase
         $this->assertGreaterThan(0, $new->proration_credit);
         $this->assertLessThan(300000, $new->proration_credit);
         $this->assertDatabaseHas('audit_logs', ['event' => 'subscription.upgraded', 'target_id' => $this->agent->id]);
+    }
+
+    public function test_upgrade_request_can_be_resubmitted_within_the_same_second(): void
+    {
+        $this->freezeSecond();
+        app(PlatformBillingService::class)->generateInvoices();
+
+        // A double submit (or switching the target package right away) replaces the unpaid request.
+        $first = app(SubscriptionUpgradeService::class)->request($this->agent, $this->large);
+        $second = app(SubscriptionUpgradeService::class)->request($this->agent, $this->large);
+
+        $this->assertSame(InvoiceStatus::Void, $first->fresh()->status);
+        $this->assertSame(InvoiceStatus::Open, $second->status);
+        $this->assertSame(1, AdminInvoice::query()->where('admin_id', $this->agent->id)->where('type', InvoiceType::Upgrade->value)->outstanding()->count());
     }
 
     public function test_downgrade_is_scheduled_for_the_period_end(): void

@@ -15,6 +15,7 @@ use App\Models\Superadmin;
 use App\Services\Billing\PlatformBillingService;
 use App\Services\Billing\PlatformRevenueService;
 use App\Services\Subscription\SubscriptionService;
+use App\Services\Subscription\SubscriptionUpgradeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -121,13 +122,20 @@ class PlatformBillingTest extends TestCase
         $this->billing->generateInvoices();
         $this->travel(10)->days();
 
-        $this->subscriptions->changePackage($this->alice, $large);
-        $this->billing->generateInvoices();
-
-        $invoice = $this->invoiceOf($this->alice);
+        // The Agent's upgrade invoice carries the credit and becomes the new subscription's first-period invoice.
+        $invoice = app(SubscriptionUpgradeService::class)->request($this->alice, $large);
         $this->assertSame(900000, $invoice->subtotal);
         $this->assertGreaterThan(0, $invoice->credit);
         $this->assertSame(900000 - $invoice->credit, $invoice->total);
+
+        $this->billing->recordPayment($invoice, $this->owner, $invoice->total, PlatformPaymentMethod::BankTransfer);
+        $invoiceCount = $this->alice->invoices()->count();
+        $this->billing->generateInvoices();
+
+        $subscription = $this->subscriptions->current($this->alice);
+        $this->assertSame($large->id, $subscription->package_id);
+        $this->assertSame($subscription->id, $invoice->fresh()->admin_subscription_id);
+        $this->assertSame($invoiceCount, $this->alice->invoices()->count(), 'The paid upgrade invoice already bills the first period.');
     }
 
     public function test_free_period_is_settled_immediately(): void
