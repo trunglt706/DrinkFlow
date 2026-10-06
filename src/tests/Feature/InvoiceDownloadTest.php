@@ -63,6 +63,34 @@ class InvoiceDownloadTest extends TestCase
             ->assertHeader('Content-Disposition', 'attachment; filename="drinkflow-invoice-test.pdf"');
     }
 
+    public function test_invoice_pdf_is_rendered_in_php_without_a_browser(): void
+    {
+        $invoice = $this->invoiceOf($this->alice);
+        config(['laravel-pdf.driver' => 'dompdf']);
+
+        $this->actingAs($this->alice, 'admin')->get(route('admin.billing.download', $invoice))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf')
+            ->assertSee('%PDF-', false);
+    }
+
+    public function test_japanese_pdf_without_a_cjk_font_uses_english_labels_and_keeps_the_locale(): void
+    {
+        $invoice = $this->invoiceOf($this->alice);
+        config(['laravel-pdf.driver' => 'dompdf', 'pdf.cjk_font_path' => storage_path('fonts/missing-font.ttf')]);
+        app()->setLocale('ja');
+        $rendered = [];
+        \Illuminate\Support\Facades\View::composer('admin.billing.invoice-document', function () use (&$rendered): void {
+            $rendered[] = [app()->getLocale(), func_get_arg(0)->getData()['cjkFontPath'] ?? null];
+        });
+
+        $pdf = app(InvoicePdfService::class)->pdf($invoice);
+
+        $this->assertStringStartsWith('%PDF-', $pdf);
+        $this->assertSame([['en', null]], $rendered);
+        $this->assertSame('ja', app()->getLocale());
+    }
+
     public function test_failed_pdf_rendering_never_opens_a_print_page(): void
     {
         $invoice = $this->invoiceOf($this->alice);

@@ -1,10 +1,14 @@
-{{-- Printable platform invoice (App\Services\Billing\InvoicePdfService): rendered to an A4 PDF by headless
-     Chrome (download) and shown inside the admin invoice page (view).
-     Self-contained on purpose (inline CSS, no app layout/assets), so the PDF never depends on the asset build. --}}
+{{-- Printable platform invoice (App\Services\Billing\InvoicePdfService): rendered to an A4 PDF by DOMPDF
+     (download) and shown inside the admin invoice page (view).
+     Self-contained on purpose (inline CSS, no app layout/assets), so the PDF never depends on the asset build.
+     DOMPDF only lays out CSS 2.1: tables instead of flex/grid, an <img> instead of inline <svg>, and a font
+     stack that resolves to the bundled DejaVu Sans (Vietnamese) or to $cjkFontPath (Japanese). --}}
 @php
     $money = static fn (int $amount): string => \App\Support\Helpers\FormatHelper::formatCurrency($amount);
     $admin = $invoice->admin;
     $status = $invoice->status->value;
+    $cjkFontPath = $cjkFontPath ?? null;
+    $logo = 'data:image/svg+xml;base64,'.base64_encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22"><path fill="#ffffff" d="M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z"/></svg>');
 @endphp
 <!doctype html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -13,28 +17,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ __('platform.billing.document.title') }} {{ $invoice->number }}</title>
     <style>
+        @if ($cjkFontPath)
+        @font-face { font-family: "DrinkFlow CJK"; font-style: normal; font-weight: normal; src: url("{{ str_replace('\\', '/', $cjkFontPath) }}") format("truetype"); }
+        @font-face { font-family: "DrinkFlow CJK"; font-style: normal; font-weight: bold; src: url("{{ str_replace('\\', '/', $cjkFontPath) }}") format("truetype"); }
+        @endif
         * { box-sizing: border-box; }
-        body { margin: 0; background: #fff; color: #0b1c30; font: 13px/1.5 "Segoe UI", Inter, Arial, "Noto Sans", sans-serif; }
+        body { margin: 0; background: #fff; color: #0b1c30; font: 13px/1.5 @if ($cjkFontPath)"DrinkFlow CJK", @endif"Segoe UI", Inter, "DejaVu Sans", Arial, "Noto Sans", sans-serif; }
         .sheet { max-width: 800px; margin: 0 auto; padding: 32px; }
-        .head { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; border-bottom: 2px solid #006948; padding-bottom: 18px; }
-        .brand { display: flex; align-items: center; gap: 10px; }
-        .brand-mark { width: 38px; height: 38px; border-radius: 10px; background: #006948; display: flex; align-items: center; justify-content: center; }
+        .layout { width: 100%; border-collapse: collapse; }
+        .layout > tbody > tr > td, .layout > tr > td { vertical-align: top; padding: 0; }
+        .head { border-bottom: 2px solid #006948; }
+        .head td { padding-bottom: 18px; }
+        .brand td { vertical-align: middle; padding: 0 10px 0 0; }
+        .brand-mark { width: 38px; height: 38px; border-radius: 10px; background: #006948; text-align: center; }
+        .brand-mark img { margin-top: 8px; }
         .brand strong { display: block; font-size: 18px; }
         .brand small { color: #006948; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
         .doc-title { text-align: right; }
         .doc-title h1 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
-        .doc-title .number { font-family: ui-monospace, Consolas, monospace; font-weight: 700; }
+        .doc-title .number { font-family: ui-monospace, Consolas, "DejaVu Sans Mono", monospace; font-weight: 700; }
         .status { display: inline-block; margin-top: 6px; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
         .status-open { background: #fffbeb; color: #92400e; }
         .status-overdue { background: #ffdad6; color: #93000a; }
         .status-paid { background: #ecfdf5; color: #065f46; }
         .status-void { background: #eef2f7; color: #475569; }
-        .parties { display: flex; gap: 24px; margin: 22px 0; }
-        .party { flex: 1; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; }
+        .parties { width: 100%; border-collapse: separate; border-spacing: 0; margin: 22px 0; }
+        .parties td { width: 50%; vertical-align: top; }
+        .parties td.gap { width: 24px; }
+        .party { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; }
         .label { color: #64748b; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
         .meta { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
         .meta td { padding: 4px 0; }
-        .meta td:last-child { text-align: right; font-weight: 600; }
+        .meta td:last-child { text-align: right; font-weight: 700; }
         table.lines { width: 100%; border-collapse: collapse; }
         table.lines th { background: #f1f5f9; color: #475569; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; text-align: left; padding: 8px 10px; }
         table.lines td { border-bottom: 1px solid #e2e8f0; padding: 9px 10px; vertical-align: top; }
@@ -42,7 +56,7 @@
         .totals { width: 320px; margin: 14px 0 0 auto; border-collapse: collapse; }
         .totals td { padding: 5px 0; }
         .totals td:last-child { text-align: right; }
-        .totals .grand td { border-top: 2px solid #0b1c30; padding-top: 8px; font-size: 15px; font-weight: 800; }
+        .totals .grand td { border-top: 2px solid #0b1c30; padding-top: 8px; font-size: 15px; font-weight: 700; }
         .totals .due td { color: #b91c1c; font-weight: 700; }
         h2 { font-size: 13px; margin: 26px 0 8px; }
         .muted { color: #64748b; }
@@ -52,36 +66,43 @@
 </head>
 <body>
 <main class="sheet">
-    <header class="head">
-        <div class="brand">
-            <span class="brand-mark">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="#ffffff" aria-hidden="true"><path d="M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z"/></svg>
-            </span>
-            <div>
-                <strong>DrinkFlow</strong>
-                <small>{{ __('admin.brand_subtitle') }}</small>
-            </div>
-        </div>
-        <div class="doc-title">
-            <h1>{{ __('platform.billing.document.title') }}</h1>
-            <div class="number">{{ $invoice->number ?: '#'.$invoice->id }}</div>
-            <span class="status status-{{ $status }}">{{ __('platform.billing.status.'.$status) }}</span>
-        </div>
-    </header>
+    <table class="layout head">
+        <tr>
+            <td>
+                <table class="brand">
+                    <tr>
+                        <td class="brand-mark"><img src="{{ $logo }}" width="22" height="22" alt="DrinkFlow" loading="lazy"></td>
+                        <td>
+                            <strong>DrinkFlow</strong>
+                            <small>{{ __('admin.brand_subtitle') }}</small>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+            <td class="doc-title">
+                <h1>{{ __('platform.billing.document.title') }}</h1>
+                <div class="number">{{ $invoice->number ?: '#'.$invoice->id }}</div>
+                <span class="status status-{{ $status }}">{{ __('platform.billing.status.'.$status) }}</span>
+            </td>
+        </tr>
+    </table>
 
-    <section class="parties">
-        <div class="party">
-            <div class="label">{{ __('platform.billing.document.issuer') }}</div>
-            <strong>DrinkFlow</strong>
-            <div class="muted">{{ parse_url((string) config('app.url'), PHP_URL_HOST) ?: config('app.url') }}</div>
-        </div>
-        <div class="party">
-            <div class="label">{{ __('platform.billing.document.bill_to') }}</div>
-            <strong>{{ $admin?->name }}</strong>
-            @if ($admin?->company)<div>{{ $admin->company }}</div>@endif
-            <div class="muted">{{ $admin?->email }}@if ($admin?->phone) · {{ $admin->phone }}@endif</div>
-        </div>
-    </section>
+    <table class="parties">
+        <tr>
+            <td class="party">
+                <div class="label">{{ __('platform.billing.document.issuer') }}</div>
+                <strong>DrinkFlow</strong>
+                <div class="muted">{{ parse_url((string) config('app.url'), PHP_URL_HOST) ?: config('app.url') }}</div>
+            </td>
+            <td class="gap"></td>
+            <td class="party">
+                <div class="label">{{ __('platform.billing.document.bill_to') }}</div>
+                <strong>{{ $admin?->name }}</strong>
+                @if ($admin?->company)<div>{{ $admin->company }}</div>@endif
+                <div class="muted">{{ $admin?->email }}@if ($admin?->phone) · {{ $admin->phone }}@endif</div>
+            </td>
+        </tr>
+    </table>
 
     <table class="meta">
         <tr><td class="muted">{{ __('platform.billing.document.issued_at') }}</td><td>{{ $invoice->issued_at?->toAppDate() }}</td></tr>
