@@ -26,6 +26,8 @@ import { initAdminUsers } from './admin/users';
 import { initAdminLoading, initAdminReloadButtons, initFilterFormSkeletons } from './admin/loading';
 import { initAdminRealtime } from './admin/realtime';
 import { initAdminBilling } from './admin/billing';
+import { initSponsorDrawStage } from './sponsor-draw/stage';
+import { initSponsorDrawCancelModal } from './sponsor-draw/cancel-modal';
 
 export {
     initAdminGoToTop,
@@ -84,6 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initCampaignOrderingLock();
     initAdminReports();
     initAdminBilling();
+    initSponsorDrawStage();
+    initSponsorDrawCancelModal();
     initAdminSettings();
     initAdminUsers();
     initAdminLoading();

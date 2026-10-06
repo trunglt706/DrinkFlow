@@ -102,6 +102,18 @@ Route::middleware(['auth:admin', 'admin.room', 'room.subscription'])
 
     // Dedicated Standalone Page Views
     Route::get('/campaigns/list', [\App\Http\Controllers\Admin\CampaignController::class, 'page'])->name('admin.campaigns.page');
+    // Sponsor draws: the backend picks every winner; the client never sends a user ID.
+    Route::get('/sponsor-draws', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'index'])->name('admin.sponsor-draws.index');
+    Route::post('/sponsor-draws', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'store'])->middleware('throttle:20,1')->name('admin.sponsor-draws.store');
+    Route::get('/sponsor-draws/{sponsorDraw}', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'show'])->whereNumber('sponsorDraw')->name('admin.sponsor-draws.show');
+    Route::get('/sponsor-draws/{sponsorDraw}/state', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'state'])->whereNumber('sponsorDraw')->middleware('json.only')->name('admin.sponsor-draws.state');
+    Route::get('/sponsor-draws/{sponsorDraw}/proof', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'proof'])->whereNumber('sponsorDraw')->name('admin.sponsor-draws.proof');
+    Route::get('/sponsor-draws/{sponsorDraw}/socket-token', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'socketToken'])->whereNumber('sponsorDraw')->middleware('json.only')->name('admin.sponsor-draws.socket-token');
+    Route::post('/sponsor-draws/{sponsorDraw}/draw', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'draw'])->whereNumber('sponsorDraw')->middleware('throttle:60,1')->name('admin.sponsor-draws.draw');
+    Route::post('/sponsor-draws/{sponsorDraw}/link', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'reissueLink'])->whereNumber('sponsorDraw')->middleware('throttle:20,1')->name('admin.sponsor-draws.link');
+    Route::post('/sponsor-draws/{sponsorDraw}/cancel', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'cancel'])->whereNumber('sponsorDraw')->name('admin.sponsor-draws.cancel');
+    Route::post('/sponsor-draws/{sponsorDraw}/confirm', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'confirm'])->whereNumber('sponsorDraw')->middleware('throttle:20,1')->name('admin.sponsor-draws.confirm');
+    Route::post('/sponsor-draws/{sponsorDraw}/resend', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'resend'])->whereNumber('sponsorDraw')->middleware('throttle:20,1')->name('admin.sponsor-draws.resend');
     Route::get('/orders/manage', [\App\Http\Controllers\Admin\OrderController::class, 'page'])->name('admin.orders.page');
     Route::get('/debts/ledger', [\App\Http\Controllers\Admin\DebtController::class, 'page'])->name('admin.debts.page');
     Route::get('/room-users/directory', [\App\Http\Controllers\Admin\RoomUserController::class, 'page'])->name('admin.room-users.page');

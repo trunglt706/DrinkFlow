@@ -13,8 +13,10 @@ import { initCampaignDecline } from './room/campaign-decline';
 import { initRoomHeader } from './room/header';
 import { initRoomDashboardCharts } from './room/dashboard-charts';
 import { initGroupedImageLightbox, initGuideLightbox } from './shared/image-lightbox';
+import { initSponsorDrawStage } from './sponsor-draw/stage';
 
 document.addEventListener('DOMContentLoaded', () => {
+    initSponsorDrawStage();
     initToastNotifications();
     initCampaignOrder();
     initGlobalGoToTop();

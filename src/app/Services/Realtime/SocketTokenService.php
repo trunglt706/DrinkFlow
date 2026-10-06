@@ -13,6 +13,7 @@ use App\Models\GlobalUser;
 use App\Models\Room;
 use App\Models\Superadmin;
 use App\Models\RoomUser;
+use App\Models\SponsorDrawSession;
 use Illuminate\Support\Str;
 
 class SocketTokenService
@@ -120,6 +121,30 @@ class SocketTokenService
             'superadmin_id' => $superadmin->id,
             'room_ids' => Room::query()->where('status', RoomStatus::Active->value)->pluck('id')->all(),
             'exp' => now()->addSeconds($ttlSeconds)->timestamp,
+            'jti' => (string) Str::uuid(),
+        ]);
+
+        return $encoded . '.' . hash_hmac('sha256', $encoded, $this->signingSecret());
+    }
+
+    /**
+     * Issue a token that only joins one sponsor draw session's channel (draw:{id}).
+     *
+     * The caller has already checked the viewer's right to watch the session. The token never outlives the
+     * session's access link, so a viewer cannot reconnect once the link has expired.
+     *
+     * @param SponsorDrawSession $session Session being watched (link must be valid).
+     * @param int $ttlSeconds Maximum time-to-live in seconds.
+     * @return string Signed HMAC token string.
+     */
+    public function issueForDrawViewer(SponsorDrawSession $session, int $ttlSeconds = 300): string
+    {
+        abort_unless($session->linkIsValid(), 410);
+
+        $encoded = $this->encode([
+            'actor_type' => 'draw_viewer',
+            'draw_session_id' => $session->id,
+            'exp' => min(now()->addSeconds($ttlSeconds)->timestamp, $session->link_expires_at->timestamp),
             'jti' => (string) Str::uuid(),
         ]);
 

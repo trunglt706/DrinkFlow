@@ -227,6 +227,17 @@
                             </div>
                         </a>
 
+                        <!-- Sponsor draws -->
+                        <a class="sidebar-nav-link relative group flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors {{ $active === 'sponsor-draws' ? 'bg-emerald-50 text-primary ring-1 ring-emerald-100 font-semibold' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low' }}"
+                            href="{{ route('admin.sponsor-draws.index', $room) }}" title="{{ __('sponsor_draw.admin.nav') }}" data-nav-sponsor-draws>
+                            <span class="material-symbols-outlined text-[18px] shrink-0">casino</span>
+                            <span class="sidebar-text truncate">{{ __('sponsor_draw.admin.nav') }}</span>
+                            <div
+                                class="sidebar-tooltip pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-[#0b1c30] text-white text-xs font-semibold rounded-lg shadow-xl whitespace-nowrap z-50 opacity-0 group-hover:opacity-100 transition-opacity hidden">
+                                {{ __('sponsor_draw.admin.nav') }}
+                            </div>
+                        </a>
+
                         <!-- Reports -->
                         <a class="sidebar-nav-link relative group flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors {{ $active === 'reports' ? 'bg-emerald-50 text-primary ring-1 ring-emerald-100 font-semibold' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low' }}"
                             href="{{ route('admin.reports.page', $room) }}" title="{{ __('admin.reports_audit') }}">

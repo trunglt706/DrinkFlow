@@ -48,6 +48,25 @@ class RoomNotificationChannelDispatcher
     }
 
     /**
+     * Deliver a payload to one channel and report the outcome to the caller (per-channel delivery tracking,
+     * e.g. sponsor draw results), instead of swallowing the error like {@see dispatch()}.
+     *
+     * @param NotificationChannel $channel Enabled channel of the room.
+     * @param array<string, mixed> $payload Driver-neutral payload.
+     * @return void
+     * @throws \RuntimeException When the channel is not configured.
+     * @throws \Throwable When the provider rejects the message.
+     */
+    public function sendTo(NotificationChannel $channel, array $payload): void
+    {
+        $config = $this->config($channel);
+        if ($config === []) {
+            throw new \RuntimeException('Notification channel is not configured.');
+        }
+        $this->send($channel->type, $config, $payload);
+    }
+
+    /**
      * Send a non-sensitive test payload through one configured channel.
      *
      * @param NotificationChannel $channel Configured channel.
