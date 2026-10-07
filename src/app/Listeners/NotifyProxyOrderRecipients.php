@@ -35,11 +35,10 @@ final class NotifyProxyOrderRecipients
             $this->notifications->toRoomUser(
                 $recipient,
                 NotificationType::OrderProxyReceived->value,
-                __('messages.order_proxy_received_title', ['default' => 'Đơn hàng đặt giúp bạn']),
+                __('messages.order_proxy_received_title'),
                 __('messages.order_proxy_received_body', [
                     'order_code' => $childOrder->code,
                     'orderer' => $orderer,
-                    'default' => 'Đơn hàng '.$childOrder->code.' đã được '.$orderer.' đặt giúp bạn.',
                 ]),
                 [
                     'order_id' => $childOrder->id,

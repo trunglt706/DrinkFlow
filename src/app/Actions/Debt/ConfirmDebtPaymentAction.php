@@ -40,7 +40,7 @@ class ConfirmDebtPaymentAction
     {
         if ($roomUser->room_id !== $room->id) {
             throw ValidationException::withMessages([
-                'debt' => __('room.debts.unauthorized_debt_access', ['default' => 'Unauthorized access to debt records.']),
+                'debt' => __('room.debts.unauthorized_debt_access'),
             ]);
         }
 
@@ -61,7 +61,7 @@ class ConfirmDebtPaymentAction
 
             if ($debts->isEmpty()) {
                 throw ValidationException::withMessages([
-                    'debt' => __('room.debts.no_debts_to_confirm', ['default' => 'No active debts found to confirm payment.']),
+                    'debt' => __('room.debts.no_debts_to_confirm'),
                 ]);
             }
 
@@ -71,7 +71,7 @@ class ConfirmDebtPaymentAction
 
             if ($debts->contains(static fn (Debt $debt): bool => $debt->status === DebtStatus::Pending)) {
                 throw ValidationException::withMessages([
-                    'debt' => __('room.debts.payment_already_pending', ['default' => 'Payment confirmation is already awaiting approval.']),
+                    'debt' => __('room.debts.payment_already_pending'),
                 ]);
             }
 
@@ -117,13 +117,12 @@ class ConfirmDebtPaymentAction
                 'admin_id' => $admin->id,
                 'room_id' => $room->id,
                 'type' => 'debt.payment_submitted',
-                'title' => __('admin.payment_confirmation_request_title', ['default' => 'Yêu cầu xác nhận thanh toán']),
-                'body' => sprintf(
-                    'Thành viên %s đã gửi xác nhận thanh toán %s (%d khoản nợ/chiến dịch).',
-                    $userName,
-                    $amountFmt,
-                    $updatedDebts->count()
-                ),
+                'title' => __('admin.payment_confirmation_request_title'),
+                'body' => __('admin.debt_payment_confirmation_body', [
+                    'name' => $userName,
+                    'amount' => $amountFmt,
+                    'count' => $updatedDebts->count(),
+                ]),
                 'data' => [
                     'debt_ids' => $updatedDebts->pluck('id')->all(),
                     'amount' => $totalConfirmedAmount,
@@ -141,11 +140,10 @@ class ConfirmDebtPaymentAction
             'user_code' => $roomUser->room_user_code ?? $roomUser->user_code,
             'amount' => $totalConfirmedAmount,
             'status' => DebtStatus::Pending->value,
-            'message' => sprintf(
-                'Thành viên %s đã gửi xác nhận thanh toán %s.',
-                $userName,
-                $amountFmt
-            ),
+            'message' => __('admin.debt_payment_confirmation_message', [
+                'name' => $userName,
+                'amount' => $amountFmt,
+            ]),
         ]);
 
         return $updatedDebts;

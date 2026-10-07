@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Providers;
 
 use App\Constants\AppLocale;
@@ -184,6 +186,11 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('admin-bulk', function (Request $request) {
             return Limit::perMinute(20)->by('admin-bulk:'.($request->user('admin')?->id ?? $request->ip() ?: '127.0.0.1'));
+        });
+
+        // Image uploads are resized/re-encoded server side: generous enough to build a whole menu, bounded per admin.
+        RateLimiter::for('admin-image-upload', function (Request $request) {
+            return Limit::perMinute(60)->by('admin-image-upload:'.($request->user('admin')?->id ?? $request->ip() ?: '127.0.0.1'));
         });
 
         // Rebuilding the sponsor podium re-aggregates a month of orders: 3 runs per 10 minutes per admin account.

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\Campaign\ImportCampaignItemsAction;
+use App\Enums\CampaignStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CrawlerPreviewRequest;
 use App\Http\Requests\ImportCampaignItemsRequest;
@@ -68,7 +69,7 @@ class CrawlerController extends Controller
     public function import(ImportCampaignItemsRequest $request, Campaign $campaign, ImportCampaignItemsAction $action, AuditService $audit): JsonResponse
     {
         abort_unless($campaign->room_id === request()->attributes->get('room')->id, 404);
-        if ($campaign->status?->value === 'closed') {
+        if ($campaign->status === CampaignStatus::Closed) {
             abort(422, __('admin.campaign_closed'));
         }
         $items = $request->validated('items');

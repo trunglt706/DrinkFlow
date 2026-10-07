@@ -37,15 +37,17 @@ class NotificationChannelController extends Controller
      * @param Request $request Incoming request.
      * @param Room $room Room entity.
      * @param RoomNotificationChannelService $service Channel service.
+     * @param RoomNotificationChannelDispatcher $dispatcher Renders the test-send previews in the current locale.
      * @return View Blade view.
      */
-    public function page(Request $request, Room $room, RoomNotificationChannelService $service): View
+    public function page(Request $request, Room $room, RoomNotificationChannelService $service, RoomNotificationChannelDispatcher $dispatcher): View
     {
         $channels = $room->notificationChannels()->get()->map(fn (NotificationChannel $channel) => $service->mask($channel));
 
         return view('admin.notifications', [
             'room' => $room,
             'channels' => $channels,
+            'testPreviews' => $dispatcher->testPreviews($room),
         ]);
     }
 
@@ -130,7 +132,7 @@ class NotificationChannelController extends Controller
         RateLimiter::hit($rateLimitKey, $decaySeconds);
 
         $template = (string) $request->input('template', 'test_ping');
-        $allowedTemplates = ['test_ping', 'notification.test', 'campaign.created', 'campaign.closed', 'campaign.cancelled', 'debt.reminder'];
+        $allowedTemplates = [...RoomNotificationChannelDispatcher::TEST_TEMPLATES, 'notification.test'];
         if (! in_array($template, $allowedTemplates, true)) {
             $template = 'test_ping';
         }

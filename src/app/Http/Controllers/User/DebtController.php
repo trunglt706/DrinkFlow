@@ -80,7 +80,7 @@ class DebtController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => __('room.orders.payment_submitted_success', ['default' => 'Đã gửi yêu cầu xác nhận thanh toán. Quản trị viên sẽ kiểm tra và phê duyệt.']),
+            'message' => __('room.orders.payment_submitted_success'),
             'payment_status' => 'pending',
             'updated_count' => $updatedDebts->count(),
             'payment_confirmation' => [

@@ -40,6 +40,13 @@ export function campaignCreateComponent(defaults = {}, availableRoomUsers = [], 
     const defaultMenuCategory = page?.dataset.defaultMenuCategory || 'General items';
     const crawlerMenuCategory = page?.dataset.crawlerMenuCategory || 'Crawled items';
     const onlineRestaurantName = page?.dataset.onlineRestaurantName || 'Online restaurant';
+    const otherCategory = page?.dataset.defaultCategoryOther || 'Other';
+    let itemCategorySuggestions = [];
+    try {
+        itemCategorySuggestions = JSON.parse(page?.dataset.itemCategories || '[]');
+    } catch {
+        itemCategorySuggestions = [];
+    }
     const parseCleanNumber = val => {
         if (typeof val === 'number') return Number.isFinite(val) ? Math.round(val) : 0;
         const cleaned = String(val || '').replace(/\D/g, '');
@@ -119,8 +126,8 @@ export function campaignCreateComponent(defaults = {}, availableRoomUsers = [], 
         menuSearchInput: '',
         menuSearch: '',
         menuSearchTimer: null,
-        itemCategories: ['Cà phê', 'Trà', 'Trà sữa', 'Nước ép', 'Sinh tố', 'Đá xay', 'Sữa chua', 'Ăn vặt', 'Bánh ngọt', 'Đồ ăn', 'Khác'],
-        newItem: { id: null, name: '', price: 0, category: 'Khác', description: '', image_url: '', status: 'active', toppings: [], options: [] },
+        itemCategories: itemCategorySuggestions,
+        newItem: { id: null, name: '', price: 0, category: otherCategory, description: '', image_url: '', status: 'active', toppings: [], options: [] },
         imageUploading: false,
         selectedImageFileName: '',
         sponsors: [],
@@ -290,7 +297,7 @@ export function campaignCreateComponent(defaults = {}, availableRoomUsers = [], 
                 id: item.id || null,
                 name: String(item.name ?? '').trim(),
                 price: parseCleanNumber(item.price ?? item.base_price),
-                category: String(item.category ?? '').replace(/\s+/g, ' ').trim() || 'Khác',
+                category: String(item.category ?? '').replace(/\s+/g, ' ').trim() || otherCategory,
                 description: item.description || '',
                 image_url: normalizeImageUrl(item.image_url),
                 image_load_failed: false,
@@ -388,7 +395,7 @@ export function campaignCreateComponent(defaults = {}, availableRoomUsers = [], 
                 id: item.id || null,
                 name: item.name || '',
                 price: formatCurrencyDisplay(item.price),
-                category: item.category || 'Khác',
+                category: item.category || otherCategory,
                 description: item.description || '',
                 image_url: normalizeImageUrl(item.image_url),
                 image_load_failed: false,
@@ -454,7 +461,7 @@ export function campaignCreateComponent(defaults = {}, availableRoomUsers = [], 
         },
 
         get menuCategories() {
-            return [...new Set(this.menuItems.map(item => item.category || 'Khác'))]
+            return [...new Set(this.menuItems.map(item => item.category || otherCategory))]
                 .sort((left, right) => left.localeCompare(right, 'vi'));
         },
 
@@ -469,14 +476,14 @@ export function campaignCreateComponent(defaults = {}, availableRoomUsers = [], 
         },
 
         categoryItemCount(category) {
-            return this.menuItems.filter(item => (item.category || 'Khác') === category).length;
+            return this.menuItems.filter(item => (item.category || otherCategory) === category).length;
         },
 
         get visibleMenuItems() {
             return this.menuItems
                 .map((item, index) => ({ item, index }))
                 .filter(({ item }) => !this.menuSearch || normalizeSearch(item.name).includes(this.menuSearch))
-                .filter(({ item }) => this.menuView !== 'category' || (item.category || 'Khác') === this.selectedCategory);
+                .filter(({ item }) => this.menuView !== 'category' || (item.category || otherCategory) === this.selectedCategory);
         },
 
         addTopping(item) {
@@ -528,7 +535,7 @@ export function campaignCreateComponent(defaults = {}, availableRoomUsers = [], 
         /** Remove a whole category together with every menu item that belongs to it. */
         removeMenuCategory(category) {
             const count = this.categoryItemCount(category);
-            this.menuItems = this.menuItems.filter(item => (item.category || 'Khác') !== category);
+            this.menuItems = this.menuItems.filter(item => (item.category || otherCategory) !== category);
             this.syncSelectedCategory();
             if (window.notify) {
                 window.notify(categoryDeletedSuccess.replace(':category', category).replace(':count', String(count)), 'success');

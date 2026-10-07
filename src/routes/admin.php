@@ -58,7 +58,7 @@ Route::middleware('auth:admin')->prefix('admin/profile')->group(function () {
     Route::get('/', [\App\Http\Controllers\Admin\ProfileController::class, 'show'])->name('admin.profile');
     Route::get('/avatar', [\App\Http\Controllers\Admin\ProfileController::class, 'avatar'])->name('admin.profile.avatar.show');
     Route::patch('/', [\App\Http\Controllers\Admin\ProfileController::class, 'update'])->name('admin.profile.update');
-    Route::post('/avatar', [\App\Http\Controllers\Admin\ProfileController::class, 'uploadAvatar'])->name('admin.profile.avatar');
+    Route::post('/avatar', [\App\Http\Controllers\Admin\ProfileController::class, 'uploadAvatar'])->middleware('throttle:admin-image-upload')->name('admin.profile.avatar');
     Route::patch('/password', [\App\Http\Controllers\Admin\ProfileController::class, 'updatePassword'])->middleware('throttle:5,1')->name('admin.profile.password');
     Route::patch('/two-factor', [\App\Http\Controllers\Admin\ProfileController::class, 'updateTwoFactor'])->middleware('throttle:5,1')->name('admin.profile.two-factor');
 });
@@ -101,7 +101,7 @@ Route::middleware(['auth:admin', 'admin.room', 'room.subscription'])
     Route::post('/sponsor-honors/recalculate', [\App\Http\Controllers\Admin\SponsorHonorController::class, 'recalculate'])->middleware('throttle:sponsor-honors-recalculate')->name('admin.sponsor-honors.recalculate');
 
     // Dedicated Standalone Page Views
-    Route::get('/campaigns/list', [\App\Http\Controllers\Admin\CampaignController::class, 'page'])->name('admin.campaigns.page');
+    Route::get('/campaigns/list', [\App\Http\Controllers\Admin\CampaignPageController::class, 'page'])->name('admin.campaigns.page');
     // Sponsor draws: the backend picks every winner; the client never sends a user ID.
     Route::get('/sponsor-draws', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'index'])->name('admin.sponsor-draws.index');
     Route::post('/sponsor-draws', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'store'])->middleware('throttle:20,1')->name('admin.sponsor-draws.store');
@@ -125,14 +125,14 @@ Route::middleware(['auth:admin', 'admin.room', 'room.subscription'])
 
     // Campaign CRUD & Lifecycle API
     Route::get('/campaigns', [\App\Http\Controllers\Admin\CampaignController::class, 'index'])->name('admin.campaigns.index');
-    Route::get('/campaigns/create', [\App\Http\Controllers\Admin\CampaignController::class, 'create'])->name('admin.campaigns.create');
-    Route::get('/campaigns/previous-menus', [\App\Http\Controllers\Admin\CampaignController::class, 'previousMenus'])->name('admin.campaigns.previous-menus');
-    Route::get('/campaigns/{campaign}/edit', [\App\Http\Controllers\Admin\CampaignController::class, 'edit'])->name('admin.campaigns.edit');
+    Route::get('/campaigns/create', [\App\Http\Controllers\Admin\CampaignPageController::class, 'create'])->name('admin.campaigns.create');
+    Route::get('/campaigns/previous-menus', [\App\Http\Controllers\Admin\CampaignPageController::class, 'previousMenus'])->name('admin.campaigns.previous-menus');
+    Route::get('/campaigns/{campaign}/edit', [\App\Http\Controllers\Admin\CampaignPageController::class, 'edit'])->name('admin.campaigns.edit');
     Route::get('/campaigns/{campaign}/export/{dataset}', [\App\Http\Controllers\Admin\CampaignController::class, 'exportDetail'])->middleware('throttle:admin-export')->name('admin.campaigns.export-detail');
-    Route::get('/campaigns/{campaign}/info', [\App\Http\Controllers\Admin\CampaignController::class, 'showInfo'])->name('admin.campaigns.info');
-    Route::get('/campaigns/{campaign}/orders', [\App\Http\Controllers\Admin\CampaignController::class, 'showOrders'])->name('admin.campaigns.orders');
+    Route::get('/campaigns/{campaign}/info', [\App\Http\Controllers\Admin\CampaignPageController::class, 'showInfo'])->name('admin.campaigns.info');
+    Route::get('/campaigns/{campaign}/orders', [\App\Http\Controllers\Admin\CampaignPageController::class, 'showOrders'])->name('admin.campaigns.orders');
     Route::post('/campaigns/{campaign}/confirm-debts-paid', [\App\Http\Controllers\Admin\CampaignController::class, 'confirmDebtsPaid'])->middleware('throttle:admin-bulk')->name('admin.campaigns.confirm-debts-paid');
-    Route::get('/campaigns/{campaign}/menu', [\App\Http\Controllers\Admin\CampaignController::class, 'showMenu'])->name('admin.campaigns.menu');
+    Route::get('/campaigns/{campaign}/menu', [\App\Http\Controllers\Admin\CampaignPageController::class, 'showMenu'])->name('admin.campaigns.menu');
     Route::get('/campaigns/{campaign}', [\App\Http\Controllers\Admin\CampaignController::class, 'show'])->name('admin.campaigns.show');
     Route::get('/orders', [\App\Http\Controllers\Admin\OrderController::class, 'index'])->name('admin.orders.index');
     Route::get('/orders/aggregate', [\App\Http\Controllers\Admin\CampaignController::class, 'aggregate'])->name('admin.orders.aggregate');
@@ -149,37 +149,37 @@ Route::middleware(['auth:admin', 'admin.room', 'room.subscription'])
     Route::delete('/orders/{order}', [\App\Http\Controllers\Admin\OrderController::class, 'destroy'])->name('admin.orders.destroy');
     Route::post('/orders/{order}/confirm-payment', [\App\Http\Controllers\Admin\OrderController::class, 'confirmPayment'])->name('admin.orders.confirm-payment');
     Route::post('/campaigns', [\App\Http\Controllers\Admin\CampaignController::class, 'store'])->name('admin.campaigns.store');
-    Route::post('/campaigns/menu-images', [\App\Http\Controllers\Admin\CampaignController::class, 'uploadImage'])->name('admin.campaigns.menu-images.store');
+    Route::post('/campaigns/menu-images', [\App\Http\Controllers\Admin\CampaignController::class, 'uploadImage'])->middleware('throttle:admin-image-upload')->name('admin.campaigns.menu-images.store');
     Route::patch('/campaigns/{campaign}', [\App\Http\Controllers\Admin\CampaignController::class, 'update'])->name('admin.campaigns.update');
     Route::delete('/campaigns/{campaign}', [\App\Http\Controllers\Admin\CampaignController::class, 'destroy'])->name('admin.campaigns.destroy');
-    Route::post('/campaigns/{campaign}/activate', [\App\Http\Controllers\Admin\CampaignController::class, 'activate'])->name('admin.campaigns.activate');
-    Route::post('/campaigns/{campaign}/extend-deadline', [\App\Http\Controllers\Admin\CampaignController::class, 'extendDeadline'])->name('admin.campaigns.extend-deadline');
+    Route::post('/campaigns/{campaign}/activate', [\App\Http\Controllers\Admin\CampaignLifecycleController::class, 'activate'])->name('admin.campaigns.activate');
+    Route::post('/campaigns/{campaign}/extend-deadline', [\App\Http\Controllers\Admin\CampaignLifecycleController::class, 'extendDeadline'])->name('admin.campaigns.extend-deadline');
     Route::patch('/campaigns/{campaign}/payment-account', [\App\Http\Controllers\Admin\CampaignController::class, 'updatePaymentAccount'])->name('admin.campaigns.payment-account');
-    Route::post('/campaigns/{campaign}/lock-ordering', [\App\Http\Controllers\Admin\CampaignController::class, 'lockOrdering'])->name('admin.campaigns.lock-ordering');
-    Route::post('/campaigns/{campaign}/unlock-ordering', [\App\Http\Controllers\Admin\CampaignController::class, 'unlockOrdering'])->name('admin.campaigns.unlock-ordering');
-    Route::post('/campaigns/{campaign}/mark-delivering', [\App\Http\Controllers\Admin\CampaignController::class, 'markDelivering'])->name('admin.campaigns.mark-delivering');
-    Route::post('/campaigns/{campaign}/resend-notification', [\App\Http\Controllers\Admin\CampaignController::class, 'resendNotification'])->middleware('throttle:campaign-resend-notification')->name('admin.campaigns.resend-notification');
-    Route::post('/campaigns/{campaign}/cancel', [\App\Http\Controllers\Admin\CampaignController::class, 'cancel'])->name('admin.campaigns.cancel');
-    Route::post('/campaigns/{campaign}/archive', [\App\Http\Controllers\Admin\CampaignController::class, 'archive'])->name('admin.campaigns.archive');
-    Route::post('/campaigns/{campaign}/duplicate', [\App\Http\Controllers\Admin\CampaignController::class, 'duplicate'])->name('admin.campaigns.duplicate');
-    Route::post('/campaigns/{campaign}/split-bill', [\App\Http\Controllers\Admin\CampaignController::class, 'splitBill'])->name('admin.campaigns.split-bill');
-    Route::post('/campaigns/{campaign}/items', [\App\Http\Controllers\Admin\CampaignController::class, 'storeItem'])->name('admin.campaign-items.store');
-    Route::patch('/campaigns/{campaign}/items-batch-status', [\App\Http\Controllers\Admin\CampaignController::class, 'batchUpdateItemStatus'])->name('admin.campaign-items.batch-status');
-    Route::patch('/campaigns/{campaign}/items/{item}', [\App\Http\Controllers\Admin\CampaignController::class, 'updateItem'])->name('admin.campaign-items.update');
-    Route::patch('/campaigns/{campaign}/items/{item}/status', [\App\Http\Controllers\Admin\CampaignController::class, 'toggleItemStatus'])->name('admin.campaign-items.status');
-    Route::delete('/campaigns/{campaign}/items/{item}', [\App\Http\Controllers\Admin\CampaignController::class, 'archiveItem'])->name('admin.campaign-items.archive');
-    Route::post('/campaigns/{campaign}/items/{item}/toppings', [\App\Http\Controllers\Admin\CampaignController::class, 'storeTopping'])->name('admin.campaign-item-toppings.store');
-    Route::post('/campaigns/{campaign}/items/{item}/sizes', [\App\Http\Controllers\Admin\CampaignController::class, 'storeSize'])->name('admin.campaign-item-sizes.store');
-    Route::patch('/campaigns/{campaign}/items/{item}/toppings/{option}', [\App\Http\Controllers\Admin\CampaignController::class, 'updateTopping'])->name('admin.campaign-item-toppings.update');
-    Route::patch('/campaigns/{campaign}/items/{item}/sizes/{option}', [\App\Http\Controllers\Admin\CampaignController::class, 'updateSize'])->name('admin.campaign-item-sizes.update');
-    Route::delete('/campaigns/{campaign}/items/{item}/toppings/{option}', [\App\Http\Controllers\Admin\CampaignController::class, 'deleteTopping'])->name('admin.campaign-item-toppings.delete');
-    Route::delete('/campaigns/{campaign}/items/{item}/sizes/{option}', [\App\Http\Controllers\Admin\CampaignController::class, 'deleteSize'])->name('admin.campaign-item-sizes.delete');
-    Route::get('/campaigns/{campaign}/close-summary', [\App\Http\Controllers\Admin\CampaignController::class, 'closeSummary'])->name('admin.campaigns.close-summary');
-    Route::post('/campaigns/{campaign}/close',[\App\Http\Controllers\Admin\CampaignController::class, 'close'])->name('admin.campaigns.close');
+    Route::post('/campaigns/{campaign}/lock-ordering', [\App\Http\Controllers\Admin\CampaignLifecycleController::class, 'lockOrdering'])->name('admin.campaigns.lock-ordering');
+    Route::post('/campaigns/{campaign}/unlock-ordering', [\App\Http\Controllers\Admin\CampaignLifecycleController::class, 'unlockOrdering'])->name('admin.campaigns.unlock-ordering');
+    Route::post('/campaigns/{campaign}/mark-delivering', [\App\Http\Controllers\Admin\CampaignLifecycleController::class, 'markDelivering'])->name('admin.campaigns.mark-delivering');
+    Route::post('/campaigns/{campaign}/resend-notification', [\App\Http\Controllers\Admin\CampaignLifecycleController::class, 'resendNotification'])->middleware('throttle:campaign-resend-notification')->name('admin.campaigns.resend-notification');
+    Route::post('/campaigns/{campaign}/cancel', [\App\Http\Controllers\Admin\CampaignLifecycleController::class, 'cancel'])->name('admin.campaigns.cancel');
+    Route::post('/campaigns/{campaign}/archive', [\App\Http\Controllers\Admin\CampaignLifecycleController::class, 'archive'])->name('admin.campaigns.archive');
+    Route::post('/campaigns/{campaign}/duplicate', [\App\Http\Controllers\Admin\CampaignLifecycleController::class, 'duplicate'])->name('admin.campaigns.duplicate');
+    Route::post('/campaigns/{campaign}/split-bill', [\App\Http\Controllers\Admin\CampaignLifecycleController::class, 'splitBill'])->name('admin.campaigns.split-bill');
+    Route::post('/campaigns/{campaign}/items', [\App\Http\Controllers\Admin\CampaignItemController::class, 'storeItem'])->name('admin.campaign-items.store');
+    Route::patch('/campaigns/{campaign}/items-batch-status', [\App\Http\Controllers\Admin\CampaignItemController::class, 'batchUpdateItemStatus'])->name('admin.campaign-items.batch-status');
+    Route::patch('/campaigns/{campaign}/items/{item}', [\App\Http\Controllers\Admin\CampaignItemController::class, 'updateItem'])->name('admin.campaign-items.update');
+    Route::patch('/campaigns/{campaign}/items/{item}/status', [\App\Http\Controllers\Admin\CampaignItemController::class, 'toggleItemStatus'])->name('admin.campaign-items.status');
+    Route::delete('/campaigns/{campaign}/items/{item}', [\App\Http\Controllers\Admin\CampaignItemController::class, 'archiveItem'])->name('admin.campaign-items.archive');
+    Route::post('/campaigns/{campaign}/items/{item}/toppings', [\App\Http\Controllers\Admin\CampaignItemController::class, 'storeTopping'])->name('admin.campaign-item-toppings.store');
+    Route::post('/campaigns/{campaign}/items/{item}/sizes', [\App\Http\Controllers\Admin\CampaignItemController::class, 'storeSize'])->name('admin.campaign-item-sizes.store');
+    Route::patch('/campaigns/{campaign}/items/{item}/toppings/{option}', [\App\Http\Controllers\Admin\CampaignItemController::class, 'updateTopping'])->name('admin.campaign-item-toppings.update');
+    Route::patch('/campaigns/{campaign}/items/{item}/sizes/{option}', [\App\Http\Controllers\Admin\CampaignItemController::class, 'updateSize'])->name('admin.campaign-item-sizes.update');
+    Route::delete('/campaigns/{campaign}/items/{item}/toppings/{option}', [\App\Http\Controllers\Admin\CampaignItemController::class, 'deleteTopping'])->name('admin.campaign-item-toppings.delete');
+    Route::delete('/campaigns/{campaign}/items/{item}/sizes/{option}', [\App\Http\Controllers\Admin\CampaignItemController::class, 'deleteSize'])->name('admin.campaign-item-sizes.delete');
+    Route::get('/campaigns/{campaign}/close-summary', [\App\Http\Controllers\Admin\CampaignLifecycleController::class, 'closeSummary'])->name('admin.campaigns.close-summary');
+    Route::post('/campaigns/{campaign}/close',[\App\Http\Controllers\Admin\CampaignLifecycleController::class, 'close'])->name('admin.campaigns.close');
     Route::post('/crawler/preview', [\App\Http\Controllers\Admin\CrawlerController::class, 'preview'])
         ->middleware('throttle:crawler-preview')
         ->name('admin.crawler.preview');
-    Route::post('/campaigns/{campaign}/crawler/import', [\App\Http\Controllers\Admin\CrawlerController::class, 'import'])->name('admin.crawler.import');
+    Route::post('/campaigns/{campaign}/crawler/import', [\App\Http\Controllers\Admin\CrawlerController::class, 'import'])->middleware('throttle:admin-bulk')->name('admin.crawler.import');
 
     // Data Gateway Converter API
     Route::get('/data-gateway/config', [\App\Http\Controllers\Admin\DataGatewayController::class, 'config'])->name('admin.data-gateway.config');

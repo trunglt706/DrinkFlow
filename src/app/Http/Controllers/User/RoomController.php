@@ -51,6 +51,8 @@ class RoomController extends Controller
             $user = $device?->roomUser?->globalUser;
             if ($user) {
                 Auth::guard('web')->login($user, true);
+                // New authenticated session: never keep a session id that existed before login (fixation).
+                $request->session()->regenerate();
                 $audit->record('user.logged_in', 'global_user', $user->id, $room->id, [], [], [
                     'authentication_method' => 'trusted_device',
                 ]);

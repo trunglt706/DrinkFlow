@@ -125,7 +125,7 @@ class UserGlobalDashboardService
                     'code' => '#'.$order->code,
                     'time_formatted' => $timeText,
                     'room_name' => $order->room?->name ?? 'DrinkFlow Room',
-                    'restaurant' => $order->campaign?->restaurant ?: 'Cửa hàng',
+                    'restaurant' => $order->campaign?->restaurant ?: __('global.dashboard.unknown_restaurant'),
                     'items_summary' => $itemsText,
                     'final_amount' => $order->final_amount,
                     'final_amount_formatted' => FormatHelper::formatCurrency((int) $order->final_amount),

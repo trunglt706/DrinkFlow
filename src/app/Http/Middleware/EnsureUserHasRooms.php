@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Middleware;
 
 use App\Models\GlobalUser;
@@ -23,7 +25,7 @@ class EnsureUserHasRooms
 
         if (!$user) {
             if ($request->expectsJson() || $request->wantsJson()) {
-                abort(401, 'Unauthenticated.');
+                abort(401, __('errors.common.unauthenticated'));
             }
             return redirect()->guest(route('auth.google'));
         }

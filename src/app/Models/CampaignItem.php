@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\CampaignItemOptionStatus;
 use App\Enums\CampaignItemStatus;
 use App\Models\Concerns\BelongsToRoom;
 use App\Models\Concerns\HasNormalizedName;
@@ -95,6 +96,19 @@ class CampaignItem extends Model
     public function toppings(): HasMany
     {
         return $this->hasMany(CampaignItemTopping::class);
+    }
+
+    /**
+     * Eager-load constraints for the sizes and toppings a member may see and order: deleted (hidden) options
+     * are left out, in menu order. Use as `->with(CampaignItem::orderableOptions())`.
+     *
+     * @return array<string, \Closure> Relation name => query constraint.
+     */
+    public static function orderableOptions(): array
+    {
+        $active = static fn ($query) => $query->where('status', CampaignItemOptionStatus::Active->value)->orderBy('sort_order');
+
+        return ['sizes' => $active, 'toppings' => $active];
     }
 
     public function sizes(): HasMany

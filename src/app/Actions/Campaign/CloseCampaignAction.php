@@ -236,28 +236,27 @@ class CloseCampaignAction
 
                         if ($calc['final_amount'] > 0 || $calc['subtotal'] > 0) {
                             $noteParts = [];
-                            $noteParts[] = "Món: " . FormatHelper::formatCurrency($calc['subtotal']);
+                            $noteParts[] = __('admin.debt_note_items', ['amount' => FormatHelper::formatCurrency($calc['subtotal'])]);
                             if ($calc['delivery_fee'] > 0) {
-                                $noteParts[] = "Ship: +" . FormatHelper::formatCurrency($calc['delivery_fee']);
+                                $noteParts[] = __('admin.debt_note_shipping', ['amount' => FormatHelper::formatCurrency($calc['delivery_fee'])]);
                             }
                             if ($calc['discount'] > 0) {
-                                $noteParts[] = "Giảm: -" . FormatHelper::formatCurrency($calc['discount']);
+                                $noteParts[] = __('admin.debt_note_discount', ['amount' => FormatHelper::formatCurrency($calc['discount'])]);
                             }
                             if ($calc['sponsor_amount'] > 0) {
-                                $noteParts[] = "Tài trợ: -" . FormatHelper::formatCurrency($calc['sponsor_amount']);
+                                $noteParts[] = __('admin.debt_note_sponsor', ['amount' => FormatHelper::formatCurrency($calc['sponsor_amount'])]);
                             }
                             if ($calc['self_paid_debt'] > 0) {
-                                $noteParts[] = "Trả riêng: " . FormatHelper::formatCurrency($calc['self_paid_debt']);
+                                $noteParts[] = __('admin.debt_note_self_paid', ['amount' => FormatHelper::formatCurrency($calc['self_paid_debt'])]);
                             }
 
-                            $note = sprintf(
-                                "Đơn %s chiến dịch #%s (%s) - Thực trả: %s [%s]",
-                                $orderCodes,
-                                (string) $campaign->code,
-                                (string) ($campaign->restaurant ?: $campaign->name),
-                                FormatHelper::formatCurrency($calc['final_amount']),
-                                implode(', ', $noteParts)
-                            );
+                            $note = __('admin.debt_note', [
+                                'orders' => $orderCodes,
+                                'code' => (string) $campaign->code,
+                                'restaurant' => (string) ($campaign->restaurant ?: $campaign->name),
+                                'amount' => FormatHelper::formatCurrency($calc['final_amount']),
+                                'details' => implode(', ', $noteParts),
+                            ]);
 
                             Debt::updateOrCreate(
                                 [

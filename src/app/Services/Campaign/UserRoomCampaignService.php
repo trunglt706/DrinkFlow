@@ -138,7 +138,7 @@ class UserRoomCampaignService
         $activeCampaign = $room->campaigns()
             ->where('status', CampaignStatus::Active)
             ->with(['creator', 'items' => function ($q) {
-                $q->where('status', CampaignItemStatus::Active)->with(['sizes', 'toppings']);
+                $q->where('status', CampaignItemStatus::Active)->with(CampaignItem::orderableOptions());
             }])
             ->first();
 

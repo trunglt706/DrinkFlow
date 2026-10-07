@@ -52,6 +52,8 @@ class ResolveGlobalUser
             if ($device?->roomUser?->globalUser) {
                 $user = $device->roomUser->globalUser;
                 auth('web')->login($user, true);
+                // New authenticated session: never keep a session id that existed before login (fixation).
+                $request->session()->regenerate();
             }
         }
 

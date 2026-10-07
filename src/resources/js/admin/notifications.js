@@ -181,40 +181,15 @@ export function initAdminNotifications() {
             testPreviewFormatLabel.textContent = type === 'telegram' ? 'HTML (Telegram)' : type === 'slack' ? 'mrkdwn (Slack)' : type === 'chatwork' ? 'BBCode (ChatWork)' : 'JSON (Webhook)';
         }
 
-        const previews = {
-            test_ping: {
-                telegram: `<b>🧪 [DrinkFlow] Kiểm tra kết nối kênh thông báo</b>\n━━━━━━━━━━━━━━━━━━━━\n• Kênh thông báo đã được kết nối thành công và sẵn sàng nhận thông báo tự động từ DrinkFlow.\n<i>⚡ DrinkFlow Notification</i>`,
-                slack: `*🧪 [DrinkFlow] Notification Channel Connection Test*\n────────────────────────────\n• The notification channel is successfully connected and ready to receive automated updates from DrinkFlow.\n_DrinkFlow Notification_`,
-                chatwork: `[info][title]🧪 [DrinkFlow] 通知チャンネルの接続テスト[/title]• 通知チャンネルが正常に接続され、DrinkFlow からの自動通知を受け取る準備が整いました。[/info]`,
-                webhook: `{\n  "event": "notification.test",\n  "title": "Notification Channel Connection Test",\n  "icon": "🧪",\n  "message": "Kênh thông báo đã kết nối thành công.",\n  "timestamp": "${new Date().toISOString()}"\n}`
-            },
-            'campaign.created': {
-                telegram: `<b>🚀 [DrinkFlow] Kèo nước mới</b>\n━━━━━━━━━━━━━━━━━━━━\n🧋 <b>Tên:</b> Trà Sữa Phê La (Mẫu thử)\n🏬 <b>Quán:</b> Phê La Tea & Coffee\n⏰ <b>Thời hạn:</b> 11:30 16/09/2026\n💰 <b>Trần giá mỗi món:</b> 60.000đ\n🎁 <b>Tài trợ:</b> Team Lead (20.000đ)\n━━━━━━━━━━━━━━━━━━━━\n👉 <a href="http://127.0.0.1:8080/rooms/cong-nghe/campaigns"><b>Bấm vào đây để đặt món ngay</b></a>\n<i>⚡ DrinkFlow Notification</i>`,
-                slack: `*🚀 [DrinkFlow] New campaign*\n────────────────────────────\n🧋 *Name:* Trà Sữa Phê La (Sample)\n🏬 *Store:* Phê La Tea & Coffee\n⏰ *Deadline:* 11:30 16/09/2026\n💰 *Budget:* 60.000đ\n🎁 *Sponsor:* Team Lead (20.000đ)\n────────────────────────────\n👉 <http://127.0.0.1:8080/rooms/cong-nghe/campaigns|*Click here to place your order now*>\n_DrinkFlow Notification_`,
-                chatwork: `[info][title]🚀 [DrinkFlow] 新しいキャンペーン[/title]🧋 名前: Trà Sữa Phê La\n🏬 店舗: Phê La Tea & Coffee\n⏰ 締切: 11:30 16/09/2026\n💰 上限: 60.000đ\n[hr]👉 ここをクリックして今すぐ注文: http://127.0.0.1:8080/rooms/cong-nghe/campaigns[/info]`,
-                webhook: `{\n  "event": "campaign.created",\n  "title": "New campaign",\n  "icon": "🚀",\n  "campaign": {\n    "name": "Trà Sữa Phê La",\n    "restaurant": "Phê La Tea & Coffee",\n    "order_url": "http://127.0.0.1:8080/rooms/cong-nghe/campaigns"\n  },\n  "timestamp": "${new Date().toISOString()}"\n}`
-            },
-            'campaign.closed': {
-                telegram: `<b>🔒 [DrinkFlow] Chiến dịch đã đóng</b>\n━━━━━━━━━━━━━━━━━━━━\n🧋 <b>Tên:</b> Trà Sữa Phê La\n🏬 <b>Quán:</b> Phê La Tea & Coffee\n• Chiến dịch đã đóng đặt món. Admin đang tổng hợp đơn để tiến hành order.\n<i>⚡ DrinkFlow Notification</i>`,
-                slack: `*🔒 [DrinkFlow] Campaign closed*\n────────────────────────────\n🧋 *Name:* Trà Sữa Phê La\n🏬 *Store:* Phê La Tea & Coffee\n• Campaign has closed for ordering. Admin is aggregating orders to proceed.\n_DrinkFlow Notification_`,
-                chatwork: `[info][title]🔒 [DrinkFlow] キャンペーン締切[/title]🧋 名前: Trà Sữa Phê La\n• キャンペーンの注文受付は終了しました。[/info]`,
-                webhook: `{\n  "event": "campaign.closed",\n  "title": "Campaign closed",\n  "icon": "🔒",\n  "timestamp": "${new Date().toISOString()}"\n}`
-            },
-            'campaign.cancelled': {
-                telegram: `<b>🚫 [DrinkFlow] Chiến dịch đã hủy</b>\n━━━━━━━━━━━━━━━━━━━━\n🧋 <b>Tên:</b> Trà Sữa Phê La\n🏬 <b>Quán:</b> Phê La Tea & Coffee\n• Chiến dịch đã bị hủy. Hẹn gặp lại bạn ở các kèo nước tiếp theo!\n<i>⚡ DrinkFlow Notification</i>`,
-                slack: `*🚫 [DrinkFlow] Campaign cancelled*\n────────────────────────────\n🧋 *Name:* Trà Sữa Phê La\n🏬 *Store:* Phê La Tea & Coffee\n• Campaign has been cancelled. See you in the next drink campaign!\n_DrinkFlow Notification_`,
-                chatwork: `[info][title]🚫 [DrinkFlow] キャンペーン中止[/title]🧋 名前: Trà Sữa Phê La\n• キャンペーンは中止されました。[/info]`,
-                webhook: `{\n  "event": "campaign.cancelled",\n  "title": "Campaign cancelled",\n  "icon": "🚫",\n  "timestamp": "${new Date().toISOString()}"\n}`
-            },
-            'debt.reminder': {
-                telegram: `<b>💳 [DrinkFlow] Nhắc thanh toán công nợ</b>\n━━━━━━━━━━━━━━━━━━━━\n• Có 3 khoản công nợ cần thanh toán, tổng còn lại 95.000đ.\n<i>⚡ DrinkFlow Notification</i>`,
-                slack: `*💳 [DrinkFlow] Debt Payment Reminder*\n────────────────────────────\n• There are 3 outstanding debts to be settled, total remaining 95.000đ.\n_DrinkFlow Notification_`,
-                chatwork: `[info][title]💳 [DrinkFlow] 未払い清算リマインダー[/title]• 3 件の未払いがあります。合計残高: 95.000đ[/info]`,
-                webhook: `{\n  "event": "debt.reminder",\n  "title": "Debt Payment Reminder",\n  "icon": "💳",\n  "message": "Có 3 khoản nợ cần thanh toán, tổng 95.000đ",\n  "timestamp": "${new Date().toISOString()}"\n}`
-            }
-        };
+        // Rendered by the server with the same builder and formatters as the real test send (current locale).
+        let previews = {};
+        try {
+            previews = JSON.parse(testPreviewBox.dataset.previews || '{}');
+        } catch {
+            previews = {};
+        }
 
-        const templatePreviews = previews[template] || previews.test_ping;
+        const templatePreviews = previews[template] || previews.test_ping || {};
         testPreviewBox.textContent = templatePreviews[type] || templatePreviews.telegram || '';
     };
 

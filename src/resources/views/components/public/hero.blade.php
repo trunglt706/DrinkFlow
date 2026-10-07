@@ -64,11 +64,12 @@
     </div>
 
     <!-- Mock Order Session Card (Level 1 Surface) -->
+    {{-- The only image above the fold is the landing LCP element: load it eagerly with high priority, never lazily. --}}
     <div
         class="lg:col-span-5 rounded-2xl overflow-hidden border border-[#E2E8F0] shadow-sm bg-white relative aspect-[4/3] flex items-center justify-center group">
         <img alt="{{ __('public.hero.image_alt') }}"
             class="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-500"
-            src="{{ asset('images/home-intro.webp') }}" width="512" height="382" fetchpriority="high"
+            src="{{ asset('images/home-intro.webp') }}" width="512" height="382" fetchpriority="high" loading="eager"
             decoding="async"
             onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'600\' height=\'450\' viewBox=\'0 0 600 450\'><rect width=\'600\' height=\'450\' fill=\'%23eff4ff\'/><text x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'sans-serif\' font-size=\'20\' fill=\'%23006948\'>DrinkFlow Workspace Preview</text></svg>';" />
     </div>

@@ -11,7 +11,6 @@ import { initAdminAuth } from './admin/auth';
 import { initAdminAudit } from './admin/audit';
 import { initAdminCampaigns } from './admin/campaigns';
 import { campaignCreateComponent } from './admin/campaign-create';
-import { initAdminCampaignDetail } from './admin/campaign-detail';
 import { initCloseCampaignModal } from './admin/close-campaign-modal';
 import { initAdminDashboard } from './admin/dashboard';
 import { initAdminDebts } from './admin/debts';
@@ -40,7 +39,6 @@ export {
     initAdminAudit,
     initAdminCampaigns,
     campaignCreateComponent,
-    initAdminCampaignDetail,
     initCloseCampaignModal,
     initAdminDashboard,
     initAdminDebts,
@@ -77,7 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initAdminAuth();
     initAdminAudit();
     initAdminCampaigns();
-    initAdminCampaignDetail();
     initCloseCampaignModal();
     initAdminDashboard();
     initAdminDebts();

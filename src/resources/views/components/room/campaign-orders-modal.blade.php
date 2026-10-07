@@ -111,10 +111,10 @@
                                                                 </span>
                                                             </template>
                                                             <template x-if="item.sugar_percent !== null && item.sugar_percent !== undefined && item.sugar_percent !== ''">
-                                                                <span class="text-slate-500" x-text="item.sugar_percent + '% đường'"></span>
+                                                                <span class="text-slate-500" x-text="item.sugar_percent + '% ' + {{ \Illuminate\Support\Js::from(__('room.orders.sugar')) }}"></span>
                                                             </template>
                                                             <template x-if="item.ice_percent !== null && item.ice_percent !== undefined && item.ice_percent !== ''">
-                                                                <span class="text-slate-500" x-text="item.ice_percent + '% đá'"></span>
+                                                                <span class="text-slate-500" x-text="item.ice_percent + '% ' + {{ \Illuminate\Support\Js::from(__('room.orders.ice')) }}"></span>
                                                             </template>
                                                             <template x-if="item.note">
                                                                 <span class="italic text-slate-400 text-[10px]" x-text="'(' + item.note + ')'"></span>

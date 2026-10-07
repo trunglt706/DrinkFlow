@@ -53,7 +53,7 @@ class UserFeedbackService
         }
 
         $primaryRoomUser = $user->roomUsers()->with('room')->where('status', RoomUserStatus::Active->value)->orderByDesc('last_active_at')->first();
-        $department = $primaryRoomUser?->room?->name ?? 'Ban Kỹ thuật';
+        $department = $primaryRoomUser?->room?->name ?? __('global.profile.default_dept');
 
         // Daily quota: 1 submission per day
         $todayCount = Feedback::query()
@@ -116,7 +116,7 @@ class UserFeedbackService
     public function storeFeedback(GlobalUser $user, array $validated): void
     {
         $primaryRoomUser = $user->roomUsers()->with('room')->where('status', RoomUserStatus::Active->value)->orderByDesc('last_active_at')->first();
-        $department = $primaryRoomUser?->room?->name ?? 'Ban Công nghệ & Kỹ thuật số';
+        $department = $primaryRoomUser?->room?->name ?? __('global.profile.default_dept');
 
         Feedback::create([
             'global_user_id' => $user->id,

@@ -36,6 +36,66 @@ class TranslationCoverageTest extends TestCase
     }
 
     /**
+     * The vi, en and ja lang files must define the same keys, so no locale falls back to another language
+     * and no orphan key lingers in a single locale.
+     */
+    public function test_every_locale_defines_the_same_keys(): void
+    {
+        $keysByLocale = [];
+        foreach (self::LOCALES as $locale) {
+            $keysByLocale[$locale] = $this->localeKeys($locale);
+        }
+
+        $drift = [];
+        foreach (self::LOCALES as $locale) {
+            foreach (self::LOCALES as $other) {
+                if ($other === $locale) {
+                    continue;
+                }
+                foreach (array_diff($keysByLocale[$locale], $keysByLocale[$other]) as $key) {
+                    $drift[] = sprintf('%s: defined in %s, missing in %s', $key, $locale, $other);
+                }
+            }
+        }
+
+        $this->assertSame([], $drift, "Translation keys out of sync:\n".implode("\n", $drift));
+    }
+
+    /**
+     * Flatten every lang/{locale}/*.php file into dotted keys. A list (e.g. category suggestions) counts as one key.
+     *
+     * @param string $locale Locale folder name.
+     * @return array<int, string> Dotted keys such as "admin.default_category_other".
+     */
+    private function localeKeys(string $locale): array
+    {
+        $keys = [];
+        foreach (glob(lang_path($locale.'/*.php')) ?: [] as $file) {
+            $this->flattenKeys(require $file, basename($file, '.php'), $keys);
+        }
+        sort($keys);
+
+        return $keys;
+    }
+
+    /**
+     * @param array<array-key, mixed> $lines Translation lines.
+     * @param string $prefix Key prefix built so far.
+     * @param array<int, string> $keys Collected keys (by reference).
+     */
+    private function flattenKeys(array $lines, string $prefix, array &$keys): void
+    {
+        foreach ($lines as $key => $value) {
+            $path = $prefix.'.'.$key;
+            if (is_array($value) && ! array_is_list($value)) {
+                $this->flattenKeys($value, $path, $keys);
+            } else {
+                $keys[] = $path;
+            }
+        }
+    }
+
+    /**
      * Collect literal keys passed to __(), trans(), @lang() or Lang::get().
      *
      * @return array<string, string> Map of translation key to the first file that uses it.

@@ -58,10 +58,10 @@ class StoreRoomUserRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'email' => __('admin.th_email') ?? 'Email',
-            'name' => __('admin.th_user_member') ?? 'Họ và tên',
-            'phone' => __('admin.phone') ?? 'Số điện thoại',
-            'desk_location' => __('admin.desk_location') ?? 'Vị trí bàn làm việc',
+            'email' => __('admin.th_email'),
+            'name' => __('admin.th_user_member'),
+            'phone' => __('admin.phone'),
+            'desk_location' => __('admin.desk_location'),
         ];
     }
 }

@@ -15,6 +15,9 @@ class RoomNotificationChannelDispatcher
 {
     use SendsNotificationChannelPayloads;
 
+    /** Test templates an administrator can send (and preview) from the notification channels page. */
+    public const TEST_TEMPLATES = ['test_ping', 'campaign.created', 'campaign.closed', 'campaign.cancelled', 'debt.reminder'];
+
     /**
      * Deliver a payload to every enabled and correctly configured room channel.
      *
@@ -167,6 +170,31 @@ class RoomNotificationChannelDispatcher
                 'message' => __('messages.test_ping_body'),
             ],
         };
+    }
+
+    /**
+     * Render every test template exactly as each channel type would receive it, for the test-send preview.
+     *
+     * Uses the same payload builder and formatters as {@see test()}, so the preview follows the current
+     * locale and never drifts from the message actually sent.
+     *
+     * @param Room|null $room Room whose name and links appear in the samples.
+     * @return array<string, array<string, string>> Preview text keyed by template, then by channel type.
+     */
+    public function testPreviews(?Room $room = null): array
+    {
+        $previews = [];
+        foreach (self::TEST_TEMPLATES as $template) {
+            $payload = $this->buildTestPayload($template, $room);
+            $previews[$template] = [
+                'telegram' => $this->formatTelegramMessage($payload),
+                'slack' => $this->formatSlackMessage($payload),
+                'chatwork' => $this->formatChatworkMessage($payload),
+                'webhook' => (string) json_encode($this->formatWebhookPayload($payload), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ];
+        }
+
+        return $previews;
     }
 
     /**

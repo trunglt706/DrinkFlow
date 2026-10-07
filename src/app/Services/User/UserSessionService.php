@@ -31,7 +31,7 @@ class UserSessionService
 
         // Current session & device details
         $currentSessionId = $request->session()->getId();
-        $currentUa = $request->userAgent() ?: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/128.0.0.0';
+        $currentUa = $request->userAgent();
         $currentDeviceInfo = $this->parseUserAgent($currentUa);
         $currentIp = $request->ip() ?: __('global.devices.internal_network');
         $currentSessionCode = '#SES-'.strtoupper(substr(md5((string) $currentSessionId), 0, 4)).'-VN';
@@ -51,8 +51,6 @@ class UserSessionService
             $otherSessions[] = [
                 'id' => $sess->id,
                 'device_name' => $parsed['device_name'],
-                'type_label' => $parsed['type_label'],
-                'badge_class' => $parsed['badge_class'],
                 'icon' => $parsed['icon'],
                 'ip' => $sess->ip_address ?: __('global.devices.internal_network'),
                 'location' => __('global.devices.default_country'),
@@ -139,59 +137,53 @@ class UserSessionService
     }
 
     /**
-     * Phân tích chuỗi User-Agent thành thông tin thiết bị, trình duyệt và hệ điều hành dễ đọc.
+     * Phân tích chuỗi User-Agent thành tên thiết bị (trình duyệt + hệ điều hành) và icon hiển thị.
+     *
+     * Chỉ suy ra những gì User-Agent thật sự cho biết; không đoán model máy. Thứ tự kiểm tra quan trọng:
+     * UA của Edge/Opera/Samsung chứa "Chrome", UA của Chrome chứa "Safari", UA của iPad (iPadOS 13+) giống macOS.
      *
      * @param  string|null  $userAgent  Chuỗi User-Agent từ HTTP header
-     * @return array<string, string> Mảng chứa tên thiết bị, hệ điều hành, icon và badge style
+     * @return array{browser: string, os: string, device_name: string, icon: string} Thông tin hiển thị của thiết bị
      */
     public function parseUserAgent(?string $userAgent): array
     {
-        $ua = $userAgent ?: '';
-        $browser = 'Chrome';
-        $os = 'Windows 11 Pro';
-        $icon = 'laptop_windows';
-        $type = 'Desktop Workstation';
-        $badgeClass = 'bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0]';
+        $ua = (string) $userAgent;
 
-        if (stripos($ua, 'iPhone') !== false || stripos($ua, 'iPad') !== false) {
-            $os = 'iPhone 15 Pro Max';
-            $browser = 'Safari';
-            $icon = 'smartphone';
-            $type = 'Mobile Client';
-            $badgeClass = 'bg-[#FFFBEB] text-[#92400E] border-amber-200';
-        } elseif (stripos($ua, 'Android') !== false) {
-            $os = 'Android';
-            $browser = 'Chrome Mobile';
-            $icon = 'smartphone';
-            $type = 'Mobile Client';
-            $badgeClass = 'bg-[#FFFBEB] text-[#92400E] border-amber-200';
-        } elseif (stripos($ua, 'Macintosh') !== false || stripos($ua, 'Mac OS') !== false) {
-            $os = 'Macbook Pro M2';
-            $browser = 'Chrome';
-            $icon = 'laptop_mac';
-            $type = 'Trusted Device';
-            $badgeClass = 'bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0]';
-        } elseif (stripos($ua, 'Edge') !== false || stripos($ua, 'Edg') !== false) {
-            $os = 'Máy trạm Lab Kỹ thuật';
-            $browser = 'Microsoft Edge';
-            $icon = 'desktop_windows';
-            $type = 'Shared Lab PC';
-            $badgeClass = 'bg-[#F1F5F9] text-[#475569] border-slate-200';
-        } elseif (stripos($ua, 'Firefox') !== false) {
-            $browser = 'Firefox';
-            $os = 'Linux / Ubuntu';
-            $icon = 'desktop_windows';
-            $type = 'Workstation';
-            $badgeClass = 'bg-[#F1F5F9] text-[#475569] border-slate-200';
-        }
+        $os = match (true) {
+            (bool) preg_match('/iPhone|iPod/i', $ua) => 'iOS',
+            (bool) preg_match('/iPad/i', $ua) => 'iPadOS',
+            (bool) preg_match('/Android/i', $ua) => 'Android',
+            (bool) preg_match('/CrOS/i', $ua) => 'ChromeOS',
+            (bool) preg_match('/Windows/i', $ua) => 'Windows',
+            (bool) preg_match('/Macintosh|Mac OS X/i', $ua) => 'macOS',
+            (bool) preg_match('/Linux|X11/i', $ua) => 'Linux',
+            default => __('global.devices.unknown_os'),
+        };
+
+        $browser = match (true) {
+            (bool) preg_match('/Edg(e|A|iOS)?\//i', $ua) => 'Microsoft Edge',
+            (bool) preg_match('/OPR\/|Opera/i', $ua) => 'Opera',
+            (bool) preg_match('/SamsungBrowser/i', $ua) => 'Samsung Internet',
+            (bool) preg_match('/Firefox\/|FxiOS/i', $ua) => 'Firefox',
+            (bool) preg_match('/Chrome\/|CriOS/i', $ua) => 'Chrome',
+            (bool) preg_match('/Safari\//i', $ua) => 'Safari',
+            default => __('global.devices.unknown_browser'),
+        };
+
+        $icon = match ($os) {
+            'iOS', 'Android' => 'smartphone',
+            'iPadOS' => 'tablet_mac',
+            'macOS' => 'laptop_mac',
+            'Windows' => 'laptop_windows',
+            'ChromeOS' => 'laptop_chromebook',
+            default => 'computer',
+        };
 
         return [
             'browser' => $browser,
             'os' => $os,
             'device_name' => __('global.devices.device_on_os', ['browser' => $browser, 'os' => $os]),
             'icon' => $icon,
-            'type_label' => $type,
-            'badge_class' => $badgeClass,
         ];
     }
 }

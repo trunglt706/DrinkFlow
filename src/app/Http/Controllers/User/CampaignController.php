@@ -6,6 +6,7 @@ namespace App\Http\Controllers\User;
 
 use App\Actions\Campaign\DeclineCampaignAction;
 use App\Actions\Campaign\RejoinCampaignAction;
+use App\Enums\CampaignItemStatus;
 use App\Enums\CampaignStatus;
 use App\Enums\OrderStatus;
 use App\Enums\GlobalUserStatus;
@@ -14,6 +15,7 @@ use App\Http\Requests\StoreCampaignCartRequest;
 use App\Http\Requests\UpdateCartProxyRequest;
 use App\Http\Resources\CampaignResource;
 use App\Models\Campaign;
+use App\Models\CampaignItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Room;
@@ -190,7 +192,7 @@ class CampaignController extends Controller
 
         $data = $request->validated();
 
-        $item = $campaign->items()->with(['sizes', 'toppings'])->whereKey($data['item_id'])->where('status', 'active')->firstOrFail();
+        $item = $campaign->items()->with(CampaignItem::orderableOptions())->whereKey($data['item_id'])->where('status', CampaignItemStatus::Active->value)->firstOrFail();
         $size = ! empty($data['size_id']) ? $item->sizes->firstWhere('id', (int) $data['size_id']) : null;
         abort_if(! empty($data['size_id']) && ! $size, 422, __('admin.invalid_size'));
         $toppings = collect($data['topping_ids'] ?? [])->map(fn (int $id) => $item->toppings->firstWhere('id', $id))->filter();
@@ -421,7 +423,7 @@ class CampaignController extends Controller
         abort_unless($campaign->room_id === $room->id && in_array($campaign->status?->value, ['active', 'scheduled'], true), 404);
 
         if ($request->expectsJson()) {
-            $campaign->load(['items' => fn ($q) => $q->where('status', 'active')->with(['sizes', 'toppings']), 'room']);
+            $campaign->load(['items' => fn ($q) => $q->where('status', CampaignItemStatus::Active->value)->with(CampaignItem::orderableOptions()), 'room']);
 
             return response()->json(['data' => (new CampaignResource($campaign))->resolve($request)]);
         }

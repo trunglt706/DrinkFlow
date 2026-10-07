@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Listeners;
 
 use App\Events\OrderDeleted;
@@ -20,6 +22,6 @@ class NotifyOrderDeleted implements ShouldQueue
         if (! $roomUser) {
             return;
         }
-        app(UserNotificationService::class)->toRoomUser($roomUser, 'order.deleted', 'Đơn hàng đã được xóa', 'Bạn có thể đặt lại đơn hàng.', ['order_id' => $event->order['order_id'], 'room_id' => $event->order['room_id']]);
+        app(UserNotificationService::class)->toRoomUser($roomUser, 'order.deleted', __('messages.order_deleted_title'), __('messages.order_deleted_body'), ['order_id' => $event->order['order_id'], 'room_id' => $event->order['room_id']]);
     }
 }

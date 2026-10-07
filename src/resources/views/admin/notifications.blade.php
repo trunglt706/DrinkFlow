@@ -250,7 +250,8 @@
                         <label class="font-semibold text-on-surface">{{ __('admin.test_notification_preview') }}</label>
                         <span class="text-[10px] font-mono text-outline uppercase" id="test-preview-format-label">HTML / MRKDWN</span>
                     </div>
-                    <div id="test-preview-box" class="p-4 rounded-xl bg-slate-900 text-slate-100 font-mono text-[11px] leading-relaxed border border-slate-700 whitespace-pre-wrap max-h-56 overflow-y-auto select-text shadow-inner">
+                    <div id="test-preview-box" class="p-4 rounded-xl bg-slate-900 text-slate-100 font-mono text-[11px] leading-relaxed border border-slate-700 whitespace-pre-wrap max-h-56 overflow-y-auto select-text shadow-inner"
+                         data-previews="{{ json_encode($testPreviews, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}">
                         ...
                     </div>
                 </div>

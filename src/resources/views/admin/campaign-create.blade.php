@@ -12,6 +12,8 @@
      data-store-url="{{ route('admin.campaigns.store', $room) }}"
      data-index-url="{{ route('admin.campaigns.page', $room) }}"
      data-image-upload-url="{{ route('admin.campaigns.menu-images.store', $room) }}"
+     data-item-categories="{{ json_encode(__('admin.item_category_suggestions'), JSON_UNESCAPED_UNICODE) }}"
+     data-default-category-other="{{ __('admin.default_category_other') }}"
      data-sponsor-type-full="{{ \App\Models\Campaign::SPONSOR_TYPE_FULL }}"
      data-sponsor-type-none="{{ \App\Models\Campaign::SPONSOR_TYPE_NONE }}"
      x-data="campaignCreateComponent(@js($campaignDefaults), @js($roomUsers->map(fn ($roomUser) => [
@@ -400,7 +402,7 @@
                            placeholder="{{ __('admin.item_category_placeholder') }}"
                            class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary">
                     <datalist id="campaign-item-categories">
-                        @foreach (['Cà phê', 'Trà', 'Trà sữa', 'Nước ép', 'Sinh tố', 'Đá xay', 'Sữa chua', 'Ăn vặt', 'Bánh ngọt', 'Đồ ăn', 'Khác'] as $cat)
+                        @foreach (__('admin.item_category_suggestions') as $cat)
                             <option value="{{ $cat }}">{{ $cat }}</option>
                         @endforeach
                         <template x-for="category in availableItemCategories" :key="category">
