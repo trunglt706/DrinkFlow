@@ -1,13 +1,15 @@
-@import 'tailwindcss';
+@import 'tailwindcss' source(none);
 @import './partials/guide-article.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
+@source '../views/errors/*.blade.php';
+@source '../../lang/*/*.php';
 @source '../views/public/**/*.blade.php';
 @source '../views/components/public/**/*.blade.php';
 @source '../views/components/*.blade.php';
 @source '../js/public/**/*.js';
 @source '../js/public.js';
+@source '../js/shared/**/*.js';
 
 @theme {
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -56,6 +58,13 @@ html {
     line-height: 1;
     display: inline-block;
     vertical-align: middle;
+    /* Reserve the 1em glyph box before the icon font arrives: otherwise the hidden ligature text
+       ("account_balance_wallet") takes its full text width and the layout shifts when the font loads. */
+    width: 1em;
+    height: 1em;
+    overflow: hidden;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 #captcha-img-wrapper img {

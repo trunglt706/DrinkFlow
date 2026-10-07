@@ -123,11 +123,30 @@
     <link rel="preconnect" href="https://fonts.googleapis.com"/>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet"/>
+    {{-- Only the icons used by pages on this layout (public pages, error pages, their components and public JS)
+         are requested: ~14 KB instead of the ~1.1 MB full font. Add the name here (alphabetical order is required
+         by Google Fonts) when a new icon appears on a public page, otherwise it renders as its ligature text. --}}
+    @php
+        $publicIconNames = [
+            'account_balance_wallet', 'account_circle', 'arrow_back', 'arrow_drop_down', 'arrow_forward', 'arrow_right_alt',
+            'arrow_upward', 'assignment_turned_in', 'auto_awesome', 'autorenew', 'block', 'bolt', 'bug_report', 'build',
+            'calculate', 'calendar_today', 'call', 'campaign', 'cancel', 'chat', 'check', 'check_circle', 'checklist',
+            'chevron_left', 'chevron_right', 'close', 'cloud_off', 'contact_support', 'content_copy', 'currency_exchange',
+            'dashboard', 'domain', 'done_all', 'download', 'error', 'expand_less', 'expand_more', 'fact_check', 'first_page',
+            'flag', 'format_list_bulleted', 'gavel', 'gpp_maybe', 'group', 'groups', 'headset_mic', 'help_outline', 'history',
+            'home', 'info', 'key', 'lightbulb', 'link', 'local_cafe', 'local_shipping', 'lock', 'login', 'mail',
+            'meeting_room', 'menu', 'menu_book', 'notes', 'payments', 'person', 'play_circle', 'point_of_sale',
+            'progress_activity', 'qr_code_2', 'qr_code_scanner', 'quiz', 'receipt_long', 'refresh', 'report_problem',
+            'schedule', 'search', 'send', 'shield', 'star', 'sticky_note_2', 'storefront', 'support_agent', 'switch_account',
+            'sync_problem', 'timer', 'touch_app', 'verified_user', 'volunteer_activism', 'vpn_key', 'warning',
+            'workspace_premium',
+        ];
+        sort($publicIconNames);
+    @endphp
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&amp;icon_names={{ implode(',', $publicIconNames) }}&amp;display=block" rel="stylesheet"/>
 
-    {{-- Socket.IO client (window.io): public pages only listen for maintenance notices. Deferred scripts still
-         run before DOMContentLoaded, when public.js connects. --}}
-    <script defer src="{{ rtrim(config('services.realtime.public_url', 'http://localhost:3001'), '/') }}/socket.io/socket.io.js"></script>
+    {{-- The Socket.IO client (window.io) is injected by public.js after the page loads: public pages only listen
+         for maintenance notices, so it must not delay first paint. --}}
     @if (file_exists(public_path('build/manifest.json')) || app()->isLocal())
         @vite(['resources/css/public.css', 'resources/js/public.js'])
     @endif

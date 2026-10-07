@@ -1,4 +1,3 @@
-import './bootstrap';
 import { initToastNotifications } from './shared/toast';
 
 import { initPublicHeader } from './public/header';
@@ -9,7 +8,7 @@ import { initPublicLoading } from './public/loading';
 import { initGoToTop } from './public/go-to-top';
 import { initContactPage } from './public/contact';
 import { initTermsPage } from './public/terms';
-import { connectGuestRealtime } from './shared/realtime-reload';
+import { connectGuestRealtime, loadSocketClientWhenIdle } from './shared/realtime-reload';
 import { initGuideLightbox } from './shared/image-lightbox';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -23,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initContactPage();
     initTermsPage();
     initGuideLightbox();
-    // Reload into the maintenance screen when maintenance starts.
-    connectGuestRealtime(document.body.dataset.realtimeUrl, 'public');
+    // Reload into the maintenance screen when maintenance starts; the Socket.IO client loads after first paint.
+    const { realtimeUrl } = document.body.dataset;
+    loadSocketClientWhenIdle(realtimeUrl).then((ready) => ready && connectGuestRealtime(realtimeUrl, 'public'));
 });

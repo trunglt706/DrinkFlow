@@ -1,0 +1,543 @@
+<!DOCTYPE html><html class="dark" lang="vi" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>SponsorDraw Live - Roulette Wheel Stage</title>
+<!-- Google Fonts: Space Grotesk, Geist & JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS with Forms & Container Plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config with Emerald Green Palette -->
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "outline": "#859585",
+            "tertiary-fixed-dim": "#00e0bb",
+            "on-primary-fixed": "#00210b",
+            "tertiary-fixed": "#00ffd5",
+            "on-surface": "#dde3ec",
+            "error-container": "#93000a",
+            "on-secondary-container": "#00311f",
+            "surface-container-highest": "#2f353c",
+            "secondary-container": "#00a572",
+            "on-background": "#dde3ec",
+            "on-surface-variant": "#bacbb9",
+            "on-error": "#690005",
+            "on-tertiary-container": "#005f4e",
+            "tertiary": "#4affd8",
+            "on-tertiary-fixed": "#002019",
+            "surface-variant": "#2f353c",
+            "outline-variant": "#3b4a3d",
+            "primary-fixed": "#62ff96",
+            "on-primary": "#003918",
+            "on-tertiary": "#00382d",
+            "surface": "#0e141a",
+            "surface-bright": "#343a41",
+            "on-secondary-fixed": "#002113",
+            "surface-container": "#1a2027",
+            "secondary-fixed": "#6ffbbe",
+            "on-tertiary-fixed-variant": "#005142",
+            "error": "#ffb4ab",
+            "surface-container-low": "#161c22",
+            "surface-dim": "#0e141a",
+            "inverse-on-surface": "#2b3138",
+            "on-primary-fixed-variant": "#005226",
+            "inverse-primary": "#006d35",
+            "secondary-fixed-dim": "#4edea3",
+            "primary-fixed-dim": "#00e475",
+            "surface-container-lowest": "#090f15",
+            "on-error-container": "#ffdad6",
+            "inverse-surface": "#dde3ec",
+            "surface-container-high": "#252b31",
+            "secondary": "#4edea3",
+            "on-secondary": "#003824",
+            "primary-container": "#00e676",
+            "on-primary-container": "#00210b",
+            "background": "#0e141a",
+            "primary": "#75ff9e",
+            "tertiary-container": "#00e2bc",
+            "on-secondary-fixed-variant": "#005236",
+            "surface-tint": "#00e475"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "fontFamily": {
+            "headline-lg": ["Space Grotesk"],
+            "headline-md": ["Space Grotesk"],
+            "headline-sm": ["Space Grotesk"],
+            "label-tech": ["JetBrains Mono"],
+            "body-sm": ["Geist"],
+            "body-md": ["Geist"],
+            "label-lg": ["Geist"],
+            "label-md": ["Geist"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 20px;
+      line-height: 1;
+      display: inline-block;
+      text-transform: none;
+      letter-spacing: normal;
+      word-wrap: normal;
+      white-space: nowrap;
+      direction: ltr;
+    }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(0.9); opacity: 0.9; }
+      50% { transform: scale(1.4); opacity: 0.2; }
+      100% { transform: scale(0.9); opacity: 0.9; }
+    }
+
+    .radar-pulse {
+      animation: pulse-ring 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    @keyframes spin-slow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes spin-reverse {
+      from { transform: rotate(360deg); }
+      to { transform: rotate(0deg); }
+    }
+
+    .animate-spin-slow {
+      animation: spin-slow 28s linear infinite;
+    }
+
+    .animate-spin-reverse {
+      animation: spin-reverse 36s linear infinite;
+    }
+
+    .wheel-spinning {
+      animation: spin-slow 2.5s cubic-bezier(0.15, 0.9, 0.2, 1) forwards;
+    }
+
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0e141a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #252b31;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3b4a3d;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background min-h-screen antialiased flex flex-col selection:bg-primary-container selection:text-on-primary">
+<!-- MAIN CANVAS CONTAINER -->
+<main class="flex-1 max-w-7xl w-full mx-auto px-4 md:px-6 py-6 flex flex-col justify-between">
+<!-- TOP BRAND / CAMPAIGN TITLE BAR -->
+<div class="flex flex-wrap items-center justify-between pb-3 border-b border-outline-variant/30 mb-5">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-lg bg-surface-container-highest border border-primary/40 flex items-center justify-center text-primary shadow-[0_0_14px_rgba(0,230,118,0.25)]">
+<span class="material-symbols-outlined text-[22px]" data-icon="track_changes">track_changes</span>
+</div>
+<div>
+<h1 class="text-headline-sm font-headline-sm font-bold text-on-surface tracking-tight flex items-center gap-2">
+          SponsorDraw Live 
+          
+</h1>
+<p class="text-label-tech font-label-tech text-outline text-[11px]">Chiến dịch Khách Hàng Thân Thiết Q2/2025 • Drand Verifiable</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container border border-outline-variant/30 text-label-tech text-on-surface-variant text-[12px]">
+<span class="">Tiến độ Sponsor:</span>
+<span class="text-primary font-bold">3 / 5</span>
+</div>
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-primary/40 text-primary font-label-tech text-[11px] font-semibold uppercase shadow-sm shadow-emerald-500/20">
+<span class="w-2 h-2 rounded-full bg-primary-container radar-pulse"></span>
+        Trực tiếp
+      </span>
+</div>
+</div>
+<!-- 4-PART COMPACT BENTO GRID -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+<!-- 1. BẢNG KẾT QUẢ (Realtime Winners Feed - 3 cols) -->
+<section class="lg:col-span-3 bg-surface-container-low border border-outline-variant/30 rounded-2xl p-5 shadow-lg flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between border-b border-outline-variant/20 pb-3 mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="military_tech">military_tech</span>
+<h2 class="text-headline-sm font-headline-sm text-on-surface font-semibold text-[18px]">Bảng Kết Quả</h2>
+</div>
+
+</div>
+<!-- Thứ tự lượt quay 1, 2, 3... chỉ hiển thị tên -->
+<div class="space-y-3">
+<!-- #1 -->
+<div class="p-3 rounded-xl bg-surface-container border border-outline-variant/25 flex items-center justify-between transition-all hover:border-primary/40">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-full bg-surface-container-highest border border-outline-variant/50 text-outline font-label-tech text-[12px] font-bold flex items-center justify-center">
+                #1
+              </div>
+<span class="text-label-lg font-label-lg font-semibold text-on-surface">Lê Hoàng Nam</span>
+</div>
+<span class="material-symbols-outlined text-secondary text-[18px]" data-icon="check_circle">check_circle</span>
+</div>
+<!-- #2 -->
+<div class="p-3 rounded-xl bg-surface-container border border-outline-variant/25 flex items-center justify-between transition-all hover:border-primary/40">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-full bg-surface-container-highest border border-outline-variant/50 text-outline font-label-tech text-[12px] font-bold flex items-center justify-center">
+                #2
+              </div>
+<span class="text-label-lg font-label-lg font-semibold text-on-surface">Phạm Quốc Hùng</span>
+</div>
+<span class="material-symbols-outlined text-secondary text-[18px]" data-icon="check_circle">check_circle</span>
+</div>
+<!-- #3 (Vừa chốt) -->
+<div class="p-3 rounded-xl bg-surface-container-high border-2 border-primary/70 shadow-lg shadow-emerald-500/10 flex items-center justify-between relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-primary"></div>
+<div class="flex items-center gap-3 pl-1">
+<div class="w-7 h-7 rounded-full bg-primary text-on-primary font-label-tech text-[12px] font-extrabold flex items-center justify-center shadow">
+                #3
+              </div>
+<div class="flex flex-col">
+<span class="text-label-lg font-label-lg font-bold text-primary">Trần Thị Thu Thảo</span>
+<span class="text-[10px] font-label-tech text-primary/80 uppercase">Vừa trúng giải</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-primary text-[20px]" data-icon="workspace_premium">workspace_premium</span>
+</div>
+<!-- #4 (Đang quay) -->
+<div class="p-3 rounded-xl bg-surface-container-lowest/60 border border-dashed border-primary/50 flex items-center justify-between bg-primary/5">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-full bg-surface-container text-primary font-label-tech text-[12px] font-bold flex items-center justify-center border border-primary/40">
+                #4
+              </div>
+<span class="text-label-md font-label-md text-primary font-medium italic">[Đang quay...]</span>
+</div>
+<span class="w-2.5 h-2.5 rounded-full bg-primary animate-ping"></span>
+</div>
+<!-- #5 (Chưa quay) -->
+<div class="p-3 rounded-xl bg-surface-container-lowest/40 border border-dashed border-outline-variant/30 flex items-center justify-between opacity-50">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded-full bg-surface-container text-outline font-label-tech text-[12px] flex items-center justify-center">
+                #5
+              </div>
+<span class="text-label-md font-label-md text-outline italic">[Chưa mở phiên]</span>
+</div>
+<span class="material-symbols-outlined text-outline text-[16px]" data-icon="lock">lock</span>
+</div>
+</div>
+</div>
+<!-- Mini bottom stat -->
+<div class="mt-4 pt-3 border-t border-outline-variant/20 flex items-center justify-between text-label-tech text-[11px] text-outline">
+<span class="">Tổng giải thưởng: 5 Suất</span>
+<span class="text-secondary font-medium">Hoàn thành: 60%</span>
+</div>
+</section>
+<!-- 3 & 4. KHU VỰC QUAY SỐ (ROULETTE WHEEL) + CỤM NÚT ĐIỀU KHIỂN (6 cols) -->
+<section class="lg:col-span-6 flex flex-col gap-4">
+<!-- VÒNG QUAY MAY MẮN RADAR / WHEEL CARD -->
+<div class="bg-surface-container-low border border-outline-variant/40 rounded-2xl p-6 shadow-2xl relative overflow-hidden backdrop-blur-xl flex flex-col items-center justify-center">
+<!-- Background Ambient Glow -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-emerald-500/15 rounded-full blur-[90px] pointer-events-none"></div>
+<!-- Top Badge in Wheel Card -->
+<div class="w-full flex items-center justify-between mb-3 relative z-10">
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full bg-primary radar-pulse"></div>
+<span class="text-label-tech font-label-tech uppercase tracking-wider text-primary font-bold text-[11px]">
+              Vòng Quay May Mắn • Lucky Roulette
+            </span>
+</div>
+<span class="text-label-tech font-label-tech text-outline bg-surface-container-highest px-3 py-1 rounded-full font-semibold border border-outline-variant/30 text-[11px]">
+            LƯỢT QUAY #4 / 5
+          </span>
+</div>
+<!-- CIRCULAR WHEEL / RADAR STAGE GRAPHICS -->
+<div class="relative w-[340px] h-[340px] sm:w-[380px] sm:h-[380px] my-2 flex items-center justify-center select-none" id="lucky-wheel-container">
+<!-- Outer Radar Ring 1 (Slow spin clockwise) -->
+<div class="absolute inset-0 rounded-full border border-dashed border-primary/30 animate-spin-slow pointer-events-none"></div>
+<!-- Outer Ring 2 with Accent notches (Reverse spin) -->
+<div class="absolute inset-3 rounded-full border-2 border-outline-variant/40 animate-spin-reverse pointer-events-none">
+<div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_#00e676]"></div>
+<div class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_#00e676]"></div>
+<div class="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-tertiary shadow-[0_0_10px_#4affd8]"></div>
+<div class="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-tertiary shadow-[0_0_10px_#4affd8]"></div>
+</div>
+<!-- Main Roulette Disc (Concentric segments with Radial Gradient) -->
+<div class="absolute inset-7 rounded-full bg-gradient-to-tr from-surface-container-lowest via-surface-container-high to-surface-container-highest border-4 border-primary/45 shadow-[0_0_35px_rgba(0,230,118,0.22)] flex items-center justify-center overflow-hidden" id="wheel-disc">
+<!-- Wheel Slices Grid Overlay -->
+<svg class="absolute inset-0 w-full h-full opacity-40" viewBox="0 0 100 100">
+<circle cx="50" cy="50" fill="none" r="48" stroke="#75ff9e" stroke-width="0.5"></circle>
+<circle cx="50" cy="50" fill="none" r="36" stroke="#4affd8" stroke-dasharray="2 3" stroke-width="0.75"></circle>
+<circle cx="50" cy="50" fill="none" r="24" stroke="#75ff9e" stroke-width="0.5"></circle>
+<!-- 8 Spokes -->
+<line stroke="#75ff9e" stroke-width="0.75" x1="50" x2="50" y1="2" y2="98"></line>
+<line stroke="#75ff9e" stroke-width="0.75" x1="2" x2="98" y1="50" y2="50"></line>
+<line stroke="#75ff9e" stroke-width="0.5" x1="16" x2="84" y1="16" y2="84"></line>
+<line stroke="#75ff9e" stroke-width="0.5" x1="16" x2="84" y1="84" y2="16"></line>
+</svg>
+<!-- Radial Candidate Names Around the perimeter -->
+<div class="absolute top-3 text-[11px] font-label-tech font-bold text-on-surface-variant/80 tracking-wider">Trần Hữu Long</div>
+<div class="absolute bottom-3 text-[11px] font-label-tech font-bold text-on-surface-variant/80 tracking-wider">Nguyễn Minh An</div>
+<div class="absolute left-3 text-[11px] font-label-tech font-bold text-on-surface-variant/80 tracking-wider rotate-90">Đỗ Quỳnh Trang</div>
+<div class="absolute right-3 text-[11px] font-label-tech font-bold text-on-surface-variant/80 tracking-wider -rotate-90">Võ Mai Phương</div>
+</div>
+<!-- Top Pointer / Kim Quay Vận May (Emerald Green Needle) -->
+<div class="absolute -top-1 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center">
+<div class="w-5 h-7 bg-gradient-to-b from-primary via-emerald-400 to-emerald-600 rounded-t-sm shadow-[0_0_15px_rgba(0,230,118,0.9)] [clip-path:polygon(0%_0%,100%_0%,50%_100%)]"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-on-primary-container -mt-6 border-2 border-primary"></div>
+</div>
+<!-- Center Stage Hub: Core Winner Showcase -->
+<div class="relative z-20 w-44 h-44 sm:w-48 sm:h-48 rounded-full bg-surface-container-lowest border-2 border-primary shadow-[0_0_32px_rgba(0,230,118,0.35)] flex flex-col items-center justify-center p-3 text-center">
+<!-- Pulsing ring behind text -->
+<div class="absolute inset-2 rounded-full border border-primary/25 pointer-events-none"></div>
+<span class="text-[10px] font-label-tech uppercase tracking-widest text-primary font-bold mb-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]" data-icon="stars">stars</span>
+              Ứng viên sáng giá
+            </span>
+<!-- Large Prominent Name -->
+<div class="text-primary font-headline-md sm:text-headline-lg font-extrabold tracking-tight drop-shadow-[0_0_14px_rgba(0,230,118,0.6)] leading-tight" id="active-wheel-candidate">
+              Trần Hữu Long
+            </div>
+<div class="mt-1 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-tertiary font-label-tech text-[10px] font-semibold">
+              MÃ: #USR-9021
+            </div>
+<!-- Sponsor Counter Pill Inside Center -->
+<div class="mt-2 text-[10px] font-label-tech text-outline">
+              Đã trúng: <span class="text-primary font-bold">3</span> / 5 Sponsor
+            </div>
+</div>
+</div>
+<!-- Wheel Bottom Counter & Fairness Tag -->
+<div class="w-full flex items-center justify-between text-label-tech text-[11px] text-outline border-t border-outline-variant/20 pt-3 mt-1">
+<span class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[15px] text-secondary" data-icon="verified_user">verified_user</span>
+            Thuật toán Drand Randomness
+          </span>
+<span class="text-primary font-semibold">Vòng xoay sẵn sàng</span>
+</div>
+</div>
+<!-- 4. CỤM NÚT ĐIỀU KHIỂN: Nút 'Quay lượt tiếp theo' (nổi bật, lớn) & Nút 'Xác nhận' -->
+<div class="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
+<!-- Nút 'Quay lượt tiếp theo' - Kích thước lớn, nổi bật màu xanh emerald -->
+<button class="sm:col-span-8 py-4 px-6 rounded-xl bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 text-on-primary-fixed font-headline-sm text-[17px] font-extrabold shadow-xl shadow-emerald-500/25 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-3 cursor-pointer group" id="btn-draw-next">
+<span class="material-symbols-outlined text-[24px] group-hover:rotate-180 transition-transform duration-500" data-icon="track_changes">track_changes</span>
+<span class="">Quay lượt tiếp theo</span>
+</button>
+<!-- Nút 'Xác nhận' -->
+<button class="sm:col-span-4 py-4 px-5 rounded-xl bg-surface-container border border-outline-variant/40 hover:border-primary/50 text-on-surface font-headline-sm text-[15px] font-semibold hover:bg-surface-container-high active:scale-[0.98] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm" id="btn-confirm-notify">
+<span class="material-symbols-outlined text-primary text-[20px]" data-icon="check_circle">check_circle</span>
+<span class="">Xác nhận</span>
+</button>
+</div>
+</section>
+<!-- 2. SNAPSHOT USERS (Cột danh sách người dùng đủ điều kiện với ô tìm kiếm - 3 cols) -->
+<section class="lg:col-span-3 bg-surface-container-low border border-outline-variant/30 rounded-2xl p-5 shadow-lg flex flex-col justify-between">
+<div class="space-y-3.5">
+<!-- Snapshot Header -->
+<div class="border-b border-outline-variant/20 pb-3 space-y-1">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="groups">groups</span>
+<h2 class="text-headline-sm font-headline-sm text-on-surface font-semibold text-[18px]">Snapshot Users</h2>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-label-tech font-label-tech text-on-surface font-bold border border-outline-variant/30 text-[11px]">
+              86 Active
+            </span>
+</div>
+<div class="text-label-tech font-label-tech text-outline flex items-center gap-1 text-[11px]">
+<span class="">Mã phiên:</span>
+<span class="text-primary font-bold">#SNAP-202505-88A9</span>
+</div>
+</div>
+<!-- Search Bar Inside Snapshot -->
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]" data-icon="search">search</span>
+<input class="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-lg pl-9 pr-3 py-2 text-body-sm font-body-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary transition-all text-[13px]" placeholder="Tìm kiếm nhanh tên ứng viên..." type="text">
+</div>
+<!-- Scrollable Candidates List -->
+<div class="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+<!-- Candidate 1 - Đã trúng -->
+<div class="p-2.5 rounded-lg bg-surface-container/40 border border-outline-variant/20 flex items-center justify-between opacity-55">
+<div class="flex items-center gap-2.5">
+<div class="w-6 h-6 rounded bg-surface-container-highest text-outline font-label-tech text-[10px] flex items-center justify-center font-bold">
+                01
+              </div>
+<span class="text-label-md font-label-md text-on-surface-variant line-through">Lê Hoàng Nam</span>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-[10px] font-label-tech text-outline">
+              Đã trúng
+            </span>
+</div>
+<!-- Candidate 2 - Đã trúng -->
+<div class="p-2.5 rounded-lg bg-surface-container/40 border border-outline-variant/20 flex items-center justify-between opacity-55">
+<div class="flex items-center gap-2.5">
+<div class="w-6 h-6 rounded bg-surface-container-highest text-outline font-label-tech text-[10px] flex items-center justify-center font-bold">
+                02
+              </div>
+<span class="text-label-md font-label-md text-on-surface-variant line-through">Phạm Quốc Hùng</span>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-[10px] font-label-tech text-outline">
+              Đã trúng
+            </span>
+</div>
+<!-- Candidate 3 - Đã trúng -->
+<div class="p-2.5 rounded-lg bg-surface-container/40 border border-outline-variant/20 flex items-center justify-between opacity-55">
+<div class="flex items-center gap-2.5">
+<div class="w-6 h-6 rounded bg-surface-container-highest text-outline font-label-tech text-[10px] flex items-center justify-center font-bold">
+                03
+              </div>
+<span class="text-label-md font-label-md text-on-surface-variant line-through">Trần Thị Thu Thảo</span>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-[10px] font-label-tech text-outline">
+              Đã trúng
+            </span>
+</div>
+<!-- Candidate 4 - Đủ điều kiện (Active) -->
+<div class="p-2.5 rounded-lg bg-surface-container border border-primary/40 bg-emerald-500/10 flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-2.5">
+<div class="w-6 h-6 rounded bg-primary-container text-on-primary-container font-label-tech text-[10px] flex items-center justify-center font-bold">
+                04
+              </div>
+<span class="text-label-md font-label-md text-primary font-bold">Trần Hữu Long</span>
+</div>
+<span class="text-label-tech font-label-tech text-primary bg-primary/10 px-2 py-0.5 rounded text-[10px] font-bold border border-primary/30">
+              Đang chọn
+            </span>
+</div>
+<!-- Candidate 5 - Đủ điều kiện -->
+<div class="p-2.5 rounded-lg bg-surface-container border border-outline-variant/30 flex items-center justify-between hover:border-primary/50 transition-all">
+<div class="flex items-center gap-2.5">
+<div class="w-6 h-6 rounded bg-surface-container-highest text-primary font-label-tech text-[10px] flex items-center justify-center font-bold">
+                05
+              </div>
+<span class="text-label-md font-label-md text-on-surface font-medium">Nguyễn Minh An</span>
+</div>
+
+</div>
+<!-- Candidate 6 - Đủ điều kiện -->
+<div class="p-2.5 rounded-lg bg-surface-container border border-outline-variant/30 flex items-center justify-between hover:border-primary/50 transition-all">
+<div class="flex items-center gap-2.5">
+<div class="w-6 h-6 rounded bg-surface-container-highest text-primary font-label-tech text-[10px] flex items-center justify-center font-bold">
+                06
+              </div>
+<span class="text-label-md font-label-md text-on-surface font-medium">Đỗ Quỳnh Trang</span>
+</div>
+
+</div>
+<!-- Candidate 7 - Đủ điều kiện -->
+<div class="p-2.5 rounded-lg bg-surface-container border border-outline-variant/30 flex items-center justify-between hover:border-primary/50 transition-all">
+<div class="flex items-center gap-2.5">
+<div class="w-6 h-6 rounded bg-surface-container-highest text-primary font-label-tech text-[10px] flex items-center justify-center font-bold">
+                07
+              </div>
+<span class="text-label-md font-label-md text-on-surface font-medium">Võ Thị Mai Phương</span>
+</div>
+
+</div>
+<!-- Candidate 8 - Đủ điều kiện -->
+<div class="p-2.5 rounded-lg bg-surface-container border border-outline-variant/30 flex items-center justify-between hover:border-primary/50 transition-all">
+<div class="flex items-center gap-2.5">
+<div class="w-6 h-6 rounded bg-surface-container-highest text-primary font-label-tech text-[10px] flex items-center justify-center font-bold">
+                08
+              </div>
+<span class="text-label-md font-label-md text-on-surface font-medium">Hoàng Gia Bảo</span>
+</div>
+
+</div>
+<!-- Candidate 9 - Đủ điều kiện -->
+<div class="p-2.5 rounded-lg bg-surface-container border border-outline-variant/30 flex items-center justify-between hover:border-primary/50 transition-all">
+<div class="flex items-center gap-2.5">
+<div class="w-6 h-6 rounded bg-surface-container-highest text-primary font-label-tech text-[10px] flex items-center justify-center font-bold">
+                09
+              </div>
+<span class="text-label-md font-label-md text-on-surface font-medium">Lý Cẩm Tú</span>
+</div>
+
+</div>
+</div>
+</div>
+<!-- Snapshot Footer Info -->
+<div class="pt-3 border-t border-outline-variant/20 flex items-center justify-between text-body-sm font-body-sm text-outline text-[12px] mt-4">
+<span class="">Còn lại: 83 ứng viên</span>
+<span class="text-secondary font-medium">Loại trừ tự động</span>
+</div>
+</section>
+</div>
+</main>
+<!-- INTERACTIVE SCRIPT FOR ROULETTE WHEEL SPIN SIMULATION -->
+<script>
+  const btnDraw = document.getElementById('btn-draw-next');
+  const btnConfirm = document.getElementById('btn-confirm-notify');
+  const wheelDisc = document.getElementById('wheel-disc');
+  const candidateName = document.getElementById('active-wheel-candidate');
+
+  const candidatePool = [
+    "Trần Hữu Long",
+    "Đỗ Quỳnh Trang",
+    "Hoàng Gia Bảo",
+    "Võ Thị Mai Phương",
+    "Nguyễn Minh An",
+    "Lý Cẩm Tú",
+    "Bùi Đức Anh"
+  ];
+
+  let isSpinning = false;
+
+  btnDraw.addEventListener('click', () => {
+    if (isSpinning) return;
+    isSpinning = true;
+
+    // Visual feedback
+    btnDraw.classList.add('opacity-75', 'scale-[0.98]');
+    wheelDisc.classList.remove('wheel-spinning');
+    void wheelDisc.offsetWidth; // Reflow
+    wheelDisc.classList.add('wheel-spinning');
+
+    // Rapid shuffle name effect
+    let count = 0;
+    const interval = setInterval(() => {
+      const randomName = candidatePool[Math.floor(Math.random() * candidatePool.length)];
+      candidateName.textContent = randomName;
+      count++;
+      if (count > 16) {
+        clearInterval(interval);
+        // Settle on winner
+        candidateName.textContent = "Trần Hữu Long";
+        isSpinning = false;
+        btnDraw.classList.remove('opacity-75', 'scale-[0.98]');
+      }
+    }, 120);
+  });
+
+  btnConfirm.addEventListener('click', () => {
+    btnConfirm.classList.add('bg-primary-container', 'text-on-primary-container');
+    btnConfirm.innerHTML = '<span class="material-symbols-outlined text-[20px]">done_all</span><span>Đã ghi nhận!</span>';
+    setTimeout(() => {
+      btnConfirm.classList.remove('bg-primary-container', 'text-on-primary-container');
+      btnConfirm.innerHTML = '<span class="material-symbols-outlined text-primary text-[20px]" data-icon="check_circle">check_circle</span><span>Xác nhận</span>';
+    }, 2000);
+  });
+</script>
+
+
+</body></html>

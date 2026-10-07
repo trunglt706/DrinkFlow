@@ -247,12 +247,16 @@ server {
     # File upload limits
     client_max_body_size 50M;
 
-    # Gzip Compression
+    # Gzip Compression (HTML luôn được nén; không nén ảnh jpg/png/webp và woff2 vì đã nén sẵn).
+    # `gzip_proxied any` bắt buộc ở đây vì mọi response đều đi qua proxy_pass tới container.
     gzip on;
     gzip_vary on;
     gzip_proxied any;
-    gzip_comp_level 6;
-    gzip_types text/plain text/css text/xml application/json application/javascript application/xml+rss application/atom+xml image/svg+xml;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_buffers 16 8k;
+    gzip_http_version 1.1;
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/x-javascript application/json application/ld+json application/manifest+json application/xml application/rss+xml application/atom+xml application/vnd.ms-fontobject font/ttf font/otf image/svg+xml image/x-icon;
 
     # 1. Socket.IO Realtime Gateway Proxy
     location ^~ /socket.io/ {

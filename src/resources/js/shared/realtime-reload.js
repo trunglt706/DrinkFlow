@@ -59,6 +59,37 @@ export function listenForcedReload(socket) {
 }
 
 /**
+ * Inject the Socket.IO client served by the realtime server once the page has finished loading and the
+ * browser is idle, so it never competes with first paint. Resolves false (without a console error from a
+ * rejected promise) when the realtime server is unreachable.
+ *
+ * @param {string|undefined} realtimeUrl Realtime server URL (from `data-realtime-url`).
+ * @returns {Promise<boolean>} Whether `window.io` is available.
+ */
+export function loadSocketClientWhenIdle(realtimeUrl) {
+    if (window.io) return Promise.resolve(true);
+    if (!realtimeUrl) return Promise.resolve(false);
+
+    return new Promise((resolve) => {
+        const inject = () => {
+            const script = document.createElement('script');
+            script.src = `${realtimeUrl}/socket.io/socket.io.js`;
+            script.async = true;
+            script.onload = () => resolve(Boolean(window.io));
+            script.onerror = () => {
+                script.remove();
+                resolve(false);
+            };
+            document.head.appendChild(script);
+        };
+        const whenIdle = () => (window.requestIdleCallback ? window.requestIdleCallback(inject, { timeout: 3000 }) : window.setTimeout(inject, 1));
+
+        if (document.readyState === 'complete') whenIdle();
+        else window.addEventListener('load', whenIdle, { once: true });
+    });
+}
+
+/**
  * Open an anonymous socket (no token) that only receives system-wide notices such as maintenance.
  * Used where there is no authenticated socket: public pages, admin pages, or when a user token is unavailable.
  *

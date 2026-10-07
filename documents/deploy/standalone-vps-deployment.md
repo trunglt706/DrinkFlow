@@ -592,12 +592,34 @@ server {
     client_max_body_size 50M;
     server_tokens off;
 
-    # Gzip Compression
+    # Gzip Compression (HTML, CSS, JS, JSON, SVG, font). Xem giải thích ở mục 5.1.1.
     gzip on;
-    gzip_vary on;
-    gzip_proxied any;
-    gzip_comp_level 6;
-    gzip_types text/plain text/css text/xml application/json application/javascript image/svg+xml;
+    gzip_vary on;                 # Gửi "Vary: Accept-Encoding" để CDN/proxy cache đúng bản nén
+    gzip_proxied any;             # Nén cả response khi đứng sau Cloudflare/reverse proxy
+    gzip_comp_level 5;            # 5-6 là điểm cân bằng CPU/kích thước
+    gzip_min_length 1024;         # File < 1 KB nén không đáng
+    gzip_buffers 16 8k;
+    gzip_http_version 1.1;
+    gzip_disable "msie6";
+    # text/html luôn được nén, không cần khai báo. Không nén ảnh jpg/png/webp và woff2 (đã nén sẵn).
+    gzip_types
+        text/plain
+        text/css
+        text/xml
+        text/javascript
+        application/javascript
+        application/x-javascript
+        application/json
+        application/ld+json
+        application/manifest+json
+        application/xml
+        application/rss+xml
+        application/atom+xml
+        application/vnd.ms-fontobject
+        font/ttf
+        font/otf
+        image/svg+xml
+        image/x-icon;
 
     # 1. Socket.IO Realtime Proxy
     # BẮT BUỘC dùng `^~`: nếu không, khối regex `\.(...|js|...)$` ở mục 4 sẽ được ưu tiên và
@@ -638,7 +660,17 @@ server {
         fastcgi_read_timeout 120s;
     }
 
-    # 4. Static Build Assets Cache
+    # 4a. Vite build assets: tên file có hash (public-B8mxmMiX.css...), đổi nội dung là đổi tên,
+    #     nên cache 1 năm + immutable. `^~` để khối này thắng khối regex 4b bên dưới.
+    location ^~ /build/ {
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        add_header X-Content-Type-Options "nosniff" always;
+        access_log off;
+        try_files $uri =404;
+    }
+
+    # 4b. Static Assets Cache (ảnh, favicon... không có hash trong tên)
     location ~* \.(jpg|jpeg|png|gif|ico|css|js|woff2|woff|ttf|svg|webp)$ {
         expires 30d;
         add_header Cache-Control "public, no-transform";
@@ -651,6 +683,33 @@ server {
         deny all;
     }
 }
+```
+
+#### 5.1.1. Bật nén Gzip & cache tài nguyên tĩnh
+
+Khối `gzip` ở trên làm HTML/CSS/JS nhỏ đi 70-85% khi truyền (ví dụ `public.css` 66 KB còn ~12 KB),
+giúp giảm FCP/LCP và xử lý cảnh báo Lighthouse *"Document request latency – No compression applied"*.
+Khối `location ^~ /build/` xử lý cảnh báo *"Use efficient cache lifetimes"*.
+
+- **Đặt gzip ở cấp `server`** (như trên) để áp dụng cho mọi location, kể cả response PHP-FPM.
+  Nếu muốn bật cho toàn bộ website trên VPS thì đặt ở khối `http {}` của `/etc/nginx/nginx.conf`.
+  Ubuntu đã có sẵn `gzip on;` trong `nginx.conf`; Nginx báo lỗi `"gzip" directive is duplicate`
+  chỉ khi khai báo hai lần **trong cùng một khối**. Khai báo ở `server` sẽ ghi đè cấp `http`, không gây lỗi.
+- **Không thêm `gzip_static on;`** trừ khi bước build có sinh file `.gz` cạnh asset (Vite mặc định không sinh).
+- Sau khi Certbot thêm khối `listen 443 ssl` (mục 5.2), khối gzip vẫn nằm trong cùng `server` nên HTTPS cũng được nén.
+- Nếu website đứng sau **Cloudflare**, Cloudflare tự nén Brotli/Gzip tới trình duyệt; vẫn nên giữ gzip ở Nginx
+  để giảm băng thông giữa VPS và Cloudflare.
+
+Kiểm tra sau khi reload Nginx (thay tên file CSS bằng file thật trong `src/public/build/assets/`):
+
+```bash
+# HTML trang chủ: kỳ vọng có "content-encoding: gzip" và "vary: Accept-Encoding"
+curl -s -o /dev/null -D - -H "Accept-Encoding: gzip" https://drinkflow.yourcompany.com/ | grep -iE "content-encoding|vary"
+
+# Asset Vite: kỳ vọng "content-encoding: gzip" và "cache-control: public, max-age=31536000, immutable"
+CSS=$(ls /var/www/drinkflow/src/public/build/assets/public-*.css | head -n1 | xargs -n1 basename)
+curl -s -o /dev/null -D - -H "Accept-Encoding: gzip" "https://drinkflow.yourcompany.com/build/assets/$CSS" \
+  | grep -iE "content-encoding|cache-control"
 ```
 
 > **Đang chạy bản cấu hình cũ (dùng `location /socket.io/` không có `^~`)?** Trình duyệt sẽ báo
