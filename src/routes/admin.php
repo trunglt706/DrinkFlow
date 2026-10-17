@@ -114,6 +114,9 @@ Route::middleware(['auth:admin', 'admin.room', 'room.subscription'])
     Route::post('/sponsor-draws/{sponsorDraw}/link', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'reissueLink'])->whereNumber('sponsorDraw')->middleware('throttle:20,1')->name('admin.sponsor-draws.link');
     Route::post('/sponsor-draws/{sponsorDraw}/cancel', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'cancel'])->whereNumber('sponsorDraw')->name('admin.sponsor-draws.cancel');
     Route::post('/sponsor-draws/{sponsorDraw}/confirm', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'confirm'])->whereNumber('sponsorDraw')->middleware('throttle:20,1')->name('admin.sponsor-draws.confirm');
+    Route::post('/sponsor-draws/{sponsorDraw}/eligible/remove', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'removeEligible'])->whereNumber('sponsorDraw')->middleware(['json.only', 'throttle:60,1'])->name('admin.sponsor-draws.eligible.remove');
+    Route::post('/sponsor-draws/{sponsorDraw}/eligible/sync', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'syncEligible'])->whereNumber('sponsorDraw')->middleware(['json.only', 'throttle:20,1'])->name('admin.sponsor-draws.eligible.sync');
+    Route::post('/sponsor-draws/{sponsorDraw}/reset', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'reset'])->whereNumber('sponsorDraw')->middleware('throttle:20,1')->name('admin.sponsor-draws.reset');
     Route::post('/sponsor-draws/{sponsorDraw}/resend', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'resend'])->whereNumber('sponsorDraw')->middleware('throttle:20,1')->name('admin.sponsor-draws.resend');
     Route::get('/orders/manage', [\App\Http\Controllers\Admin\OrderController::class, 'page'])->name('admin.orders.page');
     Route::get('/debts/ledger', [\App\Http\Controllers\Admin\DebtController::class, 'page'])->name('admin.debts.page');

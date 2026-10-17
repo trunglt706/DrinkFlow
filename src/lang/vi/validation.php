@@ -149,6 +149,7 @@ return [
     'uuid' => 'Trường :attribute phải là một chuỗi UUID hợp lệ.',
     'captcha' => 'Mã xác thực Captcha không chính xác hoặc đã hết hạn. Vui lòng thử lại.',
 
+    'max_words' => ':attribute không được vượt quá :max từ.',
     'custom' => [
         'captcha' => [
             'invalid' => 'Mã xác thực Captcha không chính xác hoặc đã hết hạn. Vui lòng thử lại.',
@@ -166,6 +167,8 @@ return [
         'full_name' => 'Họ và tên đầy đủ',
         'work_email' => 'Email công việc',
         'phone' => 'Số điện thoại',
+        'bio' => 'mô tả về bản thân',
+        'birthday' => 'ngày sinh nhật',
         'company' => 'Công ty / Đơn vị',
         'topic' => 'Chủ đề liên hệ',
         'message' => 'Nội dung tin nhắn',

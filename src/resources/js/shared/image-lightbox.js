@@ -5,13 +5,17 @@
  * backdrop; move between the images of the opened set with the prev/next buttons, arrow keys or a swipe.
  */
 
-/** @type {{open: (entries: Array<{src: string, alt: string}>, index: number) => void}|null} */
+/**
+ * @typedef {{src: string, alt: string, title: string, price: string, description: string}} LightboxEntry
+ */
+
+/** @type {{open: (entries: Array<LightboxEntry>, index: number) => void}|null} */
 let viewer = null;
 
 /**
  * Wire the page's lightbox overlay once and return its controller.
  *
- * @returns {{open: (entries: Array<{src: string, alt: string}>, index: number) => void}|null} Controller, or null when the page has no overlay.
+ * @returns {{open: (entries: Array<LightboxEntry>, index: number) => void}|null} Controller, or null when the page has no overlay.
  */
 function getViewer() {
     if (viewer) return viewer;
@@ -23,6 +27,10 @@ function getViewer() {
 
     const view = overlay.querySelector('[data-image-lightbox-image]');
     const caption = overlay.querySelector('[data-image-lightbox-caption]');
+    const details = overlay.querySelector('[data-image-lightbox-details]');
+    const titleEl = overlay.querySelector('[data-image-lightbox-title]');
+    const priceEl = overlay.querySelector('[data-image-lightbox-price]');
+    const descEl = overlay.querySelector('[data-image-lightbox-description]');
     const counter = overlay.querySelector('[data-image-lightbox-counter]');
     const prevBtn = overlay.querySelector('[data-image-lightbox-prev]');
     const nextBtn = overlay.querySelector('[data-image-lightbox-next]');
@@ -35,7 +43,7 @@ function getViewer() {
         i18n = {};
     }
 
-    /** @type {Array<{src: string, alt: string}>} */
+    /** @type {Array<LightboxEntry>} */
     let entries = [];
     let index = 0;
     let lastFocus = null;
@@ -46,7 +54,18 @@ function getViewer() {
         const entry = entries[index];
         view.src = entry.src;
         view.alt = entry.alt;
-        caption.textContent = entry.alt;
+        // Menu items carry name/price/description; other images (guides) only show their alt text.
+        const hasDetails = Boolean(details && entry.title);
+        details?.classList.toggle('hidden', !hasDetails);
+        caption.classList.toggle('hidden', hasDetails);
+        caption.textContent = hasDetails ? '' : entry.alt;
+        if (hasDetails) {
+            titleEl.textContent = entry.title;
+            priceEl.textContent = entry.price;
+            priceEl.classList.toggle('hidden', entry.price === '');
+            descEl.textContent = entry.description;
+            descEl.classList.toggle('hidden', entry.description === '');
+        }
         counter.textContent = multiple()
             ? (i18n.counter || ':current / :total').replace(':current', String(index + 1)).replace(':total', String(entries.length))
             : '';
@@ -112,10 +131,16 @@ function getViewer() {
  * in data-lightbox-src.
  *
  * @param {HTMLImageElement} img Image element.
- * @returns {{src: string, alt: string}} Entry.
+ * @returns {LightboxEntry} Entry.
  */
 function toEntry(img) {
-    return { src: img.dataset.lightboxSrc || img.currentSrc || img.src, alt: img.alt || '' };
+    return {
+        src: img.dataset.lightboxSrc || img.currentSrc || img.src,
+        alt: img.alt || '',
+        title: img.dataset.lightboxTitle || '',
+        price: img.dataset.lightboxPrice || '',
+        description: img.dataset.lightboxDescription || '',
+    };
 }
 
 /**

@@ -149,6 +149,7 @@ return [
     'uuid' => ':attribute には有効なUUIDを指定してください。',
     'captcha' => '認証コード（Captcha）が無効であるか、有効期限が切れています。もう一度お試しください。',
 
+    'max_words' => ':attributeは:max語以内で入力してください。',
     'custom' => [
         'captcha' => [
             'invalid' => '認証コード（Captcha）が無効であるか、有効期限が切れています。もう一度お試しください。',
@@ -166,6 +167,8 @@ return [
         'full_name' => '氏名（フルネーム）',
         'work_email' => '勤務先メールアドレス',
         'phone' => '電話番号',
+        'bio' => '自己紹介文',
+        'birthday' => '誕生日',
         'company' => '会社名 / 組織名',
         'topic' => 'お問い合わせ種別',
         'message' => 'お問い合わせ内容',

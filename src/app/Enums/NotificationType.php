@@ -29,4 +29,5 @@ enum NotificationType: string
     case SecurityAlert = 'security.alert';
     case RoomInvite = 'room.invite';
     case AdminBroadcast = 'admin.broadcast';
+    case BirthdayToday = 'birthday.today';
 }

@@ -12,6 +12,7 @@ import { initGlobalNotifications } from './global/notifications';
 import { initSessionRevocation } from './global/session-revocation';
 import { initDesktopNotifications } from './global/desktop-notification';
 import { initGuideLightbox } from './shared/image-lightbox';
+import { initProfileBioEditor } from './global/profile-bio';
 
 document.addEventListener('DOMContentLoaded', () => {
     initToastNotifications();
@@ -26,4 +27,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initDesktopNotifications();
     initSessionRevocation();
     initGuideLightbox();
+    initProfileBioEditor();
 });

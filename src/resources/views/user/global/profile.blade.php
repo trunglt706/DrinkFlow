@@ -94,12 +94,31 @@
                   <span class="text-xs text-slate-400">{{ __('global.profile.managed_by_it') }}</span>
                 </p>
 
+                <p class="text-xs sm:text-sm text-slate-600 flex flex-wrap items-center gap-1.5" data-profile-phone>
+                  <span class="material-symbols-outlined text-[16px] text-[#006948]">call</span>
+                  @if($phone !== '')
+                    <a href="tel:{{ preg_replace('/[^0-9+]/', '', $phone) }}" class="font-medium text-slate-800 hover:text-[#006948]">{{ $phone }}</a>
+                  @else
+                    <span class="text-xs text-slate-400 italic">{{ __('global.profile.phone_empty') }}</span>
+                  @endif
+                </p>
+
                 <div class="flex flex-wrap gap-3 text-xs text-slate-500 pt-1">
                   <span>{{ __('global.profile.department') }} <strong class="text-slate-800 font-medium">{{ $department }}</strong></span>
                   <span class="text-slate-300">•</span>
                   <span>{{ __('global.profile.employee_code') }} <strong class="text-slate-800 font-mono font-medium">{{ $userCode }}</strong></span>
                 </div>
               </div>
+            </div>
+
+            <!-- About me (Markdown rendered server-side with raw HTML escaped) -->
+            <div class="space-y-1.5 pb-6 border-b border-slate-100" data-profile-bio>
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500">{{ __('global.profile.bio_title') }}</h4>
+              @if($bioHtml !== '')
+                <div class="text-sm leading-relaxed text-slate-700 break-words [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2 [&_a]:text-[#006948] [&_a]:underline [&_strong]:font-semibold [&_strong]:text-slate-900">{!! $bioHtml !!}</div>
+              @else
+                <p class="text-sm italic text-slate-400">{{ __('global.profile.bio_empty') }}</p>
+              @endif
             </div>
 
             <!-- Editable Contact Details Form -->
@@ -135,13 +154,63 @@
                 </div>
               </div>
 
-              <!-- Delivery Location -->
-              <div class="space-y-1.5">
-                <label for="contact-delivery" class="text-xs font-semibold text-slate-700">{{ __('global.profile.delivery_label') }}</label>
-                <div class="relative">
-                  <span class="material-symbols-outlined absolute left-3 top-1/4 text-slate-400 text-[18px] leading-none">apartment</span>
-                  <input id="contact-delivery" name="delivery_location" type="text" value="{{ old('delivery_location', $deliveryLocation) }}" placeholder="{{ __('global.profile.delivery_placeholder') }}" class="w-full pl-9 pr-3.5 py-2.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:border-[#006948] focus:ring-1 focus:ring-[#006948] transition-all">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Delivery Location -->
+                <div class="space-y-1.5">
+                  <label for="contact-delivery" class="text-xs font-semibold text-slate-700">{{ __('global.profile.delivery_label') }}</label>
+                  <div class="relative">
+                    <span class="material-symbols-outlined absolute left-3 top-1/4 text-slate-400 text-[18px] leading-none">apartment</span>
+                    <input id="contact-delivery" name="delivery_location" type="text" value="{{ old('delivery_location', $deliveryLocation) }}" placeholder="{{ __('global.profile.delivery_placeholder') }}" class="w-full h-10 pl-9 pr-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:border-[#006948] focus:ring-1 focus:ring-[#006948] transition-all">
+                  </div>
                 </div>
+
+                <!-- Birthday: only the day and month are shown to the room (banner + celebration page) -->
+                <div class="space-y-1.5">
+                  <label for="contact-birthday" class="text-xs font-semibold text-slate-700">{{ __('global.profile.birthday_label') }}</label>
+                  <div class="relative">
+                    <span class="material-symbols-outlined absolute left-3 top-1/4 text-slate-400 text-[18px] leading-none pointer-events-none">cake</span>
+                    <input id="contact-birthday" name="birthday" type="date" value="{{ old('birthday', $birthday) }}" min="1900-01-01" max="{{ now()->subDay()->toDateString() }}" aria-describedby="contact-birthday-hint" class="w-full h-10 pl-9 pr-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:border-[#006948] focus:ring-1 focus:ring-[#006948] transition-all">
+                  </div>
+                  <p id="contact-birthday-hint" class="text-xs text-slate-400">{{ __('global.profile.birthday_hint') }}</p>
+                  @error('birthday')<p class="text-xs text-rose-600" role="alert">{{ $message }}</p>@enderror
+                </div>
+              </div>
+
+              {{-- About me: Markdown editor (resources/js/global/profile-bio.js); the word limit is checked again by App\Rules\MaxWords. --}}
+              @php
+                $bioToolbar = [
+                  'bold' => ['format_bold', __('global.profile.md_bold')],
+                  'italic' => ['format_italic', __('global.profile.md_italic')],
+                  'list' => ['format_list_bulleted', __('global.profile.md_list')],
+                  'ordered_list' => ['format_list_numbered', __('global.profile.md_ordered_list')],
+                  'link' => ['link', __('global.profile.md_link')],
+                ];
+              @endphp
+              <div class="space-y-1.5" data-bio-editor data-max-words="{{ $bioMaxWords }}"
+                data-i18n="{{ json_encode([
+                  'counter' => __('global.profile.bio_counter', ['count' => ':count', 'max' => ':max']),
+                  'md_bold_sample' => __('global.profile.md_bold_sample'),
+                  'md_italic_sample' => __('global.profile.md_italic_sample'),
+                  'md_list_sample' => __('global.profile.md_list_sample'),
+                  'md_link_sample' => __('global.profile.md_link_sample'),
+                ], JSON_UNESCAPED_UNICODE) }}">
+                <label for="contact-bio" class="text-xs font-semibold text-slate-700">{{ __('global.profile.bio_label') }}</label>
+                <div class="rounded-xl border border-slate-200 bg-slate-50/70 focus-within:bg-white focus-within:border-[#006948] focus-within:ring-1 focus-within:ring-[#006948] transition-all overflow-hidden">
+                  <div class="flex flex-wrap items-center gap-0.5 border-b border-slate-200 px-1.5 py-1" role="toolbar" aria-label="{{ __('global.profile.bio_toolbar') }}">
+                    @foreach($bioToolbar as $format => [$icon, $label])
+                      <button type="button" data-md-format="{{ $format }}" title="{{ $label }}" aria-label="{{ $label }}"
+                        class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-[#006948] transition-colors cursor-pointer">
+                        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">{{ $icon }}</span>
+                      </button>
+                    @endforeach
+                  </div>
+                  <textarea id="contact-bio" name="bio" rows="5" aria-describedby="contact-bio-hint" class="block w-full p-3.5 bg-transparent border-0 text-sm text-slate-800 focus:outline-none focus:ring-0 resize-y leading-relaxed" placeholder="{{ __('global.profile.bio_placeholder') }}">{{ old('bio', $bio) }}</textarea>
+                </div>
+                <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <p id="contact-bio-hint" class="text-slate-400">{{ __('global.profile.bio_hint', ['max' => $bioMaxWords]) }}</p>
+                  <span class="text-slate-500 tabular-nums" data-bio-counter aria-live="polite"></span>
+                </div>
+                @error('bio')<p class="text-xs text-rose-600" role="alert">{{ $message }}</p>@enderror
               </div>
 
               <div class="space-y-1.5">
@@ -151,7 +220,7 @@
               </div>
 
               <div class="pt-2 flex justify-end">
-                <button type="submit" class="px-4 py-2.5 bg-[#006948] hover:bg-[#005137] text-white text-xs sm:text-sm font-semibold rounded-xl transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer">
+                <button type="submit" class="px-4 py-2.5 bg-[#006948] hover:bg-[#005137] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold rounded-xl transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer">
                   <span class="material-symbols-outlined text-[18px]">save</span>
                   <span>{{ __('global.profile.save_contact') }}</span>
                 </button>

@@ -22,6 +22,9 @@ class GlobalUser extends Authenticatable
 
     protected $table = 'global_users';
 
+    /** Maximum number of words of the profile self-description (bio). */
+    public const BIO_MAX_WORDS = 300;
+
     protected $fillable = [
         'code',
         'name',
@@ -33,6 +36,8 @@ class GlobalUser extends Authenticatable
         'phone',
         'desk_location',
         'delivery_location',
+        'bio',
+        'birthday',
         'preferences',
     ];
 
@@ -57,6 +62,7 @@ class GlobalUser extends Authenticatable
             'status' => GlobalUserStatus::class,
             'preferences' => 'array',
             'phone' => 'encrypted',
+            'birthday' => 'date',
         ];
     }
 

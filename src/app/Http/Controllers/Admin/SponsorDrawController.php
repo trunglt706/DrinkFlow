@@ -165,6 +165,39 @@ class SponsorDrawController extends Controller
     }
 
     /**
+     * Take one candidate out of the list before the first turn (JSON: the new state).
+     */
+    public function removeEligible(ManageSponsorDrawRequest $request, Room $room, SponsorDrawSession $sponsorDraw): JsonResponse
+    {
+        $this->ensureRoom($room, $sponsorDraw);
+        $session = $this->draws->removeEligible($sponsorDraw, $this->admin($request), (int) $request->validated('position'));
+
+        return response()->json(['message' => __('sponsor_draw.flash.eligible_removed'), 'data' => ['state' => $this->draws->state($session, true)]]);
+    }
+
+    /**
+     * Rebuild the list from the room's eligible members before the first turn (JSON: the new state).
+     */
+    public function syncEligible(ManageSponsorDrawRequest $request, Room $room, SponsorDrawSession $sponsorDraw): JsonResponse
+    {
+        $this->ensureRoom($room, $sponsorDraw);
+        $session = $this->draws->syncEligible($sponsorDraw, $this->admin($request));
+
+        return response()->json(['message' => __('sponsor_draw.flash.eligible_synced', ['count' => $session->eligible_count]), 'data' => ['state' => $this->draws->state($session, true)]]);
+    }
+
+    /**
+     * Discard every drawn turn so the drawing starts over (not once confirmed).
+     */
+    public function reset(ManageSponsorDrawRequest $request, Room $room, SponsorDrawSession $sponsorDraw): RedirectResponse
+    {
+        $this->ensureRoom($room, $sponsorDraw);
+        $this->draws->reset($sponsorDraw, $this->admin($request));
+
+        return back()->with('status', __('sponsor_draw.flash.reset'));
+    }
+
+    /**
      * Send again the channels whose delivery failed.
      */
     public function resend(ManageSponsorDrawRequest $request, Room $room, SponsorDrawSession $sponsorDraw): RedirectResponse

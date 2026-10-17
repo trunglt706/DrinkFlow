@@ -206,8 +206,14 @@
                                 <span class="material-symbols-outlined text-[18px] shrink-0">payments</span>
                                 <span class="sidebar-text truncate">{{ __('admin.debts') }}</span>
                             </div>
-                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 sidebar-text"
-                                title="{{ __('admin.needs_settlement') }}"></span>
+                            @if(($pendingPaymentRequestsCount ?? 0) > 0)
+                                <span data-nav-pending-payments class="sidebar-text inline-flex min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white"
+                                    title="{{ __('admin.pending_payment_requests_badge', ['count' => $pendingPaymentRequestsCount]) }}"
+                                    aria-label="{{ __('admin.pending_payment_requests_badge', ['count' => $pendingPaymentRequestsCount]) }}">{{ $pendingPaymentRequestsCount }}</span>
+                            @else
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 sidebar-text"
+                                    title="{{ __('admin.needs_settlement') }}"></span>
+                            @endif
                             <div
                                 class="sidebar-tooltip pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-[#0b1c30] text-white text-xs font-semibold rounded-lg shadow-xl whitespace-nowrap z-50 opacity-0 group-hover:opacity-100 transition-opacity hidden">
                                 {{ __('admin.debts') }}
@@ -221,9 +227,17 @@
                                 <span class="material-symbols-outlined text-[18px] shrink-0">group</span>
                                 <span class="sidebar-text truncate">{{ __('admin.users') }}</span>
                             </span>
-                            @if(($blockedUsersCount ?? 0) > 0)
-                                <span class="sidebar-text inline-flex min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white" title="{{ __('admin.pending_approval_users', ['count' => $blockedUsersCount]) }}">{{ $blockedUsersCount }}</span>
-                            @endif
+                            <span class="sidebar-text inline-flex items-center gap-1">
+                                @if(($birthdayMonthCount ?? 0) > 0)
+                                    <span data-nav-birthdays class="inline-flex min-w-[20px] items-center justify-center gap-0.5 rounded-full bg-pink-500 px-1.5 py-0.5 text-[10px] font-bold text-white"
+                                        title="{{ __('admin.birthday_month_badge', ['count' => $birthdayMonthCount]) }}" aria-label="{{ __('admin.birthday_month_badge', ['count' => $birthdayMonthCount]) }}">
+                                        <span class="material-symbols-outlined text-[11px]" aria-hidden="true">cake</span>{{ $birthdayMonthCount }}
+                                    </span>
+                                @endif
+                                @if(($blockedUsersCount ?? 0) > 0)
+                                    <span class="inline-flex min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white" title="{{ __('admin.pending_approval_users', ['count' => $blockedUsersCount]) }}">{{ $blockedUsersCount }}</span>
+                                @endif
+                            </span>
                             <div
                                 class="sidebar-tooltip pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-[#0b1c30] text-white text-xs font-semibold rounded-lg shadow-xl whitespace-nowrap z-50 opacity-0 group-hover:opacity-100 transition-opacity hidden">
                                 {{ __('admin.users') }}

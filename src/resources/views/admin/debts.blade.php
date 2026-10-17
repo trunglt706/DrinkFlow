@@ -572,7 +572,8 @@
                         <span>{{ __('admin.payment_request_frozen_debts') }}</span>
                         <span class="font-bold text-primary" data-payment-request-field="debt_count"></span>
                     </div>
-                    <div class="border border-outline-variant/60 rounded-xl overflow-hidden divide-y divide-outline-variant/40 max-h-48 overflow-y-auto bg-surface-container-low" data-payment-request-debts></div>
+                    {{-- No inner scroll: the modal body already scrolls. --}}
+                    <div class="border border-outline-variant/60 rounded-xl overflow-hidden divide-y divide-outline-variant/40 bg-surface-container-low" data-payment-request-debts></div>
                 </div>
 
                 <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
@@ -595,12 +596,12 @@
 
             <div class="px-6 py-4 border-t border-outline-variant flex flex-wrap items-center justify-end gap-2 bg-surface-container-low/40 shrink-0">
                 <button type="button" data-payment-request-close class="px-4 py-2 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg text-xs font-semibold transition-colors cursor-pointer">{{ __('admin.close') }}</button>
-                <button type="button" data-payment-request-action="reject" class="hidden px-4 py-2 border border-rose-300 text-rose-700 hover:bg-rose-50 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60">
-                    <span class="material-symbols-outlined text-[15px]" aria-hidden="true">block</span>
+                <button type="button" data-payment-request-action="reject" class="hidden px-4 py-2 border border-rose-300 text-rose-700 hover:bg-rose-50 rounded-lg text-xs font-bold items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                    <span class="material-symbols-outlined text-[15px]" aria-hidden="true" data-action-icon="block">block</span>
                     <span data-reject-label data-label-start="{{ __('admin.payment_request_reject_btn') }}" data-label-confirm="{{ __('admin.payment_request_reject_confirm') }}">{{ __('admin.payment_request_reject_btn') }}</span>
                 </button>
-                <button type="button" data-payment-request-action="approve" class="hidden px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
-                    <span class="material-symbols-outlined text-[15px]" aria-hidden="true">check_circle</span>
+                <button type="button" data-payment-request-action="approve" class="hidden px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                    <span class="material-symbols-outlined text-[15px]" aria-hidden="true" data-action-icon="check_circle">check_circle</span>
                     <span>{{ __('admin.payment_request_approve_btn') }}</span>
                 </button>
             </div>

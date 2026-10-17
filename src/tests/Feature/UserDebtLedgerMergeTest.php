@@ -155,11 +155,11 @@ class UserDebtLedgerMergeTest extends TestCase
     }
 
     /**
-     * A rejected request keeps its children listed but frees them for individual payment.
+     * After a rejection the request stays listed, and its debts are ordinary payable rows again.
      *
      * @return void
      */
-    public function test_rejected_request_children_are_payable_again(): void
+    public function test_rejected_request_debts_are_listed_as_payable_rows_again(): void
     {
         $first = $this->debt(70000);
         $second = $this->debt(60000);
@@ -177,9 +177,13 @@ class UserDebtLedgerMergeTest extends TestCase
         $this->assertStringContainsString($first->code, $html);
         $this->assertStringContainsString($second->code, $html);
 
-        // Its children are payable one by one again, so each carries its own QR action.
-        $this->assertStringContainsString('data-pay-debt-code="'.$first->code.'"', $html);
-        $this->assertStringContainsString('data-pay-debt-code="'.$second->code.'"', $html);
+        // Its debts come back as top-level rows, each with its own QR action (once, not inside the request).
+        $this->assertSame(1, substr_count($html, 'data-pay-debt-code="'.$first->code.'"'));
+        $this->assertSame(1, substr_count($html, 'data-pay-debt-code="'.$second->code.'"'));
+
+        // The pay-all total counts them again so they can be bundled into a new request.
+        $data = app(\App\Services\Debt\UserRoomDebtService::class)->getDebtViewData($this->room, $this->member, $this->member->globalUser);
+        $this->assertSame(130000, $data['totalPayableAmount']);
     }
 
     /**

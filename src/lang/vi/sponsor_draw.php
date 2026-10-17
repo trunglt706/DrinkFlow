@@ -21,6 +21,11 @@ return [
     ],
 
     'errors' => [
+        'eligible_not_found' => 'Không tìm thấy ứng viên này trong danh sách.',
+        'cannot_edit_eligible' => 'Chỉ sửa được danh sách trước lượt quay đầu tiên.',
+        'sync_sponsors_only' => 'Chỉ phiên quay nhà tài trợ mới đồng bộ được với thành viên phòng.',
+        'too_few_eligible' => 'Danh sách cần ít nhất :count ứng viên (bằng số nhà tài trợ cần quay).',
+        'cannot_reset' => 'Chỉ reset được khi đã có lượt quay và kết quả chưa được xác nhận.',
         'cannot_configure' => 'Không thể đổi cài đặt: phiên đã có lượt quay hoặc đã kết thúc.',
         'not_configured' => 'Phiên quay chưa được cài đặt.',
         'shops_count' => 'Cần chọn từ 2 đến :max quán.',
@@ -50,6 +55,9 @@ return [
     ],
 
     'flash' => [
+        'eligible_removed' => 'Đã xóa khỏi danh sách và chốt lại danh sách mới.',
+        'eligible_synced' => 'Đã đồng bộ danh sách: :count thành viên hợp lệ.',
+        'reset' => 'Đã reset toàn bộ lượt quay. Có thể quay lại từ đầu.',
         'draft_created' => 'Đã tạo phiên mới. Hãy cài đặt loại phiên quay để bắt đầu.',
         'configured' => 'Đã lưu cài đặt, chốt danh sách và phát hành link.',
         'created' => 'Đã tạo phiên quay và phát hành link truy cập.',
@@ -60,6 +68,7 @@ return [
     ],
 
     'admin' => [
+        'reset_confirm' => 'Reset sẽ xóa toàn bộ kết quả đã quay để quay lại từ đầu. Tiếp tục?',
         'confirm_after_draw_shops' => 'Nút xác nhận xuất hiện khi đã quay ra quán.',
         'new_session' => 'Tạo phiên mới',
         'col_type' => 'Loại',
@@ -122,6 +131,8 @@ return [
     ],
 
     'stage' => [
+        'reset_short' => 'Reset',
+        'sync_eligible' => 'Đồng bộ danh sách thành viên hợp lệ',
         'eyebrow' => 'Quay nhà tài trợ',
         'target' => 'Tài trợ cho chiến dịch: :name',
         'drawn' => 'Đã chọn',
@@ -153,6 +164,7 @@ return [
     ],
 
     'js' => [
+        'remove_eligible' => 'Xóa :name khỏi danh sách',
         'status' => [
             'draft' => 'Nháp',
             'ready' => 'Sẵn sàng',

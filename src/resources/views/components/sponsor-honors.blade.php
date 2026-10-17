@@ -15,7 +15,9 @@
     .df-honors .honors-empty{padding:28px 0 8px;color:#acb7c9;font-size:13px}
     .df-honors .honors-recalculate{display:inline-flex;align-items:center;gap:6px;margin-top:14px;padding:8px 16px;border:1px solid #e3c48a;border-radius:999px;background:#e3c48a1a;color:#e3c48a;font-size:12px;font-weight:600;cursor:pointer;transition:background .2s}.df-honors .honors-recalculate:hover{background:#e3c48a33}.df-honors .honors-recalculate .material-symbols-outlined{font-size:16px}
     .df-honors .honors-flash{margin:14px auto 0;max-width:420px;font-size:12px;line-height:1.5}.df-honors .honors-flash.is-success{color:#86efac}.df-honors .honors-flash.is-error{color:#fca5a5}
-    @media(max-width:640px){.df-honors .honors-podium{gap:28px;flex-direction:column}.df-honors .gold{order:0;transform:none}.df-honors .silver{order:1}.df-honors .bronze{order:2}.df-honors h2{font-size:22px}}
+    .df-honors .honors-dots{display:none;justify-content:center;gap:6px;margin-top:4px}.df-honors .honors-dots span{width:6px;height:6px;border-radius:999px;background:#ffffff40;transition:width .2s,background .2s}.df-honors .honors-dots span.is-active{width:18px;background:#e3c48a}
+    /* Mobile: one sponsor per slide; native scroll-snap handles swipe, Alpine handles the 3s autoplay. */
+    @media(max-width:640px){.df-honors .honors-podium{flex-wrap:nowrap;justify-content:flex-start;gap:0;margin:24px 0 8px;padding:12px 0 8px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}.df-honors .honors-podium::-webkit-scrollbar{display:none}.df-honors .honors-sponsor{flex:0 0 100%;width:100%;scroll-snap-align:center}.df-honors .honors-dots{display:flex}.df-honors .gold{order:0;transform:none}.df-honors .silver{order:1}.df-honors .bronze{order:2}.df-honors h2{font-size:22px}}
     @media(prefers-reduced-motion:reduce){.df-honors .honors-coin{transition:none}}
 </style>
 @endonce
@@ -25,7 +27,32 @@
     <h2>{{ __('sponsor_honors.title') }}</h2>
     <p class="honors-sub">{{ __('sponsor_honors.subtitle', ['month' => $honors['month']]) }}</p>
     @if(count($honors['sponsors']) > 0)
-        <div class="honors-podium">
+        <div x-data="{
+                active: 0,
+                timer: null,
+                mobile: window.matchMedia('(max-width: 640px)'),
+                init() {
+                    this.mobile.addEventListener('change', () => this.restart());
+                    this.restart();
+                },
+                restart() {
+                    clearInterval(this.timer);
+                    if (this.mobile.matches && this.$refs.track.children.length > 1) {
+                        this.timer = setInterval(() => this.go(this.active + 1), 3000);
+                    }
+                },
+                go(index) {
+                    const track = this.$refs.track;
+                    this.active = (index + track.children.length) % track.children.length;
+                    track.scrollTo({ left: track.clientWidth * this.active, behavior: 'smooth' });
+                },
+                sync() {
+                    const track = this.$refs.track;
+                    this.active = Math.round(track.scrollLeft / Math.max(track.clientWidth, 1));
+                },
+            }">
+        {{-- A touch (swipe or coin tap) restarts the 3s countdown so autoplay never fights the user. --}}
+        <div class="honors-podium" x-ref="track" @scroll.debounce.120ms="sync()" @touchstart.passive="restart()">
             @foreach($honors['sponsors'] as $index => $sponsor)
                 @php($metal = ['gold', 'silver', 'bronze'][$index])
                 <article class="honors-sponsor {{ $metal }}" data-sponsor-rank="{{ $index + 1 }}"
@@ -55,6 +82,12 @@
                     <h3>{{ $sponsor['name'] }}</h3>
                 </article>
             @endforeach
+        </div>
+        <div class="honors-dots" aria-hidden="true">
+            @foreach($honors['sponsors'] as $index => $sponsor)
+                <span :class="{ 'is-active': active === {{ $index }} }" @click="go({{ $index }}); restart()"></span>
+            @endforeach
+        </div>
         </div>
     @else
         <p class="honors-empty">{{ __('sponsor_honors.empty') }}</p>

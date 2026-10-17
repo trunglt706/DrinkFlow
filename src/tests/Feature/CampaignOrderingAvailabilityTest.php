@@ -121,11 +121,11 @@ class CampaignOrderingAvailabilityTest extends TestCase
             ->assertSee($user->name)
             ->assertSee('100%')
             ->assertSee('75.000đ')
-            ->assertSee(__('room.campaign.policy_payment_val'))
+            // Transfer payments name the receiving account holder, but never expose bank or account number.
+            ->assertSee(__('room.campaign.policy_payment_val').' - DRINKFLOW TEAM')
             ->assertDontSee('Technology Fund')
             ->assertDontSee('Vietcombank')
-            ->assertDontSee('0123456789')
-            ->assertDontSee('DRINKFLOW TEAM');
+            ->assertDontSee('0123456789');
     }
 
     /**

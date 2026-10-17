@@ -37,11 +37,12 @@ class UserRoomDebtService
     {
         $baseDebtsQuery = $this->queryVisibleDebts($room, $roomUser);
         $debts = (clone $baseDebtsQuery)->with('campaign.paymentAccount')->latest()->paginate(20);
-        // Merged ledger: only top-level debts, because a debt bundled into a consolidated payment
-        // request (parent_id set) is revealed by expanding the request, never as a row of its own.
+        // Merged ledger: a debt bundled into a pending or approved payment request is revealed by
+        // expanding the request, never as a row of its own. Debts of a rejected request are free again,
+        // so they come back as ordinary rows with their own QR.
         // `debts` is kept unfiltered for the legacy markup until the page switches to the component.
         $ledgerDebts = (clone $baseDebtsQuery)
-            ->whereNull('parent_id')
+            ->notLockedByPaymentRequest()
             ->with('campaign.paymentAccount')
             ->latest()
             ->paginate(20);
@@ -50,13 +51,13 @@ class UserRoomDebtService
             ->whereIn('status', DebtStatus::outstandingValues())
             ->get();
         $totalUnpaidAmount = (int) $unpaidDebts->sum('remaining_amount');
-        // Pay-all only covers debts never bundled into a payment request (same rule as DebtPaymentRequestService).
-        $payableDebts = $unpaidDebts->filter(
-            static fn (Debt $debt): bool => in_array($debt->status, [DebtStatus::Unpaid, DebtStatus::Partial], true)
-                && $debt->parent_id === null
-                && (int) $debt->remaining_amount > 0
-        );
-        $totalPayableAmount = (int) $payableDebts->sum('remaining_amount');
+        // Pay-all covers debts not frozen by a pending/approved payment request, so the debts of a
+        // rejected request are counted again (same rule as DebtPaymentRequestService::eligibleDebtsQuery).
+        $totalPayableAmount = (int) (clone $baseDebtsQuery)
+            ->whereIn('status', [DebtStatus::Unpaid->value, DebtStatus::Partial->value])
+            ->where('remaining_amount', '>', 0)
+            ->notLockedByPaymentRequest()
+            ->sum('remaining_amount');
 
         $paidThisMonth = (clone $baseDebtsQuery)
             ->where('status', DebtStatus::Paid->value)

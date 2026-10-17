@@ -8,7 +8,7 @@ use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use App\Support\Helpers\MarkdownHelper;
 
 class Version extends Model
 {
@@ -157,14 +157,7 @@ class Version extends Model
      */
     public static function renderMarkdown(string $markdown): string
     {
-        if (trim($markdown) === '') {
-            return '';
-        }
-
-        return (string) Str::markdown($markdown, [
-            'html_input' => 'escape',
-            'allow_unsafe_links' => false,
-        ]);
+        return MarkdownHelper::toSafeHtml($markdown);
     }
 
     /**

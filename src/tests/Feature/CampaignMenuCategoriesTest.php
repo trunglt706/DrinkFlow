@@ -6,9 +6,11 @@ namespace Tests\Feature;
 
 use App\Enums\CampaignItemStatus;
 use App\Enums\CampaignStatus;
+use App\Enums\PaymentAccountStatus;
 use App\Models\Campaign;
 use App\Models\CampaignItem;
 use App\Models\GlobalUser;
+use App\Models\PaymentAccount;
 use App\Models\Room;
 use App\Models\RoomUser;
 use App\Services\Campaign\UserRoomCampaignService;
@@ -69,5 +71,26 @@ class CampaignMenuCategoriesTest extends TestCase
         $data = app(UserRoomCampaignService::class)->getCampaignViewData($this->room, $roomUser, $user);
 
         $this->assertSame(['Trà sữa', 'Nước ép'], $data['categories']->all());
+    }
+
+    public function test_payment_account_name_prefers_the_campaign_account_and_falls_back_to_the_room(): void
+    {
+        $account = fn (string $name): PaymentAccount => PaymentAccount::create([
+            'room_id' => $this->room->id,
+            'bank_code' => 'VCB',
+            'bank_name' => 'Vietcombank',
+            'account_number' => '0123456789',
+            'account_name' => $name,
+            'status' => PaymentAccountStatus::Active,
+        ]);
+        $service = app(UserRoomCampaignService::class);
+
+        $this->assertNull($service->getCampaignViewData($this->room, null, null)['paymentAccountName']);
+
+        $account('ROOM OWNER');
+        $this->assertSame('ROOM OWNER', $service->getCampaignViewData($this->room, null, null)['paymentAccountName']);
+
+        $this->campaign->update(['payment_account_id' => $account('CAMPAIGN OWNER')->id]);
+        $this->assertSame('CAMPAIGN OWNER', $service->getCampaignViewData($this->room, null, null)['paymentAccountName']);
     }
 }

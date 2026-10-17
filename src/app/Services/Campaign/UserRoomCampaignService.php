@@ -17,6 +17,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Room;
 use App\Models\RoomUser;
+use App\Services\Payment\ReceivingAccountResolver;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -36,6 +37,14 @@ class UserRoomCampaignService
      * Thời gian (giây) cache kết quả "Top món yêu thích" để tránh truy vấn lặp lại khi mở dashboard/modal liên tục.
      */
     private const FAVORITE_ITEMS_CACHE_SECONDS = 10;
+
+    /**
+     * @param ReceivingAccountResolver $accounts Resolves which bank account receives transfers for a campaign.
+     */
+    public function __construct(
+        private readonly ReceivingAccountResolver $accounts,
+    ) {
+    }
 
     /**
      * Lấy top món được chọn nhiều nhất trong một chiến dịch (bỏ qua đơn đã hủy), cache 10 giây.
@@ -220,6 +229,10 @@ class UserRoomCampaignService
         $unreadCount = $user ? DB::table('user_notifications')->where('global_user_id', $user->id)->whereNull('read_at')->count() : 0;
         $canOrderCampaign = ($activeCampaign?->isOrderable() ?? false) && ! $hasDeclined;
         $cart = $canOrderCampaign ? session()->get("room_campaign_cart_{$room->id}_{$activeCampaign->id}", []) : [];
+        // Orders are always paid by bank transfer: show whose account receives it (campaign account, else the room's).
+        $paymentAccountName = $activeCampaign
+            ? ($this->accounts->forCampaign($activeCampaign) ?? $this->accounts->forRoom($room))?->account_name
+            : null;
 
         return [
             'room'                       => $room,
@@ -235,6 +248,7 @@ class UserRoomCampaignService
             'userRooms'                  => $userRooms,
             'unreadNotificationsCount'   => $unreadCount,
             'cart'                       => $cart,
+            'paymentAccountName'         => $paymentAccountName,
         ];
     }
 }

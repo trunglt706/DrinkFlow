@@ -194,6 +194,14 @@
                                                 class="material-symbols-outlined text-[14px] text-outline opacity-0 group-hover/user:opacity-100 transition-opacity">visibility</span>
                                         </button>
                                         <x-sponsor-badge :rank="$sponsorRanks['ranks'][$ru->id] ?? null" :month="$sponsorRanks['month']" />
+                                        {{-- Birthday this month (room timezone): hover shows the day and month, never the year. --}}
+                                        @if (isset($birthdayDates[$ru->id]))
+                                            @php($birthdayLabel = __('admin.member_birthday_tooltip', ['date' => $birthdayDates[$ru->id]]))
+                                            <span data-member-birthday data-tooltip="{{ $birthdayLabel }}" aria-label="{{ $birthdayLabel }}" role="img" tabindex="0"
+                                                class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-pink-50 text-pink-600 ring-1 ring-pink-200 cursor-help">
+                                                <span class="material-symbols-outlined text-[14px]" aria-hidden="true">cake</span>
+                                            </span>
+                                        @endif
                                     </div>
                                     <div class="flex items-center gap-1 text-[11px] text-outline">
                                         <span>{{ $email }}</span>

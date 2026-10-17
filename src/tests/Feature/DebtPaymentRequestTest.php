@@ -273,7 +273,7 @@ class DebtPaymentRequestTest extends TestCase
         $this->assertSame(0, DB::table('debt_payments')->count());
     }
 
-    public function test_rejected_request_keeps_links_and_its_debts_can_only_be_paid_one_by_one(): void
+    public function test_rejected_request_keeps_links_and_its_debts_can_be_paid_one_by_one(): void
     {
         $d1 = $this->debt(500000);
         $d2 = $this->debt(300000);
@@ -294,14 +294,32 @@ class DebtPaymentRequestTest extends TestCase
         $this->assertSame($request->id, $d1->fresh()->parent_id);
         $this->assertSame(800000, app(DebtCreditService::class)->used($this->member));
 
-        // Rejected children are never bundled again...
-        $this->submitPayAll()->assertStatus(422);
-        // ...but each can still go through the single-debt flow.
+        // Each rejected child can go through the single-debt flow.
         $this->actingAs($this->member->globalUser, 'web')
             ->postJson(route('user.debts.confirm-payment', $this->room), ['debt_id' => $d2->id, 'transfer_content' => 'D2'])
             ->assertOk();
         $this->assertSame(DebtStatus::Pending, $d2->fresh()->status);
         $this->assertSame($request->id, $d2->fresh()->parent_id);
+    }
+
+    public function test_debts_of_a_rejected_request_can_be_bundled_into_a_new_request(): void
+    {
+        $d1 = $this->debt(500000);
+        $d2 = $this->debt(300000);
+        $this->submitPayAll()->assertOk();
+        $rejected = $this->onlyRequest();
+        $this->actingAs($this->admin, 'admin')
+            ->postJson(route('admin.debts.payment-requests.reject', [$this->room->slug, $rejected->id]), ['reason' => 'Transfer not found'])
+            ->assertOk();
+
+        $this->submitPayAll()->assertOk();
+
+        $new = Debt::paymentRequests()->where('room_id', $this->room->id)->whereKeyNot($rejected->id)->sole();
+        $this->assertSame(DebtStatus::Pending, $new->status);
+        $this->assertSame(800000, (int) $new->original_amount);
+        $this->assertSame($new->id, $d1->fresh()->parent_id);
+        $this->assertSame($new->id, $d2->fresh()->parent_id);
+        $this->assertSame(DebtStatus::Rejected, $rejected->fresh()->status);
     }
 
     public function test_request_from_another_room_cannot_be_reviewed(): void
@@ -318,6 +336,32 @@ class DebtPaymentRequestTest extends TestCase
             ->postJson(route('admin.debts.payment-requests.approve', [$otherRoom->slug, $request->id]))
             ->assertNotFound();
         $this->assertSame(DebtStatus::Pending, $request->fresh()->status);
+    }
+
+    public function test_admin_menu_badge_counts_pending_payment_requests(): void
+    {
+        $this->debt(500000);
+        $this->debt(300000);
+        $this->submitPayAll()->assertOk();
+        $single = $this->debt(200000);
+        // Created after the bundle, so it can still go through the single-debt confirmation.
+        $this->actingAs($this->member->globalUser, 'web')
+            ->postJson(route('user.debts.confirm-payment', $this->room), ['debt_id' => $single->id, 'transfer_content' => 'ONE'])
+            ->assertOk();
+
+        // One consolidated request + one single confirmation; the bundled children are not counted again.
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.debts.page', $this->room->slug))
+            ->assertOk()
+            ->assertSee('data-nav-pending-payments', false)
+            ->assertSee('title="'.e(__('admin.pending_payment_requests_badge', ['count' => 2])).'"', false);
+
+        $this->actingAs($this->admin, 'admin')
+            ->postJson(route('admin.debts.payment-requests.reject', [$this->room->slug, $this->onlyRequest()->id]), ['reason' => 'Transfer not found'])
+            ->assertOk();
+        $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.debts.page', $this->room->slug))
+            ->assertSee('title="'.e(__('admin.pending_payment_requests_badge', ['count' => 1])).'"', false);
     }
 
     public function test_pages_show_the_request_to_member_and_admin(): void

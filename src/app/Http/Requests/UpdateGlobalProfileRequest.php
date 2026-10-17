@@ -34,6 +34,9 @@ class UpdateGlobalProfileRequest extends FormRequest
             'avatar_url' => ['nullable', 'url', 'max:1000'],
             'desk_location' => ['nullable', 'string', 'max:100'],
             'delivery_location' => ['nullable', 'string', 'max:255'],
+            'birthday' => ['nullable', 'date_format:Y-m-d', 'after:1900-01-01', 'before:today'],
+            // Markdown self-description: the word limit is the rule, the character cap only guards the column.
+            'bio' => ['nullable', 'string', 'max:5000', new \App\Rules\MaxWords(\App\Models\GlobalUser::BIO_MAX_WORDS)],
             'sugar' => ['nullable', 'string', 'max:10'],
             'ice' => ['nullable', 'string', 'max:20'],
             'toppings' => ['nullable', 'array'],
@@ -55,6 +58,8 @@ class UpdateGlobalProfileRequest extends FormRequest
             'phone' => __('validation.attributes.phone'),
             'desk_location' => __('validation.attributes.desk_location'),
             'delivery_location' => __('validation.attributes.delivery_location'),
+            'bio' => __('validation.attributes.bio'),
+            'birthday' => __('validation.attributes.birthday'),
             'sugar' => __('validation.attributes.sugar'),
             'ice' => __('validation.attributes.ice'),
             'toppings' => __('validation.attributes.toppings'),

@@ -44,6 +44,11 @@ Schedule::command('subscriptions:process')
     ->hourly()
     ->withoutOverlapping();
 
+// Announce today's member birthdays in each room at 9:00 room time (hourly so every room timezone is covered; once a day per room).
+Schedule::command('drinkflow:notify-birthdays')
+    ->hourlyAt(0)
+    ->withoutOverlapping();
+
 // Remind Agents a few days before their package period ends (once per period).
 Schedule::command('subscriptions:remind-renewals')
     ->dailyAt('08:00')

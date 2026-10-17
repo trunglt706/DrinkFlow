@@ -149,6 +149,7 @@ return [
     'uuid' => 'The :attribute field must be a valid UUID.',
     'captcha' => 'The captcha code is invalid or has expired. Please try again.',
 
+    'max_words' => 'The :attribute may not be longer than :max words.',
     'custom' => [
         'captcha' => [
             'invalid' => 'The captcha code is invalid or has expired. Please try again.',
@@ -166,6 +167,8 @@ return [
         'full_name' => 'Full name',
         'work_email' => 'Work email',
         'phone' => 'Phone number',
+        'bio' => 'about yourself',
+        'birthday' => 'birthday',
         'company' => 'Company / Organization',
         'topic' => 'Contact topic',
         'message' => 'Message content',

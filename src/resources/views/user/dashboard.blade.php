@@ -48,15 +48,16 @@
 
         <!-- Weekly Items & Value Combo Chart -->
         <section class="lg:col-span-7 bg-white border border-slate-200/80 rounded-xl p-4 shadow-2xs flex flex-col">
-          <div class="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100 mb-2.5">
+          {{-- Mobile: title, subtitle and legend stack vertically; from sm up the legend sits on the right. --}}
+          <div class="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between pb-2.5 border-b border-slate-100 mb-2.5">
             <div class="flex items-center gap-2 min-w-0">
               <span class="material-symbols-outlined text-[#006948] text-[18px]" aria-hidden="true">area_chart</span>
               <div class="min-w-0">
                 <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-700">{{ __('room.dashboard.weekly_trend_title') }}</h3>
-                <p class="text-[10px] text-slate-400 truncate">{{ __('room.dashboard.weekly_trend_subtitle') }}</p>
+                <p class="text-[10px] text-slate-400 sm:truncate">{{ __('room.dashboard.weekly_trend_subtitle') }}</p>
               </div>
             </div>
-            <div class="flex items-center gap-3 text-[10px] text-slate-500 shrink-0">
+            <div class="flex items-center gap-3 pl-[26px] sm:pl-0 text-[10px] text-slate-500 shrink-0">
               <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-[#006948]"></span>{{ __('room.dashboard.chart_items_label') }}</span>
               <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm border-t-2 border-blue-600 bg-blue-600/25"></span>{{ __('room.dashboard.chart_value_label') }}</span>
             </div>
@@ -103,13 +104,29 @@
 
             <div class="relative z-10 space-y-4">
               <!-- Campaign Header Info -->
-              <div class="flex flex-col-reverse items-start gap-3 sm:flex-row sm:justify-between">
-                <div class="flex w-full min-w-0 flex-1 items-start gap-3">
-                  <div class="w-10 h-10 rounded-xl bg-emerald-50 text-[#006948] border border-emerald-100 flex items-center justify-center shrink-0 shadow-2xs">
+              @php
+                $dashTimeRemaining = $activeCampaign['time_remaining'] ?? '';
+                $dashHasExpired = ($activeCampaign['has_expired'] ?? false) || $dashTimeRemaining === '00:00' || $dashTimeRemaining === '00:00:00' || empty($dashTimeRemaining);
+              @endphp
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                {{-- Mobile: status badge + countdown share one row at equal height; from sm up only the countdown sits on the right. --}}
+                <div class="flex items-center justify-between gap-2 sm:order-2 sm:shrink-0">
+                  <span class="sm:hidden inline-flex h-7 items-center gap-1 whitespace-nowrap px-2.5 rounded-lg bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider border border-emerald-200/70">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                    {{ __('room.dashboard.active_campaign_badge') }}
+                  </span>
+                  <div class="flex h-7 items-center gap-1.5 px-2.5 rounded-lg {{ $dashHasExpired ? 'bg-slate-100 text-slate-600 border border-slate-200' : 'bg-rose-50 text-rose-700 border border-rose-200/80' }} font-mono text-xs font-bold shrink-0 whitespace-nowrap">
+                    <span class="material-symbols-outlined text-[14px] {{ $dashHasExpired ? '' : 'animate-pulse' }}">schedule</span>
+                    <span>{{ $dashHasExpired ? __('room.header.countdown_closed') : $dashTimeRemaining }}</span>
+                  </div>
+                </div>
+
+                <div class="flex w-full min-w-0 flex-1 items-start gap-3 sm:order-1">
+                  <div class="hidden sm:flex w-10 h-10 rounded-xl bg-emerald-50 text-[#006948] border border-emerald-100 items-center justify-center shrink-0 shadow-2xs">
                     <span class="material-symbols-outlined text-[20px]">local_cafe</span>
                   </div>
                   <div class="min-w-0">
-                    <div class="flex items-center gap-1.5">
+                    <div class="hidden sm:flex items-center gap-1.5">
                       <span class="inline-flex items-center gap-1 whitespace-nowrap px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider border border-emerald-200/70">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
                         {{ __('room.dashboard.active_campaign_badge') }}
@@ -128,16 +145,6 @@
                       </span>
                     </p>
                   </div>
-                </div>
-
-                <!-- Countdown Timer Pill -->
-                @php
-                  $dashTimeRemaining = $activeCampaign['time_remaining'] ?? '';
-                  $dashHasExpired = ($activeCampaign['has_expired'] ?? false) || $dashTimeRemaining === '00:00' || $dashTimeRemaining === '00:00:00' || empty($dashTimeRemaining);
-                @endphp
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg {{ $dashHasExpired ? 'bg-slate-100 text-slate-600 border border-slate-200' : 'bg-rose-50 text-rose-700 border border-rose-200/80' }} font-mono text-xs font-bold shrink-0 whitespace-nowrap">
-                  <span class="material-symbols-outlined text-[14px] {{ $dashHasExpired ? '' : 'animate-pulse' }}">schedule</span>
-                  <span>{{ $dashHasExpired ? __('room.header.countdown_closed') : $dashTimeRemaining }}</span>
                 </div>
               </div>
 

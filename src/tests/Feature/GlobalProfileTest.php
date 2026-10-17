@@ -151,4 +151,44 @@ class GlobalProfileTest extends TestCase
         $this->assertTrue($user->preferences['notify_campaign']);
         $this->assertFalse($user->preferences['notify_sound']);
     }
+
+    public function test_profile_shows_phone_and_saves_a_markdown_bio_rendered_safely(): void
+    {
+        $user = GlobalUser::create(['name' => 'Bio User', 'email' => 'bio@company.com', 'status' => 'active', 'phone' => '0987 654 321']);
+
+        $this->actingAs($user, 'web')->get('/me/profile')
+            ->assertOk()
+            ->assertSee('href="tel:0987654321"', false)
+            ->assertSee('data-bio-editor', false)
+            ->assertSee(__('global.profile.bio_empty'));
+
+        $this->withoutMiddleware(ValidateCsrfToken::class)->actingAs($user, 'web')
+            ->post('/me/profile', ['bio' => "  Thích **trà sữa** <script>alert(1)</script>  "])
+            ->assertRedirect()->assertSessionHasNoErrors();
+
+        // Tags are stripped from the input; the Markdown is rendered and any raw HTML left would be escaped.
+        $this->assertSame('Thích **trà sữa**', $user->fresh()->bio);
+        $this->actingAs($user, 'web')->get('/me/profile')
+            ->assertSee('<strong>trà sữa</strong>', false)
+            ->assertDontSee('<script>alert(1)</script>', false);
+        $this->assertStringContainsString('&lt;script&gt;', \App\Support\Helpers\MarkdownHelper::toSafeHtml('<script>alert(1)</script> [x](javascript:alert(1))'));
+        $this->assertStringNotContainsString('javascript:', \App\Support\Helpers\MarkdownHelper::toSafeHtml('[x](javascript:alert(1))'));
+
+        // Clearing the field removes the bio.
+        $this->withoutMiddleware(ValidateCsrfToken::class)->actingAs($user, 'web')->post('/me/profile', ['bio' => '   ']);
+        $this->assertNull($user->fresh()->bio);
+    }
+
+    public function test_bio_is_limited_to_300_words(): void
+    {
+        $user = GlobalUser::create(['name' => 'Long Bio', 'email' => 'longbio@company.com', 'status' => 'active']);
+        $post = fn (string $bio) => $this->withoutMiddleware(ValidateCsrfToken::class)->actingAs($user, 'web')->post('/me/profile', ['bio' => $bio]);
+
+        // Markdown symbols are not words: 300 words stay valid even when formatted.
+        $post('**'.implode(' ', array_fill(0, 300, 'từ')).'**')->assertSessionHasNoErrors();
+        $this->assertSame(300, \App\Support\Helpers\MarkdownHelper::wordCount((string) $user->fresh()->bio));
+
+        $post(implode(' ', array_fill(0, 301, 'từ')))->assertSessionHasErrors('bio');
+        $this->assertSame(300, \App\Support\Helpers\MarkdownHelper::wordCount((string) $user->fresh()->bio));
+    }
 }

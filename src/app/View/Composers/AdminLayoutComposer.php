@@ -6,12 +6,15 @@ namespace App\View\Composers;
 
 use App\Constants\AppLocale;
 use App\Enums\CampaignStatus;
+use App\Enums\DebtStatus;
 use App\Enums\OrderStatus;
 use App\Enums\RoomStatus;
 use App\Enums\RoomUserStatus;
 use App\Models\Admin;
+use App\Models\Debt;
 use App\Models\Room;
 use App\Models\Order;
+use App\Models\Scopes\CampaignDebtScope;
 use App\Services\Notification\AdminNotificationService;
 use App\Services\Notification\NotificationPresentationService;
 use Illuminate\Support\Collection;
@@ -69,8 +72,19 @@ class AdminLayoutComposer
                     ->whereNull('cancelled_at')
                     ->count()
                 : 0,
+            'birthdayMonthCount' => $room instanceof Room
+                ? app(\App\Services\Birthday\RoomBirthdayService::class)->monthCount($room)
+                : 0,
             'blockedUsersCount' => $room instanceof Room
                 ? $room->roomUsers()->where('status', RoomUserStatus::Blocked->value)->count()
+                : 0,
+            // Payments waiting for review: single-debt confirmations plus consolidated requests (their
+            // bundled children keep their own status, so nothing is counted twice).
+            'pendingPaymentRequestsCount' => $room instanceof Room
+                ? Debt::query()->withoutGlobalScope(CampaignDebtScope::class)
+                    ->where('room_id', $room->id)
+                    ->where('status', DebtStatus::Pending->value)
+                    ->count()
                 : 0,
             'unreadNotifications' => $unreadNotifications,
             'unreadCount' => $unreadNotifications->count(),

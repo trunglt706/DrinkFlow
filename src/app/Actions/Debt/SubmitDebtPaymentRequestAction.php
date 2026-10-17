@@ -76,7 +76,17 @@ class SubmitDebtPaymentRequestAction
             ]);
 
             $ids = $debts->pluck('id')->all();
-            $linked = Debt::query()->whereIn('id', $ids)->whereNull('parent_id')->update(['parent_id' => $parent->id]);
+            // A debt may come from a rejected request; it is re-linked only if that parent is still rejected.
+            // Plain ID list instead of a subquery: MySQL rejects an UPDATE that selects from the same table.
+            $rejectedParentIds = Debt::paymentRequests()
+                ->whereIn('id', $debts->pluck('parent_id')->filter()->unique()->all())
+                ->where('status', DebtStatus::Rejected->value)
+                ->pluck('id')
+                ->all();
+            $linked = Debt::query()
+                ->whereIn('id', $ids)
+                ->where(static fn ($query) => $query->whereNull('parent_id')->orWhereIn('parent_id', $rejectedParentIds))
+                ->update(['parent_id' => $parent->id]);
             if ($linked !== count($ids)) {
                 throw ValidationException::withMessages(['debt' => __('room.debts.request_conflict')]);
             }

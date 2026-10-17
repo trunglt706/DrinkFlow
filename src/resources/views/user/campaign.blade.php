@@ -19,6 +19,8 @@
     showCustomModal: false,
     showCartModal: false,
     showConfirmModal: false,
+    {{-- Set by "Đặt nhanh": the confirm modal then submits only this item and leaves the cart untouched. --}}
+    quickOrderItem: null,
     showDeclineModal: false,
     showRejoinModal: false,
     showFavoriteModal: false,
@@ -197,6 +199,34 @@
       this.isSelfPaid = false;
       this.quantity = 1;
     },
+    /** Order one item straight away (default size, no topping, qty 1) without going through the cart. */
+    openQuickOrder(item) {
+      const size = (item.sizes && item.sizes.length > 0) ? item.sizes[0] : null;
+      const price = Number(item.base_price || 0) + Number(size?.price_delta || 0);
+      if (this.maxBudget > 0 && price > this.maxBudget) {
+        window.alert({{ Js::from(__('room.campaign.custom_exceeds_budget_msg', ['limit' => \App\Support\Helpers\FormatHelper::formatCurrency((int) ($activeCampaign?->max_budget ?? 0))])) }});
+        return;
+      }
+      this.quickOrderItem = {
+        item_id: item.id,
+        item_name: item.name,
+        size_id: size?.id || null,
+        topping_ids: [],
+        quantity: 1,
+        note: this.defaultNote,
+        is_self_paid: false,
+        proxy_user_code: null
+      };
+      this.showConfirmModal = true;
+    },
+    closeConfirmModal() {
+      this.showConfirmModal = false;
+      this.quickOrderItem = null;
+    },
+    /** Items the confirm modal is about to submit: the quick-order item, or the whole cart. */
+    get confirmItems() {
+      return this.quickOrderItem ? [this.quickOrderItem] : this.cartItems;
+    },
     async addToCart() {
       if (this.isCustomItemExceeded) {
         window.alert('{{ __('room.campaign.custom_exceeds_budget_msg', ['limit' => \App\Support\Helpers\FormatHelper::formatCurrency((int) ($activeCampaign?->max_budget ?? 0))]) }}');
@@ -246,7 +276,7 @@
       this.showCartModal = false;
     },
     async confirmCart() {
-      if (this.hasExceededItems()) {
+      if (!this.quickOrderItem && this.hasExceededItems()) {
         window.alert('{{ __('room.campaign.cart_exceeded_banner_desc', ['limit' => \App\Support\Helpers\FormatHelper::formatCurrency((int) ($activeCampaign?->max_budget ?? 0))]) }}');
         return;
       }
@@ -260,7 +290,7 @@
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            items: this.cartItems.map(item => ({ ...item, proxy_user_code: item.proxy_user_code || null })),
+            items: this.confirmItems.map(item => ({ ...item, proxy_user_code: item.proxy_user_code || null })),
             payment_method: 'transfer'
           })
         });
@@ -278,13 +308,13 @@
     },
     get ownItemsCount() {
       // Chỉ tính món tự đặt cho chính mình, không tính món trả riêng hay đặt dùm (đã có số đếm riêng).
-      return this.cartItems.filter(item => !item.proxy_user_code && !item.is_self_paid).reduce((total, item) => total + Number(item.quantity), 0);
+      return this.confirmItems.filter(item => !item.proxy_user_code && !item.is_self_paid).reduce((total, item) => total + Number(item.quantity), 0);
     },
     get proxyItemsCount() {
-      return this.cartItems.filter(item => item.proxy_user_code).reduce((total, item) => total + Number(item.quantity), 0);
+      return this.confirmItems.filter(item => item.proxy_user_code).reduce((total, item) => total + Number(item.quantity), 0);
     },
     get selfPaidItemsCount() {
-      return this.cartItems.filter(item => item.is_self_paid).reduce((total, item) => total + Number(item.quantity), 0);
+      return this.confirmItems.filter(item => item.is_self_paid).reduce((total, item) => total + Number(item.quantity), 0);
     },
     openProxyModal(index) {
       const item = this.cartItems[index];
@@ -437,14 +467,32 @@
         <div class="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-emerald-50 pointer-events-none blur-2xl"></div>
 
         <div class="relative z-10 space-y-3.5">
+          @php
+            $campTimeRemaining = $campaignStats['time_remaining'] ?? '';
+            $campHasExpired = ($campaignStats['has_expired'] ?? false) || $campTimeRemaining === '00:00' || $campTimeRemaining === '00:00:00' || empty($campTimeRemaining);
+          @endphp
+          {{-- Mobile only (same as the dashboard card): code badge + countdown on one row at equal height, no logo. --}}
+          <div class="sm:hidden space-y-1">
+            <div class="flex items-center justify-between gap-2">
+              <span class="inline-flex h-7 items-center px-2.5 rounded-lg bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider border border-emerald-200 whitespace-nowrap">
+                {{ $activeCampaign->code ?: '—' }}
+              </span>
+              <div class="flex h-7 items-center gap-1.5 px-2.5 rounded-lg border {{ $campHasExpired ? 'bg-slate-100 border-slate-200 text-slate-600' : 'bg-rose-50/50 border-rose-200/80 text-rose-700' }} font-mono text-xs font-bold shrink-0 whitespace-nowrap">
+                <span class="material-symbols-outlined text-[15px] {{ $campHasExpired ? '' : 'animate-pulse' }}">schedule</span>
+                <span>{{ $campHasExpired ? __('room.header.countdown_closed') : $campTimeRemaining }}</span>
+              </div>
+            </div>
+            <p class="text-right text-[10px] text-slate-400 font-medium">{{ __('room.campaign.auto_lock_notice') }}</p>
+          </div>
+
           <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <!-- Restaurant Meta -->
             <div class="flex items-start sm:items-center gap-3">
-              <div class="w-9 h-9 rounded-lg bg-emerald-50 text-[#006948] border border-emerald-100 flex items-center justify-center shrink-0 shadow-2xs">
+              <div class="hidden sm:flex w-9 h-9 rounded-lg bg-emerald-50 text-[#006948] border border-emerald-100 items-center justify-center shrink-0 shadow-2xs">
                 <span class="material-symbols-outlined text-[20px]">local_cafe</span>
               </div>
               <div>
-                <div class="flex flex-wrap items-center gap-1.5">
+                <div class="hidden sm:flex flex-wrap items-center gap-1.5">
                   <span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider border border-emerald-200">
                     {{ $activeCampaign->code ?: '—' }}
                   </span>
@@ -464,12 +512,8 @@
               </div>
             </div>
 
-            <!-- Countdown Timer Pill -->
-            @php
-              $campTimeRemaining = $campaignStats['time_remaining'] ?? '';
-              $campHasExpired = ($campaignStats['has_expired'] ?? false) || $campTimeRemaining === '00:00' || $campTimeRemaining === '00:00:00' || empty($campTimeRemaining);
-            @endphp
-            <div class="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-1 {{ $campHasExpired ? 'bg-slate-100 border-slate-200 text-slate-600' : 'bg-rose-50/50 border-rose-200/80 text-rose-700' }} border p-2.5 rounded-lg">
+            <!-- Countdown Timer Pill (mobile renders it in the row above) -->
+            <div class="hidden sm:flex sm:flex-row lg:flex-col items-start lg:items-end gap-1 {{ $campHasExpired ? 'bg-slate-100 border-slate-200 text-slate-600' : 'bg-rose-50/50 border-rose-200/80 text-rose-700' }} border p-2.5 rounded-lg">
               <div class="flex items-center gap-1.5 font-mono text-xs font-bold {{ $campHasExpired ? 'text-slate-600' : 'text-rose-700' }}">
                 <span class="material-symbols-outlined text-[15px] {{ $campHasExpired ? '' : 'animate-pulse' }}">schedule</span>
                 <span>{{ $campHasExpired ? __('room.header.countdown_closed') : $campTimeRemaining }}</span>
@@ -521,7 +565,7 @@
               </div>
               <div class="min-w-0">
                 <span class="text-[10px] text-slate-400 block font-medium">{{ __('room.campaign.policy_payment_title') }}</span>
-                <span class="text-xs font-bold text-slate-900">{{ __('room.campaign.policy_payment_val') }}</span>
+                <span class="text-xs font-bold text-slate-900">{{ __('room.campaign.policy_payment_val') }}@if($paymentAccountName ?? null) - {{ $paymentAccountName }}@endif</span>
               </div>
             </div>
           </div>
@@ -691,6 +735,9 @@
                          alt="{{ $item->name }}"
                          data-menu-item-image
                          data-lightbox="campaign-menu"
+                         data-lightbox-title="{{ $item->name }}"
+                         data-lightbox-price="{{ \App\Support\Helpers\FormatHelper::formatCurrency($item->base_price) }}"
+                         data-lightbox-description="{{ $item->description }}"
                          tabindex="0"
                          role="button"
                          aria-label="{{ __('room.campaign.view_item_image', ['name' => $item->name]) }}"
@@ -712,6 +759,14 @@
               <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
                 <span class="text-xs sm:text-sm font-bold font-mono text-slate-900">{{ \App\Support\Helpers\FormatHelper::formatCurrency($item->base_price) }}</span>
                 @if($canOrderCampaign && !$activeUserOrder)
+                  <div class="flex items-center gap-1.5">
+                  <button type="button"
+                          @click="openQuickOrder({{ json_encode($item) }})"
+                          data-quick-order-button
+                          class="px-2.5 h-7 bg-white hover:bg-emerald-50 border border-[#006948] text-[#006948] rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer whitespace-nowrap">
+                    <span class="material-symbols-outlined text-[14px]">bolt</span>
+                    <span>{{ __('room.campaign.quick_order') }}</span>
+                  </button>
                   <button type="button"
                           @click="openCustomize({{ json_encode($item) }})"
                           data-add-to-cart-button
@@ -719,6 +774,7 @@
                     <span class="material-symbols-outlined text-[14px]">add</span>
                     <span>{{ __('room.dashboard.select_drink') }}</span>
                   </button>
+                  </div>
                 @endif
               </div>
             </div>
@@ -822,6 +878,9 @@
               @csrf
               <input type="hidden" name="campaign_item_id" :value="selectedItem?.id">
               <input type="hidden" name="campaign_item_size_id" :value="selectedSize?.id">
+
+              <!-- Item description -->
+              <p class="text-xs leading-relaxed text-slate-600 whitespace-pre-line" x-text="selectedItem?.description || {{ Js::from(__('room.campaign.default_drink_desc')) }}"></p>
 
               <!-- Size Options -->
               <template x-if="selectedItem?.sizes && selectedItem.sizes.length > 0">
@@ -1140,11 +1199,13 @@
       </template>
 
       <template x-teleport="body">
-        <div x-show="showConfirmModal" x-cloak class="fixed inset-0 z-[110] flex min-h-[100dvh] items-center justify-center bg-slate-900/70 p-4 backdrop-blur-md" @click.self="showConfirmModal = false">
+        <div x-show="showConfirmModal" x-cloak class="fixed inset-0 z-[110] flex min-h-[100dvh] items-center justify-center bg-slate-900/70 p-4 backdrop-blur-md" @click.self="closeConfirmModal()">
           <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl" @click.stop>
             <div class="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-[#006948]"><span class="material-symbols-outlined">fact_check</span></div>
             <h3 class="text-base font-bold text-slate-900">{{ __('room.campaign.confirm_title') }}</h3>
-            <p class="mt-1 text-sm leading-relaxed text-slate-500">{{ __('room.campaign.confirm_desc') }}</p>
+            <p class="mt-1 text-sm leading-relaxed text-slate-500" x-show="!quickOrderItem">{{ __('room.campaign.confirm_desc') }}</p>
+            <p class="mt-1 text-sm leading-relaxed text-slate-500" x-show="quickOrderItem" x-cloak
+               x-text="{{ Js::from(__('room.campaign.quick_order_confirm_desc', ['name' => ':name'])) }}.replace(':name', quickOrderItem?.item_name || '')"></p>
 
             <div class="mt-4 grid grid-cols-3 divide-x divide-slate-200 rounded-xl border border-slate-200 bg-slate-50">
               <div class="px-2 py-2.5 text-center">
@@ -1162,7 +1223,7 @@
             </div>
 
             <div class="mt-5 flex justify-end gap-2">
-              <button type="button" @click="showConfirmModal = false" class="rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100">{{ __('global.common.cancel') }}</button>
+              <button type="button" @click="closeConfirmModal()" class="rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100">{{ __('global.common.cancel') }}</button>
               <button type="button" :disabled="cartSubmitting" @click="confirmCart()" class="inline-flex items-center gap-1.5 rounded-xl bg-[#006948] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#005137] disabled:cursor-not-allowed disabled:opacity-50">
                 <span x-show="!cartSubmitting" class="material-symbols-outlined text-[16px]">send</span>
                 <span x-show="cartSubmitting" class="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>

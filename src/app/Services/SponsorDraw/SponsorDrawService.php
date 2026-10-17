@@ -224,6 +224,177 @@ class SponsorDrawService
     }
 
     /**
+     * Whether the frozen list may still be edited (remove / sync): configured, not cancelled, no turn drawn yet.
+     */
+    public function canEditEligible(SponsorDrawSession $session): bool
+    {
+        return $session->status === SponsorDrawStatus::Ready
+            && ! SponsorDrawResult::query()->where('sponsor_draw_session_id', $session->id)->exists();
+    }
+
+    /**
+     * Take one candidate out of the frozen list before the first turn; the list is frozen again with a new seed.
+     *
+     * @param SponsorDrawSession $session Session whose list changes.
+     * @param Admin $admin Admin removing the candidate.
+     * @param int $position Snapshot position of the candidate.
+     * @return SponsorDrawSession Session with its new snapshot.
+     * @throws ValidationException When the list can no longer change or would become too short.
+     */
+    public function removeEligible(SponsorDrawSession $session, Admin $admin, int $position): SponsorDrawSession
+    {
+        return DB::transaction(function () use ($session, $admin, $position): SponsorDrawSession {
+            $session = $this->lockEditable($session);
+            $rows = SponsorDrawEligibleUser::query()->where('sponsor_draw_session_id', $session->id)->orderBy('position')
+                ->get(['position', 'room_user_id', 'display_name_snapshot']);
+            $removed = $rows->firstWhere('position', $position);
+            if ($removed === null) {
+                throw ValidationException::withMessages(['position' => __('sponsor_draw.errors.eligible_not_found')]);
+            }
+            $kept = $rows->reject(static fn (SponsorDrawEligibleUser $row): bool => (int) $row->position === $position)
+                ->map(static fn (SponsorDrawEligibleUser $row): array => ['room_user_id' => $row->room_user_id, 'name' => (string) $row->display_name_snapshot])
+                ->values()->all();
+
+            $this->refreezeSnapshot($session, $admin, $kept, 'eligibility.removed', ['name' => $removed->display_name_snapshot]);
+
+            return $session->refresh();
+        });
+    }
+
+    /**
+     * Rebuild the list of a sponsor draw from the room's currently eligible members (before the first turn), e.g.
+     * after someone joined, left or was removed by mistake.
+     *
+     * @throws ValidationException When the list can no longer change, the session draws shops, or too few members remain.
+     */
+    public function syncEligible(SponsorDrawSession $session, Admin $admin): SponsorDrawSession
+    {
+        return DB::transaction(function () use ($session, $admin): SponsorDrawSession {
+            $session = $this->lockEditable($session);
+            if ($session->type !== SponsorDrawType::Sponsors) {
+                throw ValidationException::withMessages(['session' => __('sponsor_draw.errors.sync_sponsors_only')]);
+            }
+            $room = Room::query()->findOrFail($session->room_id);
+            $rows = $this->eligibleMembersQuery($room)->with('globalUser:id,name')->orderBy('id')->get()
+                ->map(static fn (RoomUser $member): array => [
+                    'room_user_id' => $member->id,
+                    'name' => $member->payerName() ?: __('sponsor_draw.anonymous'),
+                ])->values()->all();
+
+            $this->refreezeSnapshot($session, $admin, $rows, 'eligibility.synced', []);
+
+            return $session->refresh();
+        });
+    }
+
+    /**
+     * Start the drawing over: every result is discarded and a new seed is committed for the same frozen list. Allowed
+     * until the result is confirmed; the discarded winners and the revealed old seed stay in the event chain.
+     *
+     * @throws ValidationException When nothing was drawn yet, or the session is confirmed or cancelled.
+     */
+    public function reset(SponsorDrawSession $session, Admin $admin): SponsorDrawSession
+    {
+        return DB::transaction(function () use ($session, $admin): SponsorDrawSession {
+            $session = $this->lock($session);
+            $results = SponsorDrawResult::query()->where('sponsor_draw_session_id', $session->id)->orderBy('draw_order')->get();
+            if (! in_array($session->status, [SponsorDrawStatus::Drawing, SponsorDrawStatus::Completed], true) || $results->isEmpty()) {
+                throw ValidationException::withMessages(['session' => __('sponsor_draw.errors.cannot_reset')]);
+            }
+
+            $previousSeed = (string) $session->seed_encrypted;
+            SponsorDrawResult::query()->where('sponsor_draw_session_id', $session->id)->delete();
+            SponsorDrawEligibleUser::query()->where('sponsor_draw_session_id', $session->id)->update(['is_winner' => false]);
+            $seed = $this->randomizer->newSeed();
+            $session->update([
+                'status' => SponsorDrawStatus::Ready->value,
+                'seed_encrypted' => $seed,
+                'seed_commitment' => $this->randomizer->commitment($seed, $session->id, (string) $session->snapshot_hash),
+                'seed_revealed_at' => null,
+            ]);
+
+            // The old seed is published so the discarded turns stay verifiable.
+            $this->events->append($session, 'session.reset', [
+                'discarded_winners' => $results->pluck('display_name_snapshot')->all(),
+                'previous_seed' => $previousSeed,
+                'seed_commitment' => $session->seed_commitment,
+            ], $admin);
+            $this->audit->record('sponsor_draw.reset', 'sponsor_draw_session', $session->id, $session->room_id, [
+                'winners' => $results->pluck('room_user_id')->all(),
+            ], ['status' => SponsorDrawStatus::Ready->value]);
+
+            return $session->refresh();
+        });
+    }
+
+    /**
+     * Lock a session whose list may still change.
+     *
+     * @throws ValidationException When a turn was drawn or the session is not ready.
+     */
+    private function lockEditable(SponsorDrawSession $session): SponsorDrawSession
+    {
+        $session = $this->lock($session);
+        if (! $this->canEditEligible($session)) {
+            throw ValidationException::withMessages(['session' => __('sponsor_draw.errors.cannot_edit_eligible')]);
+        }
+
+        return $session;
+    }
+
+    /**
+     * Freeze a new candidate list (same order as given) and commit to a new seed, recording the change in the chain.
+     *
+     * @param list<array{room_user_id: int|null, name: string}> $rows New candidates.
+     * @param string $event Event type describing the change.
+     * @param array<string, mixed> $eventData Event details.
+     * @throws ValidationException When too few candidates remain.
+     */
+    private function refreezeSnapshot(SponsorDrawSession $session, Admin $admin, array $rows, string $event, array $eventData): void
+    {
+        $isShops = $session->type === SponsorDrawType::Shops;
+        $minimum = $isShops ? 2 : max(1, (int) $session->target_winner_count);
+        if (count($rows) < $minimum) {
+            throw ValidationException::withMessages(['position' => $isShops
+                ? __('sponsor_draw.errors.shops_count', ['max' => (int) config('sponsor_draw.max_shops', 100)])
+                : __('sponsor_draw.errors.too_few_eligible', ['count' => $minimum])]);
+        }
+
+        SponsorDrawEligibleUser::query()->where('sponsor_draw_session_id', $session->id)->delete();
+        foreach (array_values($rows) as $position => $row) {
+            SponsorDrawEligibleUser::create([
+                'sponsor_draw_session_id' => $session->id,
+                'room_user_id' => $row['room_user_id'],
+                'position' => $position,
+                'display_name_snapshot' => $row['name'],
+            ]);
+        }
+        $hash = $isShops
+            ? $this->randomizer->namesSnapshotHash($session->id, array_map(static fn (array $row): string => $row['name'], array_values($rows)))
+            : $this->randomizer->snapshotHash($session->id, array_map(static fn (array $row): int => (int) $row['room_user_id'], array_values($rows)));
+        $seed = $this->randomizer->newSeed();
+        $session->update([
+            'eligibility_snapshot_at' => now(),
+            'eligible_count' => count($rows),
+            'snapshot_hash' => $hash,
+            'seed_encrypted' => $seed,
+            'seed_commitment' => $this->randomizer->commitment($seed, $session->id, $hash),
+        ]);
+
+        $this->events->append($session, $event, $eventData + ['eligible_count' => count($rows)], $admin);
+        $this->events->append($session, 'eligibility.locked', [
+            'eligible_count' => $session->eligible_count,
+            'snapshot_hash' => $session->snapshot_hash,
+            'seed_commitment' => $session->seed_commitment,
+            'random_method' => $session->random_method,
+        ], $admin);
+        $this->audit->record('sponsor_draw.'.str_replace('eligibility.', 'eligible_', $event), 'sponsor_draw_session', $session->id, $session->room_id, [], [
+            'eligible_count' => count($rows),
+            'snapshot_hash' => $hash,
+        ] + $eventData);
+    }
+
+    /**
      * Clean a shop list: trimmed, inner spaces collapsed, empty and duplicate (case-insensitive) names removed.
      *
      * @param list<mixed> $shops Raw names.
@@ -539,6 +710,7 @@ class SponsorDrawService
             $state['notifications'] = $this->channelStatuses($session, true);
             $state['sponsor_assignment'] = $session->sponsor_assignment;
             $state['cancel_reason'] = $session->cancel_reason;
+            $state['can_edit_eligible'] = $session->status === SponsorDrawStatus::Ready && $results->isEmpty();
         }
 
         return $state;

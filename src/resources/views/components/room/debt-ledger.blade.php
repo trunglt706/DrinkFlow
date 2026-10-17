@@ -127,7 +127,7 @@
                                 @endif
                             </td>
                             <td class="py-2.5 px-3 text-center whitespace-nowrap">
-                                @if(!$isPaid && $debt->remaining_amount > 0)
+                                @if(!$isPaid && $debtStatus !== \App\Enums\DebtStatus::Rejected->value && $debt->remaining_amount > 0)
                                     <button
                                         class="px-2.5 py-1 rounded bg-[#006948] text-white hover:bg-[#005137] transition-all inline-flex items-center gap-1 shadow-2xs cursor-pointer font-medium text-xs"
                                         data-pay-debt-code="{{ $debt->code }}"
@@ -222,14 +222,6 @@
                             <td colspan="6" class="py-2 pl-8 pr-3">
                                 <div class="flex flex-col gap-1.5">
                                     @foreach($paymentRequest->children as $child)
-                                        @php
-                                            $childStatus = $child->getStatusValue();
-                                            // Bundled debts are frozen while the request is pending or approved;
-                                            // the children of a rejected request are payable one by one again.
-                                            $childPayable = $requestStatus === \App\Enums\DebtStatus::Rejected->value
-                                                && in_array($childStatus, [\App\Enums\DebtStatus::Unpaid->value, \App\Enums\DebtStatus::Partial->value], true)
-                                                && (int) $child->remaining_amount > 0;
-                                        @endphp
                                         <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
                                             <span class="min-w-0 truncate">
                                                 <span class="font-mono font-semibold text-on-surface">{{ $child->code }}</span>
@@ -238,16 +230,6 @@
                                             </span>
                                             <span class="flex items-center gap-2 shrink-0">
                                                 <span class="font-tabular-nums text-on-surface-variant">{{ \App\Support\Helpers\FormatHelper::formatCurrency((int) ($child->remaining_amount > 0 ? $child->remaining_amount : $child->paid_amount)) }}</span>
-                                                @if($childPayable)
-                                                    <button
-                                                        class="px-2 py-0.5 rounded bg-[#006948] text-white hover:bg-[#005137] transition-all inline-flex items-center gap-1 cursor-pointer font-medium text-[11px]"
-                                                        data-pay-debt-code="{{ $child->code }}"
-                                                        @if($child->campaign?->code) data-pay-debt-campaign="{{ $child->campaign->code }}" @endif
-                                                        @click="openQr({{ (int) $child->remaining_amount }}, '{{ \App\Support\Helpers\FormatHelper::formatCurrency($child->remaining_amount) }}', {{ \Illuminate\Support\Js::from($transferContents[$child->id] ?? $child->code) }}, '', {{ $child->id }}, false, {{ \Illuminate\Support\Js::from($qrPayloads[$child->id] ?? '') }}, {{ \Illuminate\Support\Js::from($qrAccounts[$child->id] ?? null) }}, {{ \Illuminate\Support\Js::from((string) $child->code) }})">
-                                                        <span class="material-symbols-outlined text-[12px] text-white">qr_code</span>
-                                                        <span class="text-white">{{ __('room.debts.btn_view_qr') }}</span>
-                                                    </button>
-                                                @endif
                                             </span>
                                         </div>
                                     @endforeach

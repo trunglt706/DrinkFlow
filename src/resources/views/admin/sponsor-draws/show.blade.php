@@ -1,9 +1,8 @@
 <x-admin.layout :title="__('sponsor_draw.admin.session_title', ['id' => $session->id])" active="sponsor-draws" :room="$room">
     @php
         $status = $session->status;
-        $notifications = $state['notifications'] ?? [];
-        $assignment = $state['sponsor_assignment'] ?? null;
         $isDraft = $status === \App\Enums\SponsorDrawStatus::Draft;
+        $canReset = in_array($status, [\App\Enums\SponsorDrawStatus::Drawing, \App\Enums\SponsorDrawStatus::Completed], true);
         // The settings dialog opens by itself right after "New session" and when its validation failed.
         $openSettings = $canConfigure && (session('open_settings') || $errors->hasAny(['type', 'target_winner_count', 'target_campaign_id', 'shops', 'shops.*', 'new_shops']));
     @endphp
@@ -27,11 +26,24 @@
                         <span class="material-symbols-outlined !text-[16px]" aria-hidden="true">tune</span>{{ __('sponsor_draw.admin.settings') }}
                     </button>
                 @endif
-                @unless ($isDraft)
-                <a href="{{ route('admin.sponsor-draws.proof', [$room, $session]) }}" class="inline-flex items-center gap-1.5 rounded-lg border border-outline-variant px-3 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container" download>
-                    <span class="material-symbols-outlined text-[16px]">verified</span>{{ __('sponsor_draw.admin.download_proof') }}
-                </a>
-                @endunless
+                @if ($linkUrl)
+                    {{-- Copies the access link; the shared [data-copy] helper shows the toast. --}}
+                    <button type="button" data-copy="{{ $linkUrl }}" data-copied-message="{{ __('admin.copied') }}" data-copy-failed-message="{{ __('admin.copy_failed') }}" data-sd-copy-link
+                        title="{{ __('sponsor_draw.admin.link_until', ['time' => $session->localTime($session->link_expires_at)]) }}"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-outline-variant px-3 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container cursor-pointer">
+                        <span class="material-symbols-outlined !text-[16px]" aria-hidden="true">content_copy</span>{{ __('sponsor_draw.admin.copy_link') }}
+                    </button>
+                @endif
+                @if (! $isDraft && $status !== \App\Enums\SponsorDrawStatus::Cancelled)
+                    {{-- A new link replaces the old one (also the way back after the link expired). --}}
+                    <form method="POST" action="{{ route('admin.sponsor-draws.link', [$room, $session]) }}" data-confirm-message="{{ __('sponsor_draw.admin.new_link_confirm') }}">
+                        @csrf
+                        <button type="submit" data-sd-new-link title="{{ $linkUrl ? __('sponsor_draw.admin.new_link') : __('sponsor_draw.admin.link_expired_hint') }}"
+                            class="inline-flex items-center gap-1.5 rounded-lg border {{ $linkUrl ? 'border-outline-variant text-on-surface' : 'border-error/40 text-error' }} px-3 py-2 text-xs font-semibold hover:bg-surface-container cursor-pointer">
+                            <span class="material-symbols-outlined !text-[16px]" aria-hidden="true">link</span>{{ __('sponsor_draw.admin.new_link') }}
+                        </button>
+                    </form>
+                @endif
                 @if ($status->canCancel())
                     <button type="button" data-sd-cancel-open aria-haspopup="dialog"
                         class="inline-flex items-center gap-1.5 rounded-lg border border-error/40 px-3 py-2 text-xs font-semibold text-error hover:bg-error-container/60 cursor-pointer">
@@ -41,11 +53,14 @@
             </div>
         </section>
 
-        @if (session('status'))
-            <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" role="status">{{ session('status') }}</div>
-        @endif
-        @if ($errors->any())
-            <div class="rounded-xl border border-error/30 bg-error-container p-3 text-sm text-on-error-container" role="alert">{{ $errors->first() }}</div>
+        @php
+            $flashToast = session('status')
+                ? ['message' => session('status'), 'type' => 'success']
+                : ($errors->any() ? ['message' => $errors->first(), 'type' => 'error'] : null);
+        @endphp
+        @if ($flashToast)
+            {{-- Flash messages are shown as toasts; `load` runs after the admin bundle has defined window.notify. --}}
+            <script>window.addEventListener('load', () => window.notify?.(@js($flashToast['message']), @js($flashToast['type'])));</script>
         @endif
 
         @if ($isDraft)
@@ -60,34 +75,17 @@
                 </button>
             </section>
         @else
-        {{-- Access link: shareable while valid; a new link replaces the old one. --}}
-        <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 space-y-2" data-sponsor-draw-link>
-            <h2 class="text-sm font-bold text-on-surface">{{ __('sponsor_draw.admin.link_title') }}</h2>
-            @if ($linkUrl)
-                <div class="flex flex-wrap items-center gap-2">
-                    <input type="text" readonly value="{{ $linkUrl }}" class="min-w-0 flex-1 h-9 rounded-lg border border-outline-variant bg-surface px-3 font-mono text-xs" aria-label="{{ __('sponsor_draw.admin.link_title') }}" onclick="this.select()">
-                    <button type="button" data-copy="{{ $linkUrl }}" data-copied-message="{{ __('admin.copied') }}" data-copy-failed-message="{{ __('admin.copy_failed') }}"
-                        class="h-9 inline-flex items-center gap-1 rounded-lg border border-outline-variant px-3 text-xs font-semibold hover:bg-surface-container"><span class="material-symbols-outlined text-[16px]">content_copy</span>{{ __('sponsor_draw.admin.copy_link') }}</button>
-                </div>
-                <p class="text-xs text-outline">{{ __('sponsor_draw.admin.link_until', ['time' => $session->localTime($session->link_expires_at)]) }}</p>
-            @else
-                <p class="text-xs text-error">{{ __('sponsor_draw.admin.link_expired_hint') }}</p>
-            @endif
-            @if ($status !== \App\Enums\SponsorDrawStatus::Cancelled)
-                <form method="POST" action="{{ route('admin.sponsor-draws.link', [$room, $session]) }}"
-                    data-confirm-message="{{ __('sponsor_draw.admin.new_link_confirm') }}">
-                    @csrf
-                    <button type="submit" class="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><span class="material-symbols-outlined text-[16px]">link</span>{{ __('sponsor_draw.admin.new_link') }}</button>
-                </form>
-            @endif
-        </section>
 
         <x-sponsor-draw.stage :state="$state" mode="admin" :timezone="$session->displayTimezone()" :urls="[
             'state' => route('admin.sponsor-draws.state', [$room, $session]),
             'token' => route('admin.sponsor-draws.socket-token', [$room, $session]),
             'draw' => route('admin.sponsor-draws.draw', [$room, $session]),
+            'remove_eligible' => route('admin.sponsor-draws.eligible.remove', [$room, $session]),
+            'sync_eligible' => route('admin.sponsor-draws.eligible.sync', [$room, $session]),
         ]">
             <x-slot:actions>
+                @if (! $status->isConfirmed() && $status !== \App\Enums\SponsorDrawStatus::Cancelled)
+                <div @class(['grid gap-3', 'grid-cols-2' => $canReset])>
                 {{-- Confirm sits next to the draw button; it only becomes active once every sponsor is drawn. --}}
                 @if ($status === \App\Enums\SponsorDrawStatus::Completed)
                     <form method="POST" action="{{ route('admin.sponsor-draws.confirm', [$room, $session]) }}" data-confirm-message="{{ __('sponsor_draw.admin.confirm_confirm') }}">
@@ -97,50 +95,19 @@
                 @elseif (! $status->isConfirmed() && $status !== \App\Enums\SponsorDrawStatus::Cancelled)
                     <button type="button" class="sd-btn is-ghost" disabled title="{{ __($session->type === \App\Enums\SponsorDrawType::Shops ? 'sponsor_draw.admin.confirm_after_draw_shops' : 'sponsor_draw.admin.confirm_after_draw') }}"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span><span>{{ __('sponsor_draw.stage.confirm_short') }}</span></button>
                 @endif
+                {{-- Reset discards every drawn turn so the drawing starts over; only until the result is confirmed. --}}
+                @if ($canReset)
+                    <form method="POST" action="{{ route('admin.sponsor-draws.reset', [$room, $session]) }}" data-confirm-tone="danger" data-confirm-message="{{ __('sponsor_draw.admin.reset_confirm') }}">
+                        @csrf
+                        <button type="submit" class="sd-btn is-reset" data-sponsor-draw-reset><span class="material-symbols-outlined" aria-hidden="true">restart_alt</span><span>{{ __('sponsor_draw.stage.reset_short') }}</span></button>
+                    </form>
+                @endif
+                </div>
+                @endif
             </x-slot:actions>
         </x-sponsor-draw.stage>
         @endif
 
-        @unless ($isDraft)
-        <section class="rounded-xl border border-outline-variant bg-surface-container-lowest p-4 space-y-3">
-            <h2 class="text-sm font-bold text-on-surface">{{ __('sponsor_draw.admin.confirm_title') }}</h2>
-            @if ($status === \App\Enums\SponsorDrawStatus::Completed)
-                <p class="text-xs text-outline">{{ __('sponsor_draw.admin.confirm_hint') }}</p>
-            @elseif ($status->isConfirmed())
-                <p class="text-xs text-on-surface">{{ __('sponsor_draw.admin.confirmed_by', ['name' => $session->confirmedBy?->name ?? '—', 'time' => $session->localTime($session->confirmed_at, 'd/m/Y H:i')]) }}</p>
-                @if (is_array($assignment) && ($assignment['status'] ?? 'none') !== 'none')
-                    <p class="text-xs {{ $assignment['status'] === 'assigned' ? 'text-emerald-700' : 'text-amber-700' }}" data-sponsor-assignment="{{ $assignment['status'] }}">
-                        {{ $assignment['status'] === 'assigned' ? __('sponsor_draw.admin.assignment_done', ['name' => $session->targetCampaign?->name]) : __('sponsor_draw.admin.assignment_skipped', ['reason' => $assignment['reason'] ?? '']) }}
-                    </p>
-                @endif
-                <div class="overflow-x-auto">
-                    <table class="w-full text-xs" data-sponsor-draw-notifications>
-                        <thead class="text-[11px] uppercase tracking-wider text-outline"><tr><th class="py-2 text-left">{{ __('sponsor_draw.admin.channel') }}</th><th class="py-2 text-left">{{ __('validation.attributes.status') }}</th><th class="py-2 text-right">{{ __('sponsor_draw.admin.attempts') }}</th><th class="py-2 text-left">{{ __('sponsor_draw.admin.detail') }}</th></tr></thead>
-                        <tbody class="divide-y divide-outline-variant/60">
-                            @forelse ($notifications as $row)
-                                <tr>
-                                    <td class="py-2">{{ $row['name'] ?: ucfirst($row['type']) }} <span class="text-outline">({{ $row['type'] }})</span></td>
-                                    <td class="py-2 font-semibold {{ $row['status'] === 'sent' ? 'text-emerald-700' : ($row['status'] === 'failed' ? 'text-error' : 'text-amber-700') }}">{{ __('sponsor_draw.admin.delivery.'.$row['status']) }}</td>
-                                    <td class="py-2 text-right font-mono">{{ $row['attempts'] }}</td>
-                                    <td class="py-2 text-outline">{{ $row['status'] === 'sent' ? ($row['sent_at'] ? $session->localTime($row['sent_at'], 'H:i d/m') : '') : ($row['last_error'] ?? '') }}</td>
-                                </tr>
-                            @empty
-                                <tr><td colspan="4" class="py-3 text-outline">{{ __('sponsor_draw.admin.no_channels') }}</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-                @if (collect($notifications)->contains('status', 'failed'))
-                    <form method="POST" action="{{ route('admin.sponsor-draws.resend', [$room, $session]) }}">
-                        @csrf
-                        <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg border border-outline-variant px-3 py-2 text-xs font-semibold hover:bg-surface-container"><span class="material-symbols-outlined text-[16px]">replay</span>{{ __('sponsor_draw.admin.resend_button') }}</button>
-                    </form>
-                @endif
-            @else
-                <p class="text-xs text-outline">{{ $status === \App\Enums\SponsorDrawStatus::Cancelled ? __('sponsor_draw.admin.cancelled_reason', ['reason' => $session->cancel_reason]) : __($session->type === \App\Enums\SponsorDrawType::Shops ? 'sponsor_draw.admin.confirm_after_draw_shops' : 'sponsor_draw.admin.confirm_after_draw') }}</p>
-            @endif
-        </section>
-        @endunless
 
         @if ($canConfigure)
             @include('admin.sponsor-draws._settings-modal')

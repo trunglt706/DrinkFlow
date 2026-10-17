@@ -94,6 +94,11 @@
     :user-rooms="$userRooms"
   />
 
+  @if ($room)
+    <!-- Birthday banner: members whose birthday is within 3 days -->
+    <x-room.birthday-banner :room="$room" :viewer-code="$roomUser?->user_code" />
+  @endif
+
   <!-- Main Slot Content -->
   <main class="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 space-y-6">
     {{ $slot }}
@@ -109,7 +114,7 @@
   <x-global.loading />
 
   <!-- Shared Global Go To Top Floating Button -->
-  <x-global.go-to-top />
+  <x-global.go-to-top :mobile-actions-in-footer="true" />
 
   {{ $scripts ?? '' }}
 </body>

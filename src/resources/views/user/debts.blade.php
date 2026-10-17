@@ -144,7 +144,12 @@
                 const result = await response.json();
                 if (response.ok && result.success) {
                     window.notify?.(result.message || '{{ __('room.orders.payment_submitted_success') }}', 'success');
-                    setTimeout(() => window.location.reload(), 800);
+                    // Opened from a campaign-closed notification (?campaign=code): land on the plain ledger
+                    // instead of reloading, which would auto-open the QR of the debt just reported.
+                    const hasCampaignParam = new URLSearchParams(window.location.search).has('campaign');
+                    setTimeout(() => hasCampaignParam
+                        ? window.location.assign({{ Js::from(route('user.debts.index', $room)) }})
+                        : window.location.reload(), 800);
                 } else {
                     window.notify?.(result.message || '{{ __('room.orders.payment_submit_error') }}', 'error');
                 }

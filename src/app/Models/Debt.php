@@ -51,7 +51,8 @@ class Debt extends Model
         });
 
         static::updating(function (Debt $debt): void {
-            // A bundled debt keeps its link for traceability, even after the request was rejected.
+            // A bundled debt keeps its link for traceability; only re-bundling after a rejection (a bulk
+            // update in SubmitDebtPaymentRequestAction, which bypasses this hook) may move it.
             if ($debt->isDirty('parent_id') && $debt->getOriginal('parent_id') !== null) {
                 throw self::lockedException();
             }

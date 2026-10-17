@@ -21,6 +21,11 @@ return [
     ],
 
     'errors' => [
+        'eligible_not_found' => 'This candidate is not in the list.',
+        'cannot_edit_eligible' => 'The list can only change before the first turn.',
+        'sync_sponsors_only' => 'Only a sponsor draw can be synced with the room members.',
+        'too_few_eligible' => 'The list needs at least :count candidate(s) (the number of sponsors to draw).',
+        'cannot_reset' => 'A draw can only be reset once a turn was drawn and before the result is confirmed.',
         'cannot_configure' => 'The settings can no longer change: a turn was drawn or the session is over.',
         'not_configured' => 'The draw session is not set up yet.',
         'shops_count' => 'Pick between 2 and :max shops.',
@@ -50,6 +55,9 @@ return [
     ],
 
     'flash' => [
+        'eligible_removed' => 'Removed from the list; the new list is locked.',
+        'eligible_synced' => 'List synced: :count eligible member(s).',
+        'reset' => 'All turns were reset. The draw can start over.',
         'draft_created' => 'New session created. Set the draw type up to start.',
         'configured' => 'Settings saved: list frozen and link issued.',
         'created' => 'Draw session created and its access link issued.',
@@ -60,6 +68,7 @@ return [
     ],
 
     'admin' => [
+        'reset_confirm' => 'Resetting deletes every drawn result so the draw starts over. Continue?',
         'confirm_after_draw_shops' => 'The confirm button appears once the shop is drawn.',
         'new_session' => 'New session',
         'col_type' => 'Type',
@@ -122,6 +131,8 @@ return [
     ],
 
     'stage' => [
+        'reset_short' => 'Reset',
+        'sync_eligible' => 'Sync the eligible members',
         'eyebrow' => 'Sponsor draw',
         'target' => 'Sponsoring campaign: :name',
         'drawn' => 'Drawn',
@@ -153,6 +164,7 @@ return [
     ],
 
     'js' => [
+        'remove_eligible' => 'Remove :name from the list',
         'status' => [
             'draft' => 'Draft',
             'ready' => 'Ready',

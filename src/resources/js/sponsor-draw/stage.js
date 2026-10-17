@@ -41,6 +41,10 @@ export function initSponsorDrawStage() {
     let busy = false;
 
     const $ = (selector) => root.querySelector(selector);
+    const setText = (selector, text) => {
+        const node = $(selector);
+        if (node) node.textContent = text;
+    };
     const reel = $('[data-sd-reel]');
     const reelName = $('[data-sd-reel-name]');
     const reelLabel = $('[data-sd-reel-label]');
@@ -82,6 +86,10 @@ export function initSponsorDrawStage() {
         return node;
     };
     const searchInput = $('[data-sd-search]');
+    const syncButton = $('[data-sd-sync]');
+    let editing = false;
+    // The list may change (remove / sync) only on the admin page, before the first turn; the backend checks it again.
+    const canEditEligible = () => isAdmin && Boolean(state.can_edit_eligible) && !expired && !spinning && !busy;
     let picking = null;
     let frozenEligible = null;
     const eligibleShown = () => (spinning && frozenEligible ? frozenEligible : state.eligible) || [];
@@ -99,6 +107,18 @@ export function initSponsorDrawStage() {
             );
             if (person.is_winner) item.append(element('span', 'sd-tag sd-mono', i18n.already_won));
             else if (isPicking) item.append(element('span', 'sd-tag sd-mono', i18n.picking));
+            if (canEditEligible()) {
+                const remove = element('button', 'sd-person-remove');
+                remove.type = 'button';
+                remove.disabled = editing;
+                remove.dataset.sdRemove = String(person.position);
+                remove.title = trans(i18n.remove_eligible, { name: person.name });
+                remove.setAttribute('aria-label', remove.title);
+                const removeIcon = element('span', 'material-symbols-outlined', 'close');
+                removeIcon.setAttribute('aria-hidden', 'true');
+                remove.append(removeIcon);
+                item.append(remove);
+            }
             return item;
         }));
         $('[data-sd-names-empty]').hidden = people.length > 0;
@@ -156,9 +176,16 @@ export function initSponsorDrawStage() {
         $('[data-sd-remaining]').textContent = state.remaining_count;
         $('[data-sd-expires]').textContent = formatTime(state.link_expires_at);
         $('[data-sd-progress]').style.width = `${percent}%`;
-        $('[data-sd-completion]').textContent = trans(i18n.completion, { percent });
-        $('[data-sd-eligible-count]').textContent = trans(i18n.people, { count: state.eligible_count });
-        $('[data-sd-remaining-people]').textContent = trans(i18n.remaining_people, { count: (state.eligible || []).filter((person) => !person.is_winner).length });
+        // Admin-only counters (absent on the members' page).
+        setText('[data-sd-completion]', trans(i18n.completion, { percent }));
+        setText('[data-sd-eligible-count]', trans(i18n.people, { count: state.eligible_count }));
+        const snapshotCode = $('[data-sd-snapshot-code]');
+        if (snapshotCode) snapshotCode.textContent = `#${String(state.proof?.snapshot_hash || '').slice(0, 12).toUpperCase()}`;
+        if (syncButton) {
+            syncButton.hidden = !state.can_edit_eligible;
+            syncButton.disabled = editing || !canEditEligible();
+        }
+        setText('[data-sd-remaining-people]', trans(i18n.remaining_people, { count: (state.eligible || []).filter((person) => !person.is_winner).length }));
         $('[data-sd-turn]').textContent = trans(i18n.turn, { current: Math.min(results.length + (results.length < total ? 1 : 0), total), total });
 
         renderPeople();
@@ -183,7 +210,8 @@ export function initSponsorDrawStage() {
 
         // The admin's confirm / resend / cancel panels are server-rendered for the status at page load:
         // once the session moves on (last turn drawn, cancelled, confirmed elsewhere), reload to show the right ones.
-        if (isAdmin && !spinning && !busy && state.status !== initialStatus && panelStatuses.includes(state.status)) {
+        // A reset elsewhere (back to "ready") also changes those panels.
+        if (isAdmin && !spinning && !busy && state.status !== initialStatus && (panelStatuses.includes(state.status) || state.status === 'ready')) {
             initialStatus = state.status;
             setTimeout(() => window.location.reload(), state.status === 'completed' ? 2500 : 0);
         }
@@ -371,6 +399,47 @@ export function initSponsorDrawStage() {
         }
         render();
     }
+
+    /** Send a list change (remove / sync) and apply the new state the backend returns. */
+    async function editEligible(url, body, isSync) {
+        // Removing is silent on success (the list updates); syncing reports how many members it found.
+        if (!url || editing) return;
+        editing = true;
+        syncButton?.classList.toggle('is-busy', isSync);
+        render();
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf },
+                credentials: 'same-origin',
+                body: JSON.stringify(body),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const firstError = payload.errors ? Object.values(payload.errors).flat()[0] : null;
+                throw new Error(firstError || payload.message || `HTTP ${response.status}`);
+            }
+            state = payload.data.state;
+            lastSequence = Math.max(lastSequence, Number(state.last_sequence || 0));
+            if (isSync && payload.message) window.notify?.(payload.message, 'success');
+        } catch (error) {
+            window.notify?.(error.message, 'error');
+        } finally {
+            editing = false;
+            syncButton?.classList.remove('is-busy');
+            render();
+        }
+    }
+
+    $('[data-sd-names]').addEventListener('click', (event) => {
+        const button = event.target instanceof Element ? event.target.closest('[data-sd-remove]') : null;
+        if (!button || !canEditEligible()) return;
+        const person = (state.eligible || []).find((candidate) => String(candidate.position) === button.dataset.sdRemove);
+        if (person) editEligible(config.urls.remove_eligible, { position: Number(person.position) }, false);
+    });
+    syncButton?.addEventListener('click', () => {
+        if (canEditEligible()) editEligible(config.urls.sync_eligible, {}, true);
+    });
 
     drawButton?.addEventListener('click', async () => {
         if (busy || spinning || !config.urls.draw) return;

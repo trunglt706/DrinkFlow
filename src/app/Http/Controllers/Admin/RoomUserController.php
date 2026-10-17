@@ -66,9 +66,11 @@ class RoomUserController extends Controller
      * @param Request $request Incoming request.
      * @param Room $room Room entity.
      * @param \App\Services\Admin\AdminRoomUserService $userService Room user service.
+     * @param MonthlySponsorStatisticsService $sponsorStatistics Previous month's sponsor ranks.
+     * @param \App\Services\Birthday\RoomBirthdayService $birthdays Marks the members born this month.
      * @return View Blade view.
      */
-    public function page(Request $request, Room $room, \App\Services\Admin\AdminRoomUserService $userService, MonthlySponsorStatisticsService $sponsorStatistics): View
+    public function page(Request $request, Room $room, \App\Services\Admin\AdminRoomUserService $userService, MonthlySponsorStatisticsService $sponsorStatistics, \App\Services\Birthday\RoomBirthdayService $birthdays): View
     {
         $query = $room->roomUsers()
             ->with(['globalUser', 'devices'])
@@ -106,6 +108,11 @@ class RoomUserController extends Controller
             ])->values()->all(),
             'filters' => ['q' => $search, 'status' => $status !== '' ? $status : 'all'],
             'sponsorRanks' => $sponsorStatistics->previousMonthRanks($room),
+            // Members born this month (room timezone) on this page: day/month only, shown on hover.
+            'birthdayDates' => $roomUsers->getCollection()
+                ->filter(static fn ($roomUser): bool => $birthdays->isInCurrentMonth($room, $roomUser->globalUser?->birthday))
+                ->mapWithKeys(static fn ($roomUser): array => [$roomUser->id => $roomUser->globalUser->birthday->format('d/m')])
+                ->all(),
         ], $metrics));
     }
 

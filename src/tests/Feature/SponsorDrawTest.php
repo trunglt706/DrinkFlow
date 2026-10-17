@@ -524,6 +524,88 @@ class SponsorDrawTest extends TestCase
         $this->assertCount(5, $proof->json('snapshot'));
     }
 
+    public function test_admin_removes_and_syncs_candidates_until_the_first_turn(): void
+    {
+        ['session' => $session] = $this->create(2);
+        $remove = route('admin.sponsor-draws.eligible.remove', [$this->room, $session]);
+        $sync = route('admin.sponsor-draws.eligible.sync', [$this->room, $session]);
+        $commitment = $session->seed_commitment;
+
+        // Removing re-freezes the list (positions renumbered) with a new seed commitment.
+        $this->actingAs($this->admin, 'admin')->postJson($remove, ['position' => 0])
+            ->assertOk()->assertJsonPath('data.state.eligible_count', 4)->assertJsonPath('data.state.eligible.0.name', 'Binh')->assertJsonPath('data.state.can_edit_eligible', true);
+        $session->refresh();
+        $this->assertSame(['Binh', 'Chi', 'Dung', 'Em'], $session->eligibleUsers()->orderBy('position')->pluck('display_name_snapshot')->all());
+        $this->assertNotSame($commitment, $session->seed_commitment);
+        $this->actingAs($this->admin, 'admin')->postJson($remove, ['position' => 9])->assertUnprocessable()->assertJsonValidationErrors('position');
+
+        // The list can never drop below the number of sponsors to draw.
+        $this->actingAs($this->admin, 'admin')->postJson($remove, ['position' => 0])->assertOk();
+        $this->actingAs($this->admin, 'admin')->postJson($remove, ['position' => 0])->assertOk();
+        $this->actingAs($this->admin, 'admin')->postJson($remove, ['position' => 0])->assertUnprocessable()->assertJsonValidationErrors('position');
+
+        // Sync brings back every eligible member of the room, newcomers included.
+        $this->member('Phong');
+        $this->actingAs($this->admin, 'admin')->postJson($sync)->assertOk()->assertJsonPath('data.state.eligible_count', 6);
+        $session->refresh();
+        $proof = app(SponsorDrawService::class)->proof($session);
+        $this->assertTrue($proof['snapshot_hash_valid']);
+        $this->assertTrue($proof['event_chain']['valid']);
+
+        // Once a turn is drawn the list is frozen for good.
+        app(SponsorDrawService::class)->draw($session, $this->admin);
+        $this->actingAs($this->admin, 'admin')->postJson($remove, ['position' => 1])->assertUnprocessable()->assertJsonValidationErrors('session');
+        $this->actingAs($this->admin, 'admin')->postJson($sync)->assertUnprocessable()->assertJsonValidationErrors('session');
+        $this->assertSame(6, $session->fresh()->eligible_count);
+    }
+
+    public function test_reset_discards_every_turn_and_the_draw_starts_over_until_confirmed(): void
+    {
+        ['session' => $session] = $this->create(2);
+        $service = app(SponsorDrawService::class);
+        $show = route('admin.sponsor-draws.show', [$this->room, $session]);
+        $reset = route('admin.sponsor-draws.reset', [$this->room, $session]);
+        $this->actingAs($this->admin, 'admin')->from($show)->post($reset)->assertSessionHasErrors('session');
+
+        $service->draw($session, $this->admin);
+        $service->draw($session, $this->admin);
+        $session->refresh();
+        $this->assertSame(SponsorDrawStatus::Completed, $session->status);
+        $oldCommitment = $session->seed_commitment;
+        $this->actingAs($this->admin, 'admin')->get($show)->assertSee('data-sponsor-draw-reset', false);
+
+        $this->actingAs($this->admin, 'admin')->from($show)->post($reset)->assertRedirect($show)->assertSessionHas('status', __('sponsor_draw.flash.reset'));
+        $session->refresh();
+        $this->assertSame(SponsorDrawStatus::Ready, $session->status);
+        $this->assertSame(0, SponsorDrawResult::query()->where('sponsor_draw_session_id', $session->id)->count());
+        $this->assertSame(0, $session->eligibleUsers()->where('is_winner', true)->count());
+        $this->assertNull($session->seed_revealed_at);
+        $this->assertNotSame($oldCommitment, $session->seed_commitment);
+        $this->assertTrue(app(SponsorDrawService::class)->proof($session)['event_chain']['valid']);
+
+        // Drawing works again from turn 1, then a confirmed result can no longer be reset.
+        $this->assertSame(1, $service->draw($session, $this->admin)->draw_order);
+        $service->draw($session, $this->admin);
+        $service->confirm($session, $this->admin);
+        $this->actingAs($this->admin, 'admin')->from($show)->post($reset)->assertSessionHasErrors('session');
+        $this->actingAs($this->admin, 'admin')->get($show)->assertDontSee('data-sponsor-draw-reset', false);
+    }
+
+    public function test_admin_page_copies_the_link_from_the_header_and_shows_flash_as_toast(): void
+    {
+        ['session' => $session] = $this->create(1);
+        $show = route('admin.sponsor-draws.show', [$this->room, $session]);
+
+        $this->actingAs($this->admin, 'admin')->withSession(['status' => 'Saved!'])->get($show)
+            ->assertOk()
+            ->assertSee('data-sd-copy-link', false)
+            ->assertSee('data-sd-sync', false)
+            ->assertSee('window.notify?.(', false)
+            ->assertDontSee('role="status">Saved!', false)
+            ->assertDontSee(__('sponsor_draw.admin.download_proof'))
+            ->assertDontSee(__('sponsor_draw.admin.confirm_title'));
+    }
+
     private function assertValidationFails(callable $callback, string $field): void
     {
         try {

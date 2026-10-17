@@ -631,6 +631,17 @@ function initPaymentRequestModal(csrfToken, escapeHtml) {
         box.textContent = message || '';
         box.classList.toggle('hidden', !message);
     };
+    // `hidden` and `inline-flex` are both display utilities, so swap them instead of stacking them.
+    const setActionsVisible = (visible) => [approveBtn, rejectBtn].forEach((button) => {
+        button?.classList.toggle('hidden', !visible);
+        button?.classList.toggle('inline-flex', visible);
+    });
+    const setLoading = (button, loading) => {
+        const icon = button?.querySelector('[data-action-icon]');
+        if (!icon) return;
+        icon.textContent = loading ? 'progress_activity' : icon.dataset.actionIcon;
+        icon.classList.toggle('animate-spin', loading);
+    };
     const setRejecting = (rejecting) => {
         rejectForm?.classList.toggle('hidden', !rejecting);
         if (rejectLabel) rejectLabel.textContent = rejecting ? rejectLabel.dataset.labelConfirm : rejectLabel.dataset.labelStart;
@@ -680,8 +691,7 @@ function initPaymentRequestModal(csrfToken, escapeHtml) {
         if (reasonInput) reasonInput.value = '';
         setRejecting(false);
 
-        approveBtn?.classList.toggle('hidden', !isPending);
-        rejectBtn?.classList.toggle('hidden', !isPending);
+        setActionsVisible(isPending);
         if (approveBtn) approveBtn.disabled = Boolean(request.conflict);
 
         modal.classList.remove('hidden');
@@ -699,7 +709,11 @@ function initPaymentRequestModal(csrfToken, escapeHtml) {
     const submit = async (action, button, body = {}) => {
         if (!current || busy) return;
         busy = true;
-        button.disabled = true;
+        // Lock both decisions while one is in flight, with a spinner on the clicked button.
+        if (approveBtn) approveBtn.disabled = true;
+        if (rejectBtn) rejectBtn.disabled = true;
+        setLoading(button, true);
+        window.showAdminLoading?.();
         showMessage(errorBox, '');
         const url = modal.dataset[action === 'approve' ? 'approveUrl' : 'rejectUrl'].replace('__ID__', String(current.id));
         try {
@@ -710,6 +724,9 @@ function initPaymentRequestModal(csrfToken, escapeHtml) {
             });
             const payload = await res.json().catch(() => ({}));
             if (res.ok) {
+                // The request is reviewed: the decision buttons go away right now, not only after the reload.
+                setActionsVisible(false);
+                setRejecting(false);
                 if (payload.message) window.notify?.(payload.message, 'success');
                 window.location.reload();
                 return;
@@ -720,7 +737,10 @@ function initPaymentRequestModal(csrfToken, escapeHtml) {
             showMessage(errorBox, t('serverError'));
         }
         busy = false;
-        button.disabled = action === 'approve' && Boolean(current?.conflict);
+        window.hideAdminLoading?.();
+        setLoading(button, false);
+        if (rejectBtn) rejectBtn.disabled = false;
+        if (approveBtn) approveBtn.disabled = Boolean(current?.conflict);
     };
 
     approveBtn?.addEventListener('click', () => submit('approve', approveBtn));

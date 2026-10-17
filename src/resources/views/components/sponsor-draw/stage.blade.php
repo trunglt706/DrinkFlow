@@ -97,7 +97,6 @@
     .sd-wheel-foot span{display:inline-flex;align-items:center;gap:4px}.sd-wheel-foot .material-symbols-outlined{font-size:15px;color:var(--sd-secondary)}
     .sd-wheel-foot .is-accent{color:var(--sd-primary-soft);font-weight:600}
     .sd-controls{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
-    @media (min-width:640px){.sd-controls.has-side{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}}
     .sd-controls form{display:contents}
     .sd-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;border:0;border-radius:12px;padding:16px 22px;cursor:pointer;font-family:'Space Grotesk',Inter,sans-serif;font-size:17px;font-weight:700;color:#00210b;background:linear-gradient(90deg,#10b981,#22c55e,#059669);box-shadow:0 14px 30px -10px rgba(16,185,129,.45);transition:filter .2s,transform .1s}
     .sd-btn:hover:not([disabled]){filter:brightness(1.1)}.sd-btn:active:not([disabled]){transform:scale(.98)}
@@ -106,9 +105,18 @@
     .sd-btn.is-ghost{font-size:15px;font-weight:600;color:var(--sd-text);background:#1a2027;border:1px solid rgba(59,74,61,.7);box-shadow:none}
     .sd-btn.is-ghost .material-symbols-outlined{font-size:20px;color:var(--sd-primary-soft)}.sd-btn.is-ghost:hover:not([disabled]){border-color:rgba(117,255,158,.5);background:#252b31}
     .sd-btn.is-ghost:hover:not([disabled]) .material-symbols-outlined{transform:none}
+    .sd-btn.is-reset{font-size:15px;font-weight:600;color:#2b1700;background:linear-gradient(90deg,#f59e0b,#fbbf24,#d97706);box-shadow:0 14px 30px -12px rgba(245,158,11,.45)}
+    .sd-btn.is-reset .material-symbols-outlined{font-size:20px}
     .sd-btn.is-small{width:auto;padding:6px 12px;font-size:12px;font-family:'JetBrains Mono',monospace}
     .sd-count{font-size:11px;font-weight:700;color:var(--sd-text);background:#2f353c;border:1px solid rgba(59,74,61,.5);border-radius:6px;padding:2px 8px;white-space:nowrap}
     .sd-code{margin-top:4px;font-size:11px;color:var(--sd-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sd-code strong{color:var(--sd-primary-soft)}
+    .sd-search-row{display:flex;gap:8px;margin-bottom:12px}.sd-search-row .sd-search{flex:1;margin-bottom:0}
+    .sd-icon-btn{display:grid;place-items:center;flex-shrink:0;width:40px;height:40px;border-radius:8px;background:#090f15;border:1px solid rgba(59,74,61,.6);color:var(--sd-primary-soft);cursor:pointer;transition:border-color .2s}
+    .sd-icon-btn:hover:not([disabled]){border-color:var(--sd-primary)}.sd-icon-btn[disabled]{opacity:.4;cursor:not-allowed}
+    .sd-icon-btn.is-busy .material-symbols-outlined{animation:sd-spin 1s linear infinite}
+    .sd-person-remove{display:grid;place-items:center;flex-shrink:0;width:24px;height:24px;border:0;border-radius:6px;background:transparent;color:var(--sd-muted);cursor:pointer}
+    .sd-person-remove:hover:not([disabled]){background:rgba(239,68,68,.15);color:#fca5a5}.sd-person-remove[disabled]{opacity:.4;cursor:not-allowed}
+    .sd-person-remove .material-symbols-outlined{font-size:16px}
     .sd-search{position:relative;margin-bottom:12px}
     .sd-search .material-symbols-outlined{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--sd-muted);pointer-events:none}
     .sd-search input{width:100%;height:40px;padding:0 12px 0 36px;border-radius:8px;background:#090f15;border:1px solid rgba(59,74,61,.6);color:var(--sd-text);font-size:13px;outline:none;box-shadow:none}
@@ -159,10 +167,13 @@
                 <h3 class="sd-h sd-display"><span class="material-symbols-outlined" aria-hidden="true">military_tech</span>{{ $stage('results') }}</h3>
             </div>
             <ol class="sd-slots" data-sd-results aria-live="polite"></ol>
-            <div class="sd-panel-foot sd-mono">
-                <span>{{ $stage('total_slots', ['count' => $state['target_winner_count']]) }}</span>
-                <span class="is-accent" data-sd-completion></span>
-            </div>
+            {{-- Counters and footers are admin-only; the members' page shows just the lists. --}}
+            @if ($mode === 'admin')
+                <div class="sd-panel-foot sd-mono">
+                    <span>{{ $stage('total_slots', ['count' => $state['target_winner_count']]) }}</span>
+                    <span class="is-accent" data-sd-completion></span>
+                </div>
+            @endif
         </section>
 
         {{-- Wheel: decoration only; the name shown is the result the backend already stored. --}}
@@ -194,7 +205,7 @@
                 </div>
             </div>
             @if ($mode === 'admin')
-                <div @class(['sd-controls', 'has-side' => $actions !== null && $actions->isNotEmpty()])>
+                <div class="sd-controls">
                     <button type="button" class="sd-btn" data-sd-draw><span class="material-symbols-outlined" aria-hidden="true">track_changes</span><span>{{ $stage('draw_next') }}</span></button>
                     {{ $actions }}
                 </div>
@@ -206,20 +217,32 @@
             <div class="sd-panel-head" style="flex-direction:column;align-items:stretch;gap:2px">
                 <div class="flex items-center justify-between gap-2">
                     <h3 class="sd-h sd-display"><span class="material-symbols-outlined" aria-hidden="true">groups</span>{{ $stage('eligible_list') }}</h3>
-                    <span class="sd-count sd-mono" data-sd-eligible-count></span>
+                    @if ($mode === 'admin')
+                        <span class="sd-count sd-mono" data-sd-eligible-count></span>
+                    @endif
                 </div>
-                <p class="sd-code sd-mono" title="{{ $state['proof']['snapshot_hash'] ?? '' }}">{{ $stage('snapshot_code') }}: <strong>#{{ strtoupper(substr((string) ($state['proof']['snapshot_hash'] ?? ''), 0, 12)) }}</strong></p>
+                <p class="sd-code sd-mono" title="{{ $state['proof']['snapshot_hash'] ?? '' }}">{{ $stage('snapshot_code') }}: <strong data-sd-snapshot-code>#{{ strtoupper(substr((string) ($state['proof']['snapshot_hash'] ?? ''), 0, 12)) }}</strong></p>
             </div>
-            <label class="sd-search">
-                <span class="material-symbols-outlined" aria-hidden="true">search</span>
-                <input type="search" data-sd-search placeholder="{{ $stage('search_placeholder') }}" aria-label="{{ $stage('search_placeholder') }}" autocomplete="off">
-            </label>
+            <div class="sd-search-row">
+                <label class="sd-search">
+                    <span class="material-symbols-outlined" aria-hidden="true">search</span>
+                    <input type="search" data-sd-search placeholder="{{ $stage('search_placeholder') }}" aria-label="{{ $stage('search_placeholder') }}" autocomplete="off">
+                </label>
+                {{-- Admin, sponsor draws only: rebuild the list from the room's eligible members (before the first turn). --}}
+                @if ($mode === 'admin' && ! $isShops && ! empty($urls['sync_eligible']))
+                    <button type="button" class="sd-icon-btn" data-sd-sync title="{{ $stage('sync_eligible') }}" aria-label="{{ $stage('sync_eligible') }}">
+                        <span class="material-symbols-outlined" aria-hidden="true">sync</span>
+                    </button>
+                @endif
+            </div>
             <ol class="sd-people" data-sd-names></ol>
             <p class="sd-empty" data-sd-names-empty hidden>{{ $stage('no_match') }}</p>
-            <div class="sd-panel-foot">
-                <span data-sd-remaining-people></span>
-                <span class="is-accent">{{ $stage('auto_exclude') }}</span>
-            </div>
+            @if ($mode === 'admin')
+                <div class="sd-panel-foot">
+                    <span data-sd-remaining-people></span>
+                    <span class="is-accent">{{ $stage('auto_exclude') }}</span>
+                </div>
+            @endif
             <span hidden data-sd-eligible>{{ $state['eligible_count'] }}</span><span hidden data-sd-remaining>{{ $state['remaining_count'] }}</span>
         </section>
     </div>

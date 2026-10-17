@@ -24,8 +24,9 @@ class RejectDebtPaymentRequestAction
     /**
      * Reject a pending consolidated payment request.
      *
-     * No balance changes. The bundled debts keep their link to the rejected request for
-     * traceability: they can then be paid one by one, but never bundled into a new request.
+     * No balance changes. The bundled debts keep their link to the rejected request for traceability
+     * until the member bundles them again: meanwhile they are listed as ordinary debts, payable one by
+     * one or through a new consolidated request (which moves them to that request).
      *
      * @param Room $room Room owning the request.
      * @param int $requestId Payment request (parent debt) ID.

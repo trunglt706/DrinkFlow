@@ -1,0 +1,40 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\User;
+
+use App\Http\Controllers\Controller;
+use App\Models\Room;
+use App\Services\Birthday\RoomBirthdayService;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
+
+/**
+ * Stand-alone birthday celebration page of a room (/rooms/{room}/birthday), opened from the birthday banner and the
+ * morning notification: it celebrates every member whose birthday is within the celebration window. The room
+ * middleware has checked that the viewer is an active member of the room.
+ */
+class BirthdayController extends Controller
+{
+    /**
+     * Show the celebration page while at least one member's birthday is within the window.
+     *
+     * @param Request $request Current request (room attributes set by the room middleware).
+     * @param Room $room Room whose members are celebrated.
+     * @param RoomBirthdayService $birthdays Birthday lookup.
+     * @return View Celebration page.
+     */
+    public function show(Request $request, Room $room, RoomBirthdayService $birthdays): View
+    {
+        $room = $request->attributes->get('room') ?? $room;
+        $celebrants = $birthdays->celebrants($room);
+        abort_if($celebrants === [], 404);
+
+        return view('user.birthday.show', [
+            'room' => $room,
+            'celebrants' => $celebrants,
+            'viewerCode' => (string) $request->attributes->get('room_user')?->user_code,
+        ]);
+    }
+}

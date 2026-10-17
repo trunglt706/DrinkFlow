@@ -120,6 +120,11 @@ class UserProfileService
         $phone = $user->phone ?? '';
         $deskLocation = $user->desk_location ?? '';
         $deliveryLocation = $user->delivery_location ?? '';
+        $bio = (string) ($user->bio ?? '');
+        // Stored as Markdown; raw HTML is escaped when rendered.
+        $bioHtml = \App\Support\Helpers\MarkdownHelper::toSafeHtml($bio);
+        $bioMaxWords = GlobalUser::BIO_MAX_WORDS;
+        $birthday = $user->birthday?->toDateString() ?? '';
         $preferences = is_array($user->preferences) ? $user->preferences : [];
         $sugar = $preferences['sugar'] ?? '';
         $ice = $preferences['ice'] ?? '';
@@ -155,6 +160,10 @@ class UserProfileService
             'phone',
             'deskLocation',
             'deliveryLocation',
+            'bio',
+            'bioHtml',
+            'bioMaxWords',
+            'birthday',
             'sugar',
             'ice',
             'toppings',
@@ -195,6 +204,13 @@ class UserProfileService
         if (array_key_exists('delivery_location', $data)) {
             $updates['delivery_location'] = $data['delivery_location'] ?? null;
         }
+        if (array_key_exists('birthday', $data)) {
+            $updates['birthday'] = $data['birthday'] ?: null;
+        }
+        if (array_key_exists('bio', $data)) {
+            $bio = trim((string) ($data['bio'] ?? ''));
+            $updates['bio'] = $bio !== '' ? $bio : null;
+        }
 
         $preferences = is_array($user->preferences) ? $user->preferences : [];
         if (array_key_exists('sugar', $data)) {
@@ -217,7 +233,13 @@ class UserProfileService
         }
 
         $updates['preferences'] = $preferences;
+        $birthdayChanged = (array_key_exists('birthday', $updates) && $updates['birthday'] !== $user->birthday?->toDateString())
+            || (array_key_exists('bio', $updates) && $updates['bio'] !== $user->bio);
         $user->update($updates);
+        if ($birthdayChanged) {
+            // The room banners / celebration pages are cached per day; refresh them so the change shows at once.
+            app(\App\Services\Birthday\RoomBirthdayService::class)->forgetForUser($user);
+        }
     }
 
     /**

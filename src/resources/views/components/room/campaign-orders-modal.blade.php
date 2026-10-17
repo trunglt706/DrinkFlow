@@ -40,7 +40,7 @@
             </div>
 
             <!-- Modal Body: bảng gọn theo hàng ngang -->
-            <div class="overflow-y-auto max-h-[65vh] bg-surface-container-lowest">
+            <div class="overflow-y-auto overflow-x-auto max-h-[65vh] bg-surface-container-lowest">
                 <!-- Loading skeleton -->
                 <template x-if="campaignLoading">
                     <div class="p-4 space-y-2 animate-pulse">
@@ -79,13 +79,14 @@
                                             </template>
                                         </div>
                                         <template x-if="order.orderer_email">
-                                            <div class="text-[11px] text-on-surface-variant font-normal leading-tight mt-0.5 break-all sm:break-normal" x-text="order.orderer_email"></div>
+                                            <div class="text-[11px] text-on-surface-variant font-normal leading-tight mt-0.5 break-normal" x-text="order.orderer_email"></div>
                                         </template>
                                     </td>
                                     <td class="px-3.5 py-2.5 align-top">
                                         <div class="flex flex-col divide-y divide-outline-variant/10">
                                             <template x-for="item in order.items" :key="item.id">
-                                                <div class="py-1 first:pt-0 last:pb-0 [overflow-wrap:anywhere]">
+                                                {{-- Mobile: never split a word mid-way (the body scrolls horizontally instead); sm+ keeps the old wrapping. --}}
+                                                <div class="py-1 first:pt-0 last:pb-0 break-normal sm:[overflow-wrap:anywhere]">
                                                     <div class="font-medium text-on-surface text-xs flex items-center gap-1.5 leading-snug">
                                                         <span x-text="item.item_name"></span>
                                                         <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-[#006948]" x-text="'x' + (item.quantity || 1)"></span>
@@ -94,7 +95,6 @@
                                                         <div class="text-[11px] text-on-surface-variant font-normal leading-relaxed mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                                                             <template x-if="item.size_name">
                                                                 <span class="inline-flex items-center text-slate-600">
-                                                                    <span class="text-slate-400 mr-0.5 text-[10px]">Size:</span>
                                                                     <span class="font-medium" x-text="item.size_name"></span>
                                                                 </span>
                                                             </template>

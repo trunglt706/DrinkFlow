@@ -21,6 +21,11 @@ return [
     ],
 
     'errors' => [
+        'eligible_not_found' => 'この候補はリストにありません。',
+        'cannot_edit_eligible' => 'リストは最初の抽選前のみ変更できます。',
+        'sync_sponsors_only' => 'ルームメンバーと同期できるのはスポンサー抽選のみです。',
+        'too_few_eligible' => 'リストには少なくとも :count 名（抽選するスポンサー数）が必要です。',
+        'cannot_reset' => 'リセットは抽選後かつ結果確定前のみ可能です。',
         'cannot_configure' => '抽選済みまたは終了したセッションのため、設定を変更できません。',
         'not_configured' => '抽選セッションがまだ設定されていません。',
         'shops_count' => 'お店は 2〜:max 件選んでください。',
@@ -50,6 +55,9 @@ return [
     ],
 
     'flash' => [
+        'eligible_removed' => 'リストから削除し、新しいリストを確定しました。',
+        'eligible_synced' => 'リストを同期しました：対象メンバー :count 名。',
+        'reset' => 'すべての抽選をリセットしました。最初からやり直せます。',
         'draft_created' => '新しいセッションを作成しました。抽選の種類を設定してください。',
         'configured' => '設定を保存し、リストを確定してリンクを発行しました。',
         'created' => '抽選を作成し、アクセスリンクを発行しました。',
@@ -60,6 +68,7 @@ return [
     ],
 
     'admin' => [
+        'reset_confirm' => 'リセットすると抽選結果がすべて削除され、最初からやり直します。続けますか？',
         'confirm_after_draw_shops' => 'お店が選ばれると確認ボタンが表示されます。',
         'new_session' => '新しいセッション',
         'col_type' => '種類',
@@ -122,6 +131,8 @@ return [
     ],
 
     'stage' => [
+        'reset_short' => 'リセット',
+        'sync_eligible' => '対象メンバーを同期',
         'eyebrow' => 'スポンサー抽選',
         'target' => 'スポンサー対象キャンペーン：:name',
         'drawn' => '当選',
@@ -153,6 +164,7 @@ return [
     ],
 
     'js' => [
+        'remove_eligible' => ':name をリストから削除',
         'status' => [
             'draft' => '下書き',
             'ready' => '準備完了',

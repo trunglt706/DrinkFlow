@@ -30,8 +30,8 @@ class DebtPaymentRequestService
      * Query the member's campaign debts that can be bundled into a new request.
      *
      * Eligible debts are visible to the member, unpaid or partially paid, still owe money, have no
-     * single-payment confirmation pending and were never bundled before (children of a rejected
-     * request stay linked and can only be paid one by one).
+     * single-payment confirmation pending and are not frozen by a pending or approved request. Debts of
+     * a rejected request are eligible again and move to the new request when bundled.
      *
      * @param Room $room Current room.
      * @param RoomUser $roomUser Room member.
@@ -42,7 +42,7 @@ class DebtPaymentRequestService
         return $this->roomDebts->queryVisibleDebts($room, $roomUser)
             ->whereIn('status', [DebtStatus::Unpaid->value, DebtStatus::Partial->value])
             ->where('remaining_amount', '>', 0)
-            ->whereNull('parent_id');
+            ->notLockedByPaymentRequest();
     }
 
     /**

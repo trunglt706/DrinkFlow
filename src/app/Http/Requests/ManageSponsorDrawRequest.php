@@ -26,9 +26,11 @@ class ManageSponsorDrawRequest extends FormRequest
      */
     public function rules(): array
     {
-        return $this->routeIs('admin.sponsor-draws.cancel')
-            ? ['reason' => ['required', 'string', 'min:3', 'max:500']]
-            : [];
+        return match (true) {
+            $this->routeIs('admin.sponsor-draws.cancel') => ['reason' => ['required', 'string', 'min:3', 'max:500']],
+            $this->routeIs('admin.sponsor-draws.eligible.remove') => ['position' => ['required', 'integer', 'min:0']],
+            default => [],
+        };
     }
 
     /**
