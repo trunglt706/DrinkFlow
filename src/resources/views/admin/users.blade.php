@@ -142,6 +142,7 @@
                                 class="h-4 w-4 cursor-pointer rounded border-outline-variant text-primary focus:ring-primary"
                                 aria-label="{{ __('admin.select_all_users') }}"></th>
                         <th class="py-3 px-4 text-left">{{ __('admin.th_user_member') }}</th>
+                        <th class="py-3 px-2 text-center w-20"><span class="sr-only">{{ __('admin.th_user_badges') }}</span></th>
                         <th class="py-3 px-4 text-center">{{ __('admin.th_user_role') }}</th>
                         <th class="py-3 px-4 text-center">{{ __('admin.th_trusted_devices') }}</th>
                         <th class="py-3 px-4 text-right">{{ __('admin.th_total_orders') }}</th>
@@ -193,29 +194,34 @@
                                             <span
                                                 class="material-symbols-outlined text-[14px] text-outline opacity-0 group-hover/user:opacity-100 transition-opacity">visibility</span>
                                         </button>
-                                        <x-sponsor-badge :rank="$sponsorRanks['ranks'][$ru->id] ?? null" :month="$sponsorRanks['month']" />
-                                        {{-- Birthday this month (room timezone): hover shows the day and month, never the year. --}}
-                                        @if (isset($birthdayDates[$ru->id]))
-                                            @php($birthdayLabel = __('admin.member_birthday_tooltip', ['date' => $birthdayDates[$ru->id]]))
-                                            <span data-member-birthday data-tooltip="{{ $birthdayLabel }}" aria-label="{{ $birthdayLabel }}" role="img" tabindex="0"
-                                                class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-pink-50 text-pink-600 ring-1 ring-pink-200 cursor-help">
-                                                <span class="material-symbols-outlined text-[14px]" aria-hidden="true">cake</span>
-                                            </span>
-                                        @endif
                                     </div>
                                     <div class="flex items-center gap-1 text-[11px] text-outline">
                                         <span>{{ $email }}</span>
                                         @if ($ru->globalUser?->email)
-                                            <button type="button" data-copy="{{ $ru->globalUser->email }}"
-                                                data-copied-message="{{ __('admin.copied') }}"
+                                            {{-- Copies the e-mail; the icon turns into a check mark for 2 seconds (no toast). --}}
+                                            <button type="button" data-copy="{{ $ru->globalUser->email }}" data-copy-feedback="icon"
                                                 data-copy-failed-message="{{ __('admin.copy_failed') }}"
                                                 data-tooltip="{{ __('admin.copy_email') }}"
                                                 aria-label="{{ __('admin.copy_email') }}"
                                                 class="inline-flex items-center text-outline hover:text-primary transition-colors cursor-pointer">
-                                                <span class="material-symbols-outlined text-[12px]">content_copy</span>
+                                                <span class="material-symbols-outlined !text-[12px]" aria-hidden="true">content_copy</span>
                                             </button>
                                         @endif
                                     </div>
+                                </div>
+                            </td>
+                            {{-- Small icons: birthday this month, last month's sponsor title. --}}
+                            <td class="py-3.5 px-2 text-center">
+                                <div class="inline-flex items-center justify-center gap-1" data-user-badges>
+                                    @if (isset($birthdayDates[$ru->id]))
+                                        {{-- Birthday this month (room timezone): hover shows the day and month, never the year. --}}
+                                        @php($birthdayLabel = __('admin.member_birthday_tooltip', ['date' => $birthdayDates[$ru->id]]))
+                                        <span data-member-birthday data-tooltip="{{ $birthdayLabel }}" aria-label="{{ $birthdayLabel }}" role="img" tabindex="0"
+                                            class="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-pink-50 text-pink-600 ring-1 ring-pink-200 cursor-help">
+                                            <span class="material-symbols-outlined !text-[12px]" aria-hidden="true">cake</span>
+                                        </span>
+                                    @endif
+                                    <x-sponsor-badge :rank="$sponsorRanks['ranks'][$ru->id] ?? null" :month="$sponsorRanks['month']" class="!h-[18px] !w-[18px] [&_.material-symbols-outlined]:!text-[12px]" />
                                 </div>
                             </td>
                             <td class="py-3.5 px-4 text-center">
@@ -294,7 +300,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="py-12 text-center text-outline">
+                            <td colspan="9" class="py-12 text-center text-outline">
                                 <div class="flex flex-col items-center gap-2">
                                     <span class="material-symbols-outlined text-4xl text-outline-variant">group</span>
                                     <p class="font-medium text-sm">{{ __('admin.no_users_found') }}</p>
@@ -312,9 +318,11 @@
         @endif
     </div>
 
+    {{-- Modals reset their margin: <main> uses space-y-*, which (Tailwind v4) adds a bottom margin to every child
+         but the last, and that margin would leave a gap under a fixed full-screen backdrop. --}}
     <!-- Device Trust Management Modal -->
     <div id="device-modal"
-        class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
+        class="fixed inset-0 z-50 !m-0 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
         data-revoke-label="{{ __('admin.revoke_device') }}" data-revoked-label="{{ __('admin.revoked') }}"
         data-no-device-label="{{ __('admin.no_device_registered') }}"
         data-device-fallback-label="{{ __('admin.device_uuid') }}"
@@ -346,7 +354,7 @@
 
     <!-- User action confirmation modal -->
     <div id="user-action-modal"
-        class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-xs" role="dialog"
+        class="fixed inset-0 z-50 !m-0 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-xs" role="dialog"
         aria-modal="true" data-status-title="{{ __('admin.toggle_user_status') }}"
         data-remove-title="{{ __('admin.remove_user_from_room') }}"
         data-restore-title="{{ __('admin.restore_user_to_room') }}"
@@ -384,7 +392,7 @@
 
     <!-- Add / Create Member Modal -->
     <div id="create-user-modal"
-        class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-xs" role="dialog"
+        class="fixed inset-0 z-50 !m-0 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-xs" role="dialog"
         aria-modal="true" aria-labelledby="create-user-modal-title">
         <div id="create-user-backdrop" class="absolute inset-0"></div>
         <div
@@ -442,13 +450,22 @@
                     </div>
                 </div>
 
-                <div>
-                    <label for="create-user-desk" class="block text-xs font-semibold text-on-surface mb-1">
-                        {{ __('admin.user_desk_label') }}
-                    </label>
-                    <input type="text" id="create-user-desk" name="desk_location"
-                        placeholder="{{ __('admin.user_desk_placeholder') }}"
-                        class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label for="create-user-desk" class="block text-xs font-semibold text-on-surface mb-1">
+                            {{ __('admin.user_desk_label') }}
+                        </label>
+                        <input type="text" id="create-user-desk" name="desk_location"
+                            placeholder="{{ __('admin.user_desk_placeholder') }}"
+                            class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary">
+                    </div>
+                    <div>
+                        <label for="create-user-birthday" class="block text-xs font-semibold text-on-surface mb-1">
+                            {{ __('admin.user_birthday_label') }}
+                        </label>
+                        <input type="date" id="create-user-birthday" name="birthday" min="1900-01-01" max="{{ now()->subDay()->toDateString() }}"
+                            class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary">
+                    </div>
                 </div>
 
                 <div class="pt-2 flex items-center justify-end gap-2.5 border-t border-outline-variant">
@@ -468,7 +485,7 @@
 
     <!-- User Detail Modal -->
     <div id="user-detail-modal"
-        class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-xs" role="dialog"
+        class="fixed inset-0 z-50 !m-0 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-xs" role="dialog"
         aria-modal="true" aria-labelledby="user-detail-name" data-status-active="{{ __('admin.status_active') }}"
         data-status-blocked="{{ __('admin.status_blocked') }}"
         data-status-pending="{{ __('admin.status_pending') }}"
@@ -497,8 +514,7 @@
                         </div>
                         <div class="flex items-center gap-1 mt-0.5">
                             <p id="user-detail-email" class="text-xs text-outline">-</p>
-                            <button type="button" id="user-detail-email-copy" data-copy=""
-                                data-copied-message="{{ __('admin.copied') }}"
+                            <button type="button" id="user-detail-email-copy" data-copy="" data-copy-feedback="icon"
                                 data-copy-failed-message="{{ __('admin.copy_failed') }}"
                                 data-tooltip="{{ __('admin.copy_email') }}"
                                 aria-label="{{ __('admin.copy_email') }}"
@@ -544,8 +560,7 @@
                         </span>
                         <span class="flex items-center gap-1">
                             <span id="user-detail-phone" class="font-semibold text-on-surface font-mono">-</span>
-                            <button type="button" id="user-detail-phone-copy" data-copy=""
-                                data-copied-message="{{ __('admin.copied') }}"
+                            <button type="button" id="user-detail-phone-copy" data-copy="" data-copy-feedback="icon"
                                 data-copy-failed-message="{{ __('admin.copy_failed') }}"
                                 data-tooltip="{{ __('admin.copy_phone') }}"
                                 aria-label="{{ __('admin.copy_phone') }}"
@@ -560,6 +575,13 @@
                             {{ __('admin.user_desk') }}
                         </span>
                         <span id="user-detail-desk" class="font-medium text-on-surface text-right">-</span>
+                    </div>
+                    <div class="flex items-center justify-between py-1 border-b border-outline-variant/40">
+                        <span class="text-outline flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[15px] text-secondary">cake</span>
+                            {{ __('admin.user_birthday_label') }}
+                        </span>
+                        <span id="user-detail-birthday" class="font-medium text-on-surface text-right font-mono">-</span>
                     </div>
                     <div class="flex items-center justify-between py-1">
                         <span class="text-outline flex items-center gap-1.5">

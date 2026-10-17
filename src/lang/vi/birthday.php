@@ -19,6 +19,7 @@ return [
     'date_upcoming' => '{1} Ngày mai, :date|[2,*] Còn :days ngày nữa, :date',
     'date_past' => '{1} Hôm qua, :date|[2,*] :days ngày trước, :date',
     'joined_since' => 'Tham gia nhóm từ :date (:duration)',
+    'close_card' => 'Đóng',
     'self_note' => 'Cả phòng đang gửi lời chúc đến bạn đấy!',
     'wish_title' => 'Lời chúc',
     'next_wish' => 'Lời chúc khác',

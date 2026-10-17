@@ -440,8 +440,10 @@
         </div>
     </section>
 
+    {{-- Modals reset their margin: <main> uses space-y-*, which (Tailwind v4) adds a bottom margin to every child
+         but the last, and that margin would leave a gap under a fixed full-screen backdrop. --}}
     <!-- Modal for Manual Add / Edit Item -->
-    <div x-show="showAddItemModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+    <div x-show="showAddItemModal" x-cloak class="fixed inset-0 z-50 !m-0 flex items-center justify-center bg-black/60 p-4">
         <div class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-surface-container-lowest border border-outline-variant p-5 shadow-2xl">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-bold text-base text-on-surface">
@@ -561,7 +563,7 @@
     <!-- Modal Confirm Cancel & Delete Temporary Campaign -->
     <div x-show="showCancelCampaignModal"
          x-cloak
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+         class="fixed inset-0 z-50 !m-0 flex items-center justify-center bg-black/60 p-4"
          @keydown.escape.window="showCancelCampaignModal = false">
         <div class="w-full max-w-md rounded-xl bg-surface-container-lowest border border-outline-variant p-5 shadow-2xl space-y-4"
              @click.outside="showCancelCampaignModal = false">
@@ -614,7 +616,7 @@
     <!-- Modal Confirm Publish Campaign -->
     <div x-show="showConfirmModal"
          x-cloak
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+         class="fixed inset-0 z-50 !m-0 flex items-center justify-center bg-black/60 p-4"
          @keydown.escape.window="if (!submitting) showConfirmModal = false">
         <div class="w-full max-w-lg rounded-xl bg-surface-container-lowest border border-outline-variant p-5 shadow-2xl"
              @click.outside="if (!submitting) showConfirmModal = false">
@@ -644,7 +646,7 @@
     <!-- Modal Confirm Update Campaign (notify members toggle) -->
     <div x-show="showNotifyModal"
          x-cloak
-         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+         class="fixed inset-0 z-50 !m-0 flex items-center justify-center bg-black/60 p-4"
          @keydown.escape.window="if (!submitting) showNotifyModal = false">
         <div class="w-full max-w-md rounded-xl bg-surface-container-lowest border border-outline-variant p-5 shadow-2xl"
              @click.outside="if (!submitting) showNotifyModal = false">

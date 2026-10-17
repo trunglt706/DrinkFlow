@@ -19,6 +19,7 @@ return [
     'date_upcoming' => '{1} 明日 :date|[2,*] あと:days日 :date',
     'date_past' => '{1} 昨日 :date|[2,*] :days日前 :date',
     'joined_since' => ':date からルームに参加（:duration）',
+    'close_card' => '閉じる',
     'self_note' => 'ルームのみんなからお祝いが届いています！',
     'wish_title' => 'お祝いのメッセージ',
     'next_wish' => '別のメッセージ',

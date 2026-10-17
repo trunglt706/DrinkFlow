@@ -135,7 +135,7 @@
                 <!-- Button 0: Internal analysis (no AI agent) -->
                 <button type="button" @click="analyzeInternally()" :disabled="loading || analyzing || !originJson.trim()"
                     title="{{ __('admin.data_gateway_internal_hint') }}" data-internal-analyze-btn
-                    class="px-3.5 py-2 bg-secondary text-on-secondary rounded-lg text-xs font-semibold hover:opacity-95 shadow-xs transition-all flex items-center gap-1.5 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed">
+                    class="px-3.5 py-2 bg-secondary text-white rounded-lg text-xs font-semibold hover:opacity-95 shadow-xs transition-all flex items-center gap-1.5 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed">
                     <span class="material-symbols-outlined text-[16px]" :class="analyzing ? 'animate-spin' : ''"
                         x-text="analyzing ? 'sync' : 'analytics'"></span>
                     <span>{{ __('admin.data_gateway_btn_internal_analyze') }}</span>

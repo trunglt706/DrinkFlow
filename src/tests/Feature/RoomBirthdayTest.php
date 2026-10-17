@@ -223,6 +223,35 @@ class RoomBirthdayTest extends TestCase
         $this->assertStringNotContainsString('1988', $html);
     }
 
+    public function test_admin_sets_a_birthday_when_adding_a_member_and_sees_it_in_the_detail(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        config(['services.google.allowed_domains' => []]);
+        $admin = \App\Models\Admin::create(['name' => 'Room Admin', 'email' => 'bd-create-admin@example.test', 'password' => 'secret123', 'status' => 'active']);
+        $admin->rooms()->attach($this->room);
+        $store = route('admin.room-users.store', $this->room->slug);
+
+        $created = $this->actingAs($admin, 'admin')->postJson($store, ['email' => 'new.member@example.test', 'name' => 'New Member', 'birthday' => '1996-10-17'])
+            ->assertCreated()->json('data');
+        $this->assertSame('1996-10-17', GlobalUser::query()->where('email', 'new.member@example.test')->sole()->birthday->toDateString());
+
+        $this->actingAs($admin, 'admin')->getJson(route('admin.room-users.show', [$this->room->slug, $created['id']]))
+            ->assertOk()->assertJsonPath('data.global_user.birthday', '17/10/1996');
+        $this->actingAs($admin, 'admin')->get(route('admin.room-users.page', $this->room->slug))
+            ->assertSee('id="create-user-birthday"', false)->assertSee('id="user-detail-birthday"', false);
+
+        // The banner shows the new member right away (cache refreshed).
+        $viewer = $this->member('Viewer', null);
+        $this->actingAs($viewer->globalUser, 'web')->get(route('user.dashboard', $this->room->slug))->assertSee('New Member');
+
+        // A birthday the member already set is never overwritten; a future date is refused.
+        $existing = GlobalUser::create(['name' => 'Has Birthday', 'email' => 'has.birthday@example.test', 'status' => 'active', 'birthday' => '1990-01-02']);
+        $this->actingAs($admin, 'admin')->postJson($store, ['email' => $existing->email, 'name' => 'Has Birthday', 'birthday' => '1991-03-04'])->assertCreated();
+        $this->assertSame('1990-01-02', $existing->fresh()->birthday->toDateString());
+        $this->actingAs($admin, 'admin')->postJson($store, ['email' => 'future@example.test', 'name' => 'Future', 'birthday' => '2030-01-01'])
+            ->assertUnprocessable()->assertJsonValidationErrors('birthday');
+    }
+
     public function test_notification_follows_each_room_timezone(): void
     {
         $tokyo = Room::create(['name' => 'Tokyo', 'slug' => 'tokyo-bd-room', 'status' => 'active', 'timezone' => 'Asia/Tokyo']);

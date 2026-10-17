@@ -1,0 +1,139 @@
+/*
+ * DrinkFlow look for React Toastify (loaded with the container by ./toast-container.js): a white card with a coloured
+ * accent bar, a tinted icon chip, a slim progress line and a soft shadow, in light and dark mode. Rules are scoped to the
+ * container host (#drinkflow-toast-root) so they win over the styles Toastify injects at runtime.
+ */
+:root {
+    --toastify-font-family: Inter, 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --toastify-toast-width: 380px;
+    --toastify-toast-min-height: 60px;
+    --toastify-toast-bd-radius: 14px;
+    --toastify-z-index: 10000;
+    --df-toast-bg: rgba(255, 255, 255, 0.96);
+    --df-toast-text: #0f172a;
+    --df-toast-muted: #64748b;
+    --df-toast-border: rgba(15, 23, 42, 0.08);
+    --df-toast-shadow: 0 18px 40px -16px rgba(15, 23, 42, 0.35), 0 4px 12px -6px rgba(15, 23, 42, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+    html.dark {
+        --df-toast-bg: rgba(15, 23, 42, 0.94);
+        --df-toast-text: #e2e8f0;
+        --df-toast-muted: #94a3b8;
+        --df-toast-border: rgba(148, 163, 184, 0.18);
+    }
+}
+
+#drinkflow-toast-root .Toastify__toast-container {
+    padding: 0;
+}
+
+#drinkflow-toast-root .Toastify__toast {
+    --df-accent: #0ea5e9;
+    --df-accent-soft: rgba(14, 165, 233, 0.12);
+    position: relative;
+    overflow: hidden;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+    padding: 14px 40px 16px 18px;
+    border: 1px solid var(--df-toast-border);
+    border-radius: var(--toastify-toast-bd-radius);
+    background: var(--df-toast-bg);
+    color: var(--df-toast-text);
+    box-shadow: var(--df-toast-shadow);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    font-size: 13.5px;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+/* Coloured accent bar on the left edge. */
+#drinkflow-toast-root .Toastify__toast::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--df-accent);
+}
+
+#drinkflow-toast-root .Toastify__toast--success { --df-accent: #10b981; --df-accent-soft: rgba(16, 185, 129, 0.14); }
+#drinkflow-toast-root .Toastify__toast--error { --df-accent: #ef4444; --df-accent-soft: rgba(239, 68, 68, 0.13); }
+#drinkflow-toast-root .Toastify__toast--warning { --df-accent: #f59e0b; --df-accent-soft: rgba(245, 158, 11, 0.16); }
+#drinkflow-toast-root .Toastify__toast--info { --df-accent: #0ea5e9; --df-accent-soft: rgba(14, 165, 233, 0.13); }
+
+/* Icon in a tinted round chip. */
+#drinkflow-toast-root .Toastify__toast-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    margin: 0;
+    border-radius: 999px;
+    background: var(--df-accent-soft);
+}
+
+#drinkflow-toast-root .Toastify__toast-icon svg {
+    width: 18px;
+    height: 18px;
+    fill: var(--df-accent);
+}
+
+#drinkflow-toast-root .Toastify__toast > div:not(.Toastify__toast-icon):not(.Toastify__progress-bar--wrp) {
+    padding-top: 5px;
+    word-break: break-word;
+}
+
+#drinkflow-toast-root .Toastify__close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    color: var(--df-toast-muted);
+    opacity: 0.8;
+    transition: background-color 0.15s, opacity 0.15s;
+}
+
+#drinkflow-toast-root .Toastify__close-button:hover,
+#drinkflow-toast-root .Toastify__close-button:focus-visible {
+    background: rgba(100, 116, 139, 0.14);
+    opacity: 1;
+}
+
+#drinkflow-toast-root .Toastify__close-button > svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Slim progress line in the accent colour. */
+#drinkflow-toast-root .Toastify__progress-bar--wrp {
+    height: 3px;
+}
+
+#drinkflow-toast-root .Toastify__progress-bar {
+    background: var(--df-accent);
+    opacity: 0.85 !important;
+}
+
+#drinkflow-toast-root .Toastify__progress-bar--bg {
+    background: var(--df-accent-soft);
+    opacity: 1;
+}
+
+@media only screen and (max-width: 480px) {
+    #drinkflow-toast-root .Toastify__toast-container {
+        padding: 8px;
+    }
+
+    #drinkflow-toast-root .Toastify__toast {
+        margin-bottom: 8px;
+        border-radius: var(--toastify-toast-bd-radius);
+    }
+}

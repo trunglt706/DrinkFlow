@@ -1,7 +1,8 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { ToastContainer, toast } from 'react-toastify';
+import { Slide, ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import './toast-theme.css';
 
 /**
  * Mount the shared React Toastify container. Loaded on demand by `./toast`, so React and the Toastify
@@ -21,6 +22,8 @@ export function mountToastContainer() {
             newestOnTop: true,
             closeOnClick: true,
             pauseOnHover: true,
+            draggable: true,
+            transition: Slide,
             theme: 'light',
         }),
     );

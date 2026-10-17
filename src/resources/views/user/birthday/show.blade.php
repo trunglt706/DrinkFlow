@@ -110,6 +110,26 @@
     @keyframes flicker{from{transform:scaleY(1) rotate(-2deg)}to{transform:scaleY(1.12) rotate(2deg)}}
     @keyframes out{to{transform:scale(0);opacity:0}}
     @keyframes smoke{0%{opacity:.8;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-50px) scale(3)}}
+    .card-close{display:none}
+    /* Mobile: the back button is centred above the content, and a tapped avatar opens its card full screen. */
+    @media (max-width:640px){
+      .back{position:absolute;top:18px;left:50%;transform:translateX(-50%);z-index:9;white-space:nowrap}
+      .back:hover{transform:translateX(-50%) translateY(-1px)}
+      main{padding-top:84px}
+      .person:hover .avatar{transform:none;box-shadow:0 0 40px rgba(255,95,162,.55)}
+      .person .person-card,.person.is-flipped .person-card{position:fixed;inset:0;left:0;right:0;top:0;width:auto;max-height:none;border-radius:0;
+        display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:72px 28px 40px;overflow-y:auto;
+        transform:scale(.96);transform-origin:50% 50%;z-index:40;pointer-events:none}
+      .person:hover .person-card{opacity:0;visibility:hidden}
+      .person:focus .person-card,.person:focus-within .person-card,.person.is-flipped:focus .person-card,.person.is-flipped:focus-within .person-card{opacity:1;visibility:visible;transform:none;pointer-events:auto}
+      .person-card .sparkle{font-size:56px;margin-bottom:12px}
+      .person-card .person-name{font-size:28px}
+      .person-card .date{font-size:16px}
+      .person-card .meta{justify-content:center;font-size:14px}
+      .person-card .bio{max-width:520px;font-size:15px;text-align:left}
+      .card-close{display:flex;position:absolute;top:16px;right:16px;width:40px;height:40px;align-items:center;justify-content:center;border:0;border-radius:50%;
+        background:rgba(255,255,255,.2);color:#fff;font-size:22px;cursor:pointer}
+    }
     @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}.balloons{display:none}}
   </style>
 </head>
@@ -149,6 +169,7 @@
             </div>
           </div>
           <div class="person-card" role="tooltip" id="birthday-card-{{ $loop->index }}">
+            <button type="button" class="card-close" data-card-close aria-label="{{ __('birthday.close_card') }}">✕</button>
             <span class="sparkle" aria-hidden="true">{{ $celebrant['offset'] === 0 ? '🎂' : '🎈' }}</span>
             <span class="person-name">{{ $celebrant['name'] }}</span>
             <span class="date">{{ $dateLine($celebrant) }}</span>
@@ -272,6 +293,16 @@
         person.addEventListener('focus', place);
         person.addEventListener('mouseleave', () => { if (document.activeElement === person) person.blur(); });
         person.addEventListener('keydown', (event) => { if (event.key === 'Escape') person.blur(); });
+        // Mobile full-screen card: lock the page behind it, close with the ✕ button.
+        const mobile = window.matchMedia('(max-width: 640px)');
+        person.addEventListener('focusin', () => { if (mobile.matches) document.body.style.overflow = 'hidden'; });
+        person.addEventListener('focusout', (event) => { if (!person.contains(event.relatedTarget)) document.body.style.overflow = ''; });
+        person.querySelector('[data-card-close]').addEventListener('click', (event) => {
+          event.stopPropagation();
+          event.currentTarget.blur();
+          person.blur();
+          document.body.style.overflow = '';
+        });
       });
 
       // Blow out the candles; the page then glides down to the wishes.

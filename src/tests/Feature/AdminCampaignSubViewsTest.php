@@ -287,7 +287,8 @@ class AdminCampaignSubViewsTest extends TestCase
             ->get("/admin/{$this->room->slug}/campaigns/{$this->campaign->id}/info")
             ->assertOk()
             ->assertDontSee(__('admin.edit_campaign'))
-            ->assertDontSee(__('admin.cancel_campaign_action'))
+            // The confirm modal reuses the same label, so check the button that opens it.
+            ->assertDontSee("openModal('confirm-cancel-modal');", false)
             ->assertDontSee("openModal('adjust-fee-modal');", false);
     }
 

@@ -96,10 +96,16 @@
 
     <!-- Consolidated payment requests are listed in the ledger below, in place of the debts they bundle. -->
     @php
+        // Same pill as the debt statuses below: colour + icon per status.
         $requestStatusClass = [
             'pending' => 'bg-amber-100 text-amber-900 border-amber-300 font-bold',
             'approved' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
             'rejected' => 'bg-rose-50 text-rose-700 border-rose-200',
+        ];
+        $requestStatusIcon = [
+            'pending' => 'hourglass_top',
+            'approved' => 'check_circle',
+            'rejected' => 'cancel',
         ];
     @endphp
     @if(($pendingRequestCount ?? 0) > 0)
@@ -161,7 +167,8 @@
                                     <div class="text-[11px] text-outline">{{ $paymentRequest['requested_at'] }}</div>
                                 </td>
                                 <td class="py-3.5 px-4 text-center">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full whitespace-nowrap text-[11px] font-semibold border {{ $requestStatusClass[$paymentRequest['status']] ?? 'bg-surface-container text-secondary border-outline-variant' }}" data-debt-status-badge>
+                                    <span class="inline-flex items-center gap-1 pl-1.5 pr-2.5 py-0.5 rounded-full whitespace-nowrap text-[11px] font-semibold border {{ $requestStatusClass[$paymentRequest['status']] ?? 'bg-surface-container text-secondary border-outline-variant' }}" data-debt-status-badge>
+                                        <span class="material-symbols-outlined text-[14px]" aria-hidden="true">{{ $requestStatusIcon[$paymentRequest['status']] ?? 'help' }}</span>
                                         {{ $paymentRequest['status_label'] }}
                                     </span>
                                 </td>
@@ -233,8 +240,8 @@
                                 <div class="mt-0.5 flex items-center gap-1 text-[11px] font-mono text-outline">
                                     <span>{{ $debt->code ?? 'N/A' }}</span>
                                     @if ($debt->code)
-                                        <button type="button" data-copy="{{ $debt->code }}"
-                                            data-copied-message="{{ __('admin.copied') }}"
+                                        {{-- Copies the code; the icon turns into a check mark for 2 seconds (no toast). --}}
+                                        <button type="button" data-copy="{{ $debt->code }}" data-copy-feedback="icon"
                                             data-copy-failed-message="{{ __('admin.copy_failed') }}"
                                             data-tooltip="{{ __('admin.copy_debt_code') }}"
                                             aria-label="{{ __('admin.copy_debt_code') }}"
@@ -398,7 +405,9 @@
             'adjustNegative' => __('admin.adjustment_cannot_negative'),
         ];
     @endphp
-    <div id="debt-modal" data-i18n="{{ json_encode($debtModalI18n, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+    {{-- Modals reset their margin: <main> uses space-y-*, which (Tailwind v4) adds a bottom margin to every child
+         but the last, and that margin would leave a gap under a fixed full-screen backdrop. --}}
+    <div id="debt-modal" data-i18n="{{ json_encode($debtModalI18n, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}" class="fixed inset-0 !m-0 z-50 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
         <div id="debt-backdrop" class="absolute inset-0"></div>
         {{-- Shell shared by the "Thu tiền" and "Điều chỉnh" forms; resources/js/admin/debts.js fills the header and body. --}}
         <div class="relative z-10 w-full max-w-lg max-h-[92vh] flex flex-col bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-2xl overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="debt-modal-title">
@@ -419,7 +428,7 @@
     </div>
 
     <!-- Approve Payment Detail Modal -->
-    <div id="approve-debt-modal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
+    <div id="approve-debt-modal" class="fixed inset-0 !m-0 z-[60] hidden items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
         <div id="approve-debt-backdrop" class="absolute inset-0"></div>
         <div class="relative z-10 w-full max-w-lg bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
             <!-- Modal Header -->
@@ -527,7 +536,7 @@
     <div id="payment-request-modal" data-i18n="{{ json_encode($paymentRequestI18n, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) }}"
         data-approve-url="{{ route('admin.debts.payment-requests.approve', [$room, '__ID__']) }}"
         data-reject-url="{{ route('admin.debts.payment-requests.reject', [$room, '__ID__']) }}"
-        class="fixed inset-0 z-[60] hidden items-center justify-center bg-black/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="payment-request-title">
+        class="fixed inset-0 !m-0 z-[60] hidden items-center justify-center bg-black/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="payment-request-title">
         <div class="absolute inset-0" data-payment-request-close></div>
         <div class="relative z-10 w-full max-w-lg bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
             <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant bg-amber-50/60 shrink-0">
@@ -609,7 +618,7 @@
     </div>
 
     <!-- Debt Detail Modal (read-only) -->
-    <div id="debt-detail-modal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-black/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="debt-detail-title">
+    <div id="debt-detail-modal" class="fixed inset-0 !m-0 z-[60] hidden items-center justify-center bg-black/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="debt-detail-title">
         <div id="debt-detail-backdrop" class="absolute inset-0"></div>
         <div class="relative z-10 w-full max-w-2xl bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
             <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant bg-surface-container-low shrink-0">

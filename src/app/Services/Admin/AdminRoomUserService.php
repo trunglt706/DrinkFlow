@@ -78,6 +78,7 @@ class AdminRoomUserService
                 'phone' => $roomUser->globalUser->phone,
                 'desk_location' => $roomUser->globalUser->desk_location,
                 'delivery_location' => $roomUser->globalUser->delivery_location,
+                'birthday' => $roomUser->globalUser->birthday?->format('d/m/Y'),
                 'avatar_url' => $roomUser->globalUser->avatar_url,
                 'preferences' => $roomUser->globalUser->preferences,
                 'last_login_at' => $roomUser->globalUser->last_login_at?->format('d/m/Y H:i'),

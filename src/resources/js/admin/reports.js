@@ -52,12 +52,12 @@ export function initAdminReports() {
 
     /**
      * Render the member identity cell: display name with the account email (and a copy button) underneath.
-     * Copying is handled by the shared [data-copy] helper (ui-enhancements.js).
+     * Copying is handled by the shared [data-copy] helper (ui-enhancements.js): the icon turns into a check mark
+     * for 2 seconds instead of showing a toast.
      */
     function memberCellHtml(name, email) {
         const copyButton = email ? `
-            <button type="button" data-copy="${escapeHtml(email)}"
-                data-copied-message="${escapeHtml(i18n.copied || '')}"
+            <button type="button" data-copy="${escapeHtml(email)}" data-copy-feedback="icon"
                 data-copy-failed-message="${escapeHtml(i18n.copyFailed || '')}"
                 data-tooltip="${escapeHtml(i18n.copyEmail || '')}"
                 aria-label="${escapeHtml(i18n.copyEmail || '')}"

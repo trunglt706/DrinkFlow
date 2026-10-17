@@ -71,12 +71,13 @@ class OrderController extends Controller
      * @param Request $request Incoming request.
      * @param Room $room Room entity.
      * @param AdminOrderOnBehalfService $onBehalf Builds the "order on behalf" modal data.
+     * @param \App\Services\Admin\AdminCampaignDetailService $campaignDetails Members' ordering progress for the bar.
      * @return View Blade view.
      */
-    public function page(Request $request, Room $room, AdminOrderOnBehalfService $onBehalf): View
+    public function page(Request $request, Room $room, AdminOrderOnBehalfService $onBehalf, \App\Services\Admin\AdminCampaignDetailService $campaignDetails): View
     {
         // Only the latest campaign (running, or the last closed one) is managed on this page.
-        $activeCampaign = $room->latestOrderCampaign()?->load('paymentAccount')->loadCount('orders');
+        $activeCampaign = $room->latestOrderCampaign()?->load('paymentAccount');
 
         $paymentAccount = $activeCampaign?->paymentAccount
             ?? $room->paymentAccounts()->where('is_default', true)->first()
@@ -138,6 +139,8 @@ class OrderController extends Controller
             'room' => $room,
             'orders' => $orders,
             'activeCampaign' => $activeCampaign,
+            // Members who ordered / declined / have not answered yet, shown as a bar under the shop.
+            'participation' => $activeCampaign ? $campaignDetails->getParticipation($room, $activeCampaign) : null,
             'paymentAccount' => $paymentAccount,
             'onBehalfData' => $onBehalf->formData($room, $activeCampaign),
             'statusFilters' => collect(OrderStatus::cases())->map(static fn (OrderStatus $status): array => [

@@ -98,6 +98,30 @@ class AdminOrdersBackendFilterTest extends TestCase
      * @param string $email Member email address.
      * @return RoomUser Created room member.
      */
+    public function test_order_management_shows_member_progress_and_copy_icon_feedback(): void
+    {
+        $admin = Admin::create(['name' => 'Progress Admin', 'email' => 'progress-admin@example.test', 'password' => 'secret-password', 'status' => 'active']);
+        $room = Room::create(['name' => 'Progress Room', 'slug' => 'progress-room', 'status' => 'active']);
+        $admin->rooms()->attach($room);
+        $campaign = Campaign::create(['room_id' => $room->id, 'name' => 'Afternoon', 'restaurant' => 'Cafe', 'status' => CampaignStatus::Active]);
+
+        $this->order($room, $campaign, $this->roomUser($room, 'Ordered One', 'p1@example.test'), OrderStatus::Submitted);
+        $this->order($room, $campaign, $this->roomUser($room, 'Ordered Two', 'p2@example.test'), OrderStatus::Completed);
+        // A cancelled order does not count as ordering.
+        $this->order($room, $campaign, $this->roomUser($room, 'Cancelled', 'p3@example.test'), OrderStatus::Cancelled);
+        $declined = $this->roomUser($room, 'Declined', 'p4@example.test');
+        \App\Models\CampaignParticipant::create(['campaign_id' => $campaign->id, 'room_user_id' => $declined->id, 'status' => \App\Models\CampaignParticipant::STATUS_DECLINED]);
+
+        $this->actingAs($admin, 'admin')->get(route('admin.orders.page', $room->slug))
+            ->assertOk()
+            ->assertSee('data-orders-participation', false)
+            ->assertSee('(2/4 '.__('admin.members').')', false)
+            ->assertSee('50%', false)
+            ->assertSee(__('admin.declined').': 1', false)
+            ->assertSee(__('admin.no_response').': 1', false)
+            ->assertSee('data-copy-feedback="icon"', false);
+    }
+
     private function roomUser(Room $room, string $name, string $email): RoomUser
     {
         $user = GlobalUser::create([

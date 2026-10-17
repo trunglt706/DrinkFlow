@@ -11,6 +11,7 @@ use App\Models\GlobalUser;
 use App\Models\Room;
 use App\Models\RoomUser;
 use App\Services\Audit\AuditService;
+use App\Services\Birthday\RoomBirthdayService;
 use App\Services\Code\CodeGeneratorService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -40,6 +41,7 @@ class AdminAddRoomUserAction
         $name = trim((string) ($data['name'] ?? ''));
         $phone = isset($data['phone']) ? trim((string) $data['phone']) : null;
         $deskLocation = isset($data['desk_location']) ? trim((string) $data['desk_location']) : null;
+        $birthday = ! empty($data['birthday']) ? (string) $data['birthday'] : null;
 
         if ($email === '' || $name === '') {
             throw ValidationException::withMessages([
@@ -47,7 +49,7 @@ class AdminAddRoomUserAction
             ]);
         }
 
-        return DB::transaction(function () use ($room, $email, $name, $phone, $deskLocation): RoomUser {
+        $roomUser = DB::transaction(function () use ($room, $email, $name, $phone, $deskLocation, $birthday): RoomUser {
             $isNewGlobalUser = false;
             $globalUser = GlobalUser::query()
                 ->whereRaw('LOWER(email) = ?', [$email])
@@ -61,6 +63,7 @@ class AdminAddRoomUserAction
                     'email' => $email,
                     'phone' => $phone ?: null,
                     'desk_location' => $deskLocation ?: null,
+                    'birthday' => $birthday,
                     'status' => GlobalUserStatus::Active,
                 ]);
             } else {
@@ -77,6 +80,10 @@ class AdminAddRoomUserAction
                 }
                 if ($deskLocation && empty($globalUser->desk_location)) {
                     $updateData['desk_location'] = $deskLocation;
+                }
+                // Like the other contact fields, an admin only fills a birthday the member has not set themselves.
+                if ($birthday && $globalUser->birthday === null) {
+                    $updateData['birthday'] = $birthday;
                 }
                 if (!empty($updateData)) {
                     $globalUser->update($updateData);
@@ -135,5 +142,12 @@ class AdminAddRoomUserAction
 
             return $roomUser->load('globalUser');
         });
+
+        if ($birthday !== null) {
+            // The room birthday banners are cached per day; show the new member's birthday at once.
+            app(RoomBirthdayService::class)->forgetForUser($roomUser->globalUser);
+        }
+
+        return $roomUser;
     }
 }

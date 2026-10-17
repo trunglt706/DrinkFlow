@@ -221,6 +221,8 @@
 
             // ----- Extend Deadline -----
             let isExtending = false;
+            // Once the deadline has passed the lock controls are not rendered, so reopening ordering needs a reload.
+            const deadlineWasOpen = {{ $campaign->isOpenForOrders() ? 'true' : 'false' }};
             window.extendDeadline = async function (minutes) {
                 if (isExtending) return;
                 isExtending = true;
@@ -241,10 +243,23 @@
                     if (!response.ok) throw new Error(res.message || '{{ __('admin.extend_deadline_failed') }}');
 
                     if (window.notify) window.notify(res.message, 'success');
-                    window.location.reload();
+                    if (!deadlineWasOpen) {
+                        window.location.reload();
+                        return;
+                    }
+                    // Update the deadline shown on the page instead of reloading it.
+                    document.querySelectorAll('[data-campaign-deadline]').forEach(function (el) {
+                        el.textContent = res.deadline_display || el.textContent;
+                        el.classList.add('bg-amber-100');
+                        setTimeout(function () { el.classList.remove('bg-amber-100'); }, 1500);
+                    });
+                    document.querySelectorAll('[data-campaign-deadline-time]').forEach(function (el) {
+                        el.textContent = res.deadline_time || el.textContent;
+                    });
                 } catch (err) {
                     if (window.notify) window.notify(err.message, 'error');
                     else alert(err.message);
+                } finally {
                     isExtending = false;
                     buttons.forEach(function (btn) { btn.disabled = false; });
                 }
@@ -441,7 +456,7 @@
                             <span class="flex items-center gap-1.5 bg-surface-container-low px-3 py-1.5 rounded-lg border border-outline-variant/50">
                                 <span class="material-symbols-outlined text-[16px] text-amber-600">schedule</span>
                                 <span>{{ __('admin.deadline_label') }}</span>
-                                <strong class="text-on-surface font-mono font-semibold">{{ $campaign->deadline?->format('H:i d/m/Y') ?? '—' }}</strong>
+                                <strong class="text-on-surface font-mono font-semibold rounded transition-colors duration-700" data-campaign-deadline>{{ $campaign->deadline?->format('H:i d/m/Y') ?? '—' }}</strong>
                             </span>
                             @if (!empty($campaign->max_budget))
                                 <span class="flex items-center gap-1.5 bg-surface-container-low px-3 py-1.5 rounded-lg border border-outline-variant/50">
@@ -773,7 +788,7 @@
                                 </div>
                                 <div class="p-3 bg-surface-container-low rounded-xl border border-outline-variant/60">
                                     <span class="text-[11px] text-outline block">{{ __('admin.expected_delivery_time') }}</span>
-                                    <span class="text-base font-bold text-on-surface font-mono mt-0.5 block">
+                                    <span class="text-base font-bold text-on-surface font-mono mt-0.5 block" data-campaign-deadline-time>
                                         {{ $campaign->deadline?->format('H:i') ?? '--:--' }}
                                     </span>
                                 </div>
@@ -838,7 +853,9 @@
         @endif
 
         <!-- MODAL: ADJUST FEES & DISCOUNT -->
-        <div id="adjust-fee-modal" class="fixed inset-0 z-50 items-center justify-center p-4 bg-black/50 backdrop-blur-xs" style="display: none;" onclick="closeModalOnBackdrop(event, 'adjust-fee-modal')">
+        {{-- Modals reset their margin: their container uses space-y-*, which (Tailwind v4) adds a bottom margin to every
+             child but the last, and that margin would leave a gap under a fixed full-screen backdrop. --}}
+        <div id="adjust-fee-modal" class="fixed inset-0 z-50 !m-0 items-center justify-center p-4 bg-black/50 backdrop-blur-xs" style="display: none;" onclick="closeModalOnBackdrop(event, 'adjust-fee-modal')">
             <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
                 <div class="p-5 border-b border-outline-variant/60 flex items-center justify-between bg-surface-container-low">
                     <div class="flex items-center gap-2">
@@ -904,7 +921,7 @@
         </div>
 
         <!-- MODAL: CONFIRM CANCEL CAMPAIGN -->
-        <div id="confirm-cancel-modal" class="fixed inset-0 z-50 items-center justify-center p-4 bg-black/50 backdrop-blur-xs" style="display: none;" onclick="closeModalOnBackdrop(event, 'confirm-cancel-modal')">
+        <div id="confirm-cancel-modal" class="fixed inset-0 z-50 !m-0 items-center justify-center p-4 bg-black/50 backdrop-blur-xs" style="display: none;" onclick="closeModalOnBackdrop(event, 'confirm-cancel-modal')">
             <div class="bg-surface-container-lowest border border-error/30 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
                 <div class="p-5 border-b border-error/20 flex items-center gap-3 bg-error-container/20">
                     <span class="w-10 h-10 rounded-full bg-error/10 text-error flex items-center justify-center shrink-0">
@@ -955,7 +972,7 @@
         @endif
 
         <!-- MODAL: CONFIRM ITEMS ARRIVED -->
-        <div id="confirm-delivery-modal" class="fixed inset-0 z-50 items-center justify-center p-4 bg-black/50 backdrop-blur-xs" style="display: none;" onclick="closeModalOnBackdrop(event, 'confirm-delivery-modal')">
+        <div id="confirm-delivery-modal" class="fixed inset-0 z-50 !m-0 items-center justify-center p-4 bg-black/50 backdrop-blur-xs" style="display: none;" onclick="closeModalOnBackdrop(event, 'confirm-delivery-modal')">
             <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
                 <div class="p-4 border-b border-outline-variant/60 flex items-center justify-between bg-surface-container-low">
                     <div class="flex items-center gap-2.5">
@@ -992,7 +1009,7 @@
 
         <!-- MODAL: CONFIRM RESEND NOTIFICATION -->
         @if ($isCampaignLive)
-        <div id="confirm-resend-notification-modal" class="fixed inset-0 z-50 items-center justify-center p-4 bg-black/50 backdrop-blur-xs" style="display: none;" onclick="closeModalOnBackdrop(event, 'confirm-resend-notification-modal', () => !document.getElementById('execute-resend-notification-btn')?.disabled)">
+        <div id="confirm-resend-notification-modal" class="fixed inset-0 z-50 !m-0 items-center justify-center p-4 bg-black/50 backdrop-blur-xs" style="display: none;" onclick="closeModalOnBackdrop(event, 'confirm-resend-notification-modal', () => !document.getElementById('execute-resend-notification-btn')?.disabled)">
             <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
                 <div class="p-5 border-b border-outline-variant/60 flex items-center gap-3 bg-surface-container-low">
                     <span class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -1030,7 +1047,7 @@
         @endif
 
         <!-- MODAL: CONFIRM DUPLICATE CAMPAIGN -->
-        <div id="confirm-duplicate-modal" class="fixed inset-0 z-50 items-center justify-center p-4 bg-black/50 backdrop-blur-xs" style="display: none;" onclick="closeModalOnBackdrop(event, 'confirm-duplicate-modal', () => !document.getElementById('execute-duplicate-btn')?.disabled)">
+        <div id="confirm-duplicate-modal" class="fixed inset-0 z-50 !m-0 items-center justify-center p-4 bg-black/50 backdrop-blur-xs" style="display: none;" onclick="closeModalOnBackdrop(event, 'confirm-duplicate-modal', () => !document.getElementById('execute-duplicate-btn')?.disabled)">
             <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
                 <div class="p-5 border-b border-outline-variant/60 flex items-center gap-3 bg-surface-container-low">
                     <span class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -1068,7 +1085,7 @@
 
         @if ($isCampaignClosed)
             <!-- MODAL: ADJUST RECEIVING PAYMENT ACCOUNT (closed campaigns) -->
-            <div id="adjust-payment-account-modal" class="fixed inset-0 z-50 items-center justify-center p-4 bg-black/50 backdrop-blur-xs" style="display: none;" onclick="closeModalOnBackdrop(event, 'adjust-payment-account-modal', () => !document.getElementById('execute-payment-account-btn')?.disabled)">
+            <div id="adjust-payment-account-modal" class="fixed inset-0 z-50 !m-0 items-center justify-center p-4 bg-black/50 backdrop-blur-xs" style="display: none;" onclick="closeModalOnBackdrop(event, 'adjust-payment-account-modal', () => !document.getElementById('execute-payment-account-btn')?.disabled)">
                 <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
                     <div class="p-5 border-b border-outline-variant/60 flex items-center gap-3 bg-surface-container-low">
                         <span class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -1115,7 +1132,7 @@
         @endif
 
         <!-- MODAL: QR ENLARGE -->
-        <div id="qr-modal" class="fixed inset-0 z-50 items-center justify-center p-4 bg-black/60 backdrop-blur-xs" style="display: none;" onclick="closeModalOnBackdrop(event, 'qr-modal')">
+        <div id="qr-modal" class="fixed inset-0 z-50 !m-0 items-center justify-center p-4 bg-black/60 backdrop-blur-xs" style="display: none;" onclick="closeModalOnBackdrop(event, 'qr-modal')">
             <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center space-y-4">
                 <div class="flex items-center justify-between pb-2 border-b border-outline-variant/60">
                     <h3 class="text-sm font-bold text-on-surface">{{ __('admin.payment_qr_code') }}</h3>

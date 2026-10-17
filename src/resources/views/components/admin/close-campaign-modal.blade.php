@@ -15,7 +15,7 @@
         'success' => __('admin.campaign_closed_success'),
         'closeFailed' => __('admin.close_campaign_failed'),
     ], JSON_UNESCAPED_UNICODE) }}"
-    class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+    class="fixed inset-0 z-50 !m-0 hidden items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
     <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-2xl w-full max-w-xl max-h-[92vh] overflow-hidden flex flex-col">
         <div class="p-5 shrink-0 border-b border-outline-variant/60 flex items-center justify-between bg-surface-container-low">
             <div class="flex items-center gap-2.5 min-w-0">

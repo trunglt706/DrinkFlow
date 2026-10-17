@@ -47,6 +47,9 @@ class CampaignLifecycleController extends Controller
                 'deadline' => $updated->deadline?->format('H:i d/m/Y'),
             ]),
             'data' => $updated,
+            // Pre-formatted like the page, so the campaign page updates in place without a reload.
+            'deadline_display' => $updated->deadline?->format('H:i d/m/Y'),
+            'deadline_time' => $updated->deadline?->format('H:i'),
         ]);
     }
 

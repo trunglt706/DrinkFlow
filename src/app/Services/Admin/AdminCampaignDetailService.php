@@ -241,6 +241,43 @@ class AdminCampaignDetailService
     }
 
     /**
+     * Ordering progress of the room's active members for a campaign (same rules as the campaign page: cancelled
+     * orders are ignored, only active members count).
+     *
+     * @param Room $room Room that owns the campaign.
+     * @param Campaign $campaign Campaign being followed.
+     * @return array{total: int, ordered: int, declined: int, pending: int, ordered_percent: float, declined_percent: float}
+     */
+    public function getParticipation(Room $room, Campaign $campaign): array
+    {
+        $activeRoomUserIds = $room->roomUsers()->where('status', RoomUserStatus::Active)->pluck('id');
+        $orderedUserIds = $campaign->orders()
+            ->where('status', '!=', OrderStatus::Cancelled->value)
+            ->whereNull('cancelled_at')
+            ->whereIn('room_user_id', $activeRoomUserIds)
+            ->distinct()
+            ->pluck('room_user_id');
+        $declined = CampaignParticipant::query()
+            ->where('campaign_id', $campaign->id)
+            ->where('status', CampaignParticipant::STATUS_DECLINED)
+            ->whereIn('room_user_id', $activeRoomUserIds)
+            ->whereNotIn('room_user_id', $orderedUserIds)
+            ->distinct()
+            ->count('room_user_id');
+        $total = $activeRoomUserIds->count();
+        $ordered = $orderedUserIds->count();
+
+        return [
+            'total' => $total,
+            'ordered' => $ordered,
+            'declined' => $declined,
+            'pending' => max(0, $total - $ordered - $declined),
+            'ordered_percent' => $total > 0 ? round($ordered / $total * 100, 1) : 0.0,
+            'declined_percent' => $total > 0 ? round($declined / $total * 100, 1) : 0.0,
+        ];
+    }
+
+    /**
      * Build the fresh summary shown in the close-campaign confirmation modal.
      *
      * Uses the same rules as getCampaignViewData() (cancelled orders excluded, only active room members

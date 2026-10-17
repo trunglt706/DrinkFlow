@@ -45,7 +45,8 @@ class AdminReportsVisualsTest extends TestCase
         // memberCellHtml() in reports.js reads these for the copy button after each email.
         $i18n = json_decode(html_entity_decode((string) str($html)->after('id="report-tabs" data-i18n="')->before('"')), true);
         $this->assertSame(__('admin.copy_email'), $i18n['copyEmail']);
-        $this->assertSame(__('admin.copied'), $i18n['copied']);
+        // Success is shown by the icon (data-copy-feedback="icon"), so only the failure text is needed.
+        $this->assertSame(__('admin.copy_failed'), $i18n['copyFailed']);
     }
 
     /**

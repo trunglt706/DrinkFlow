@@ -14,7 +14,7 @@
          'processing' => __('admin.campaign_lock_processing'),
          'failed' => __('admin.campaign_lock_failed'),
      ], JSON_UNESCAPED_UNICODE) }}"
-     class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
+     class="fixed inset-0 z-50 !m-0 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
      role="dialog" aria-modal="true" aria-labelledby="campaign-ordering-lock-title">
     <div data-lock-modal-backdrop class="absolute inset-0"></div>
     <div class="relative z-10 w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 shadow-2xl">

@@ -118,8 +118,8 @@
         <div class="my-4 rounded-2xl bg-surface-container-low border border-outline-variant/70 shadow-xs overflow-hidden">
             <!-- Banner Header -->
             <div class="p-4 bg-surface-container-low/80 border-b border-outline-variant/60 flex flex-wrap items-center justify-between gap-3">
-                <div class="flex items-center gap-3.5 min-w-0">
-                    <div class="relative w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                <div class="flex items-start gap-3.5 min-w-0">
+                    <div class="relative w-11 h-11 self-start rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
                         <span class="material-symbols-outlined text-[24px]">storefront</span>
                         @if($activeCampaign->status instanceof \App\Enums\CampaignStatus && $activeCampaign->status->isRunning())
                             <span class="absolute -top-1 -right-1 flex h-3 w-3">
@@ -130,20 +130,40 @@
                     </div>
                     <div class="min-w-0">
                         <div class="flex items-center gap-2 flex-wrap">
-                            <x-admin.campaign-status-badge :campaign="$activeCampaign" />
                             <a href="{{ route('admin.campaigns.info', [$room, $activeCampaign]) }}" class="font-bold text-sm text-on-surface truncate hover:text-primary transition-colors no-underline" title="{{ __('admin.view_campaign_details') }}">{{ $activeCampaign->name }}</a>
-                            <span class="text-xs bg-surface-container px-2 py-0.5 rounded font-mono font-code font-medium text-secondary">{{ $activeCampaign->code ?? 'N/A' }}</span>
                         </div>
                         <div class="text-xs text-secondary mt-1 flex items-center gap-2 flex-wrap font-medium">
                             <span class="flex items-center gap-1 text-on-surface">
                                 <span class="material-symbols-outlined text-[15px] text-outline">restaurant</span>
                                 {{ $activeCampaign->restaurant }}
                             </span>
-                            @if($activeCampaign->orders_count ?? 0)
-                                <span class="text-outline">•</span>
-                                <span class="text-primary font-mono font-semibold">{{ $activeCampaign->orders_count }} {{ __('admin.orders') }}</span>
-                            @endif
+                            <span class="text-outline">•</span>
+                            <span class="text-[11px] bg-surface-container px-2 py-0.5 rounded font-mono font-code font-medium text-secondary">{{ $activeCampaign->code ?? 'N/A' }}</span>
                         </div>
+                        @if(! empty($participation) && $participation['total'] > 0)
+                            {{-- Ordering progress of the room's active members: ordered / declined / no answer yet. --}}
+                            <div class="mt-2 w-full max-w-md" data-orders-participation>
+                                <div class="flex items-center justify-between gap-2 text-[11px] mb-1">
+                                    <span class="font-semibold text-on-surface-variant">{{ __('admin.room_participation_rate') }}
+                                        <span class="font-mono text-outline">({{ $participation['ordered'] }}/{{ $participation['total'] }} {{ __('admin.members') }})</span>
+                                    </span>
+                                    <span class="font-mono font-bold text-primary">{{ $participation['ordered_percent'] }}%</span>
+                                </div>
+                                <div class="h-2 w-full rounded-full bg-surface-container-highest overflow-hidden flex shadow-inner" role="progressbar"
+                                    aria-valuemin="0" aria-valuemax="{{ $participation['total'] }}" aria-valuenow="{{ $participation['ordered'] }}"
+                                    aria-label="{{ __('admin.room_participation_rate') }}">
+                                    <div class="h-full bg-primary transition-all duration-500" style="width: {{ $participation['ordered_percent'] }}%"
+                                        title="{{ __('admin.ordered') }}: {{ $participation['ordered'] }}"></div>
+                                    <div class="h-full bg-rose-400 transition-all duration-500" style="width: {{ $participation['declined_percent'] }}%"
+                                        title="{{ __('admin.declined') }}: {{ $participation['declined'] }}"></div>
+                                </div>
+                                <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-outline">
+                                    <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-primary"></span>{{ __('admin.ordered') }}: {{ $participation['ordered'] }}</span>
+                                    <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-400"></span>{{ __('admin.declined') }}: {{ $participation['declined'] }}</span>
+                                    <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-surface-container-highest ring-1 ring-outline-variant"></span>{{ __('admin.no_response') }}: {{ $participation['pending'] }}</span>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
@@ -408,8 +428,8 @@
                                         @endif
                                     </button>
                                     @if($ord->code)
-                                        <button type="button" data-copy="{{ $ord->code }}"
-                                            data-copied-message="{{ __('admin.copied') }}"
+                                        {{-- Copies the code; the icon turns into a check mark for 2 seconds (no toast). --}}
+                                        <button type="button" data-copy="{{ $ord->code }}" data-copy-feedback="icon"
                                             data-copy-failed-message="{{ __('admin.copy_failed') }}"
                                             data-tooltip="{{ __('admin.copy_order_code') }}"
                                             aria-label="{{ __('admin.copy_order_code') }}"

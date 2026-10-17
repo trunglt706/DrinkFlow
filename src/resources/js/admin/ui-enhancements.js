@@ -610,6 +610,8 @@ export function initCurrencyFormatters() {
  *
  * The tooltip is a single fixed-position element, so it is never clipped by scrollable tables.
  * Copy buttons read the value from data-copy and the messages from data-copied-message / data-copy-failed-message.
+ * With data-copy-feedback="icon" a success is shown by the button's icon turning into a check mark for 2 seconds
+ * instead of a toast.
  */
 export function initTooltipsAndCopy() {
     if (window.__dfTooltipsReady) return;
@@ -683,7 +685,19 @@ export function initTooltipsAndCopy() {
         const value = button.dataset.copy || '';
         try {
             await writeClipboard(value);
-            window.notify?.(`${button.dataset.copiedMessage || 'Copied'}: ${value}`, 'success');
+            const icon = button.dataset.copyFeedback === 'icon' ? button.querySelector('.material-symbols-outlined') : null;
+            if (icon) {
+                icon.dataset.copyIcon ??= icon.textContent;
+                icon.textContent = 'check';
+                button.classList.add('!text-emerald-600');
+                clearTimeout(Number(button.dataset.copyTimer));
+                button.dataset.copyTimer = String(setTimeout(() => {
+                    icon.textContent = icon.dataset.copyIcon;
+                    button.classList.remove('!text-emerald-600');
+                }, 2000));
+            } else {
+                window.notify?.(`${button.dataset.copiedMessage || 'Copied'}: ${value}`, 'success');
+            }
         } catch (error) {
             window.notify?.(button.dataset.copyFailedMessage || 'Copy failed', 'error');
         }

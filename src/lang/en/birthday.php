@@ -19,6 +19,7 @@ return [
     'date_upcoming' => '{1} Tomorrow, :date|[2,*] In :days days, :date',
     'date_past' => '{1} Yesterday, :date|[2,*] :days days ago, :date',
     'joined_since' => 'In the room since :date (:duration)',
+    'close_card' => 'Close',
     'self_note' => 'The whole room is sending you their wishes!',
     'wish_title' => 'Our wish',
     'next_wish' => 'Another wish',

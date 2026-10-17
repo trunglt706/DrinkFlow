@@ -47,6 +47,7 @@ class StoreRoomUserRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'desk_location' => ['nullable', 'string', 'max:255'],
+            'birthday' => ['nullable', 'date_format:Y-m-d', 'after:1900-01-01', 'before:today'],
         ];
     }
 
@@ -62,6 +63,7 @@ class StoreRoomUserRequest extends FormRequest
             'name' => __('admin.th_user_member'),
             'phone' => __('admin.phone'),
             'desk_location' => __('admin.desk_location'),
+            'birthday' => __('admin.user_birthday_label'),
         ];
     }
 }

@@ -39,7 +39,6 @@
             'noSponsorsDesc' => __('admin.no_sponsors_found_desc'),
             'noUsersTitle' => __('admin.no_users_analytics_found'),
             'noUsersDesc' => __('admin.no_users_analytics_found_desc'),
-            'copied' => __('admin.copied'),
             'copyFailed' => __('admin.copy_failed'),
             'copyEmail' => __('admin.copy_email'),
             'paymentAccount' => __('admin.report_col_payment_account'),
@@ -307,7 +306,8 @@
                     <p class="text-xs text-outline font-medium">{{ __('sponsor_honors.report_empty', ['year' => $badgeReport['year']]) }}</p>
                 </div>
             @else
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                {{-- Monthly badges, then the per-member totals below (one table per row). --}}
+                <div class="grid grid-cols-1 gap-4">
                     <div class="space-y-2">
                         <h4 class="text-xs font-bold text-on-surface">{{ __('sponsor_honors.report_by_month') }}</h4>
                         <div class="overflow-x-auto border border-outline-variant/60 rounded-xl">

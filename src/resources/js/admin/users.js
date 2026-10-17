@@ -406,6 +406,8 @@ export function initAdminUsers() {
                 phoneCopyEl.classList.toggle('hidden', !realPhone);
             }
             if (deskEl) deskEl.textContent = user.global_user?.desk_location || '—';
+            const birthdayEl = document.querySelector('#user-detail-birthday');
+            if (birthdayEl) birthdayEl.textContent = user.global_user?.birthday || '—';
             if (deliveryEl) deliveryEl.textContent = user.global_user?.delivery_location || '—';
 
             // Populate Activity & Membership
@@ -628,6 +630,7 @@ export function initAdminUsers() {
         const name = document.querySelector('#create-user-name')?.value.trim() || '';
         const phone = document.querySelector('#create-user-phone')?.value.trim() || '';
         const deskLocation = document.querySelector('#create-user-desk')?.value.trim() || '';
+        const birthday = document.querySelector('#create-user-birthday')?.value || '';
 
         if (!email || !name) return;
 
@@ -652,6 +655,7 @@ export function initAdminUsers() {
                     name,
                     phone: phone || null,
                     desk_location: deskLocation || null,
+                    birthday: birthday || null,
                 }),
             });
 

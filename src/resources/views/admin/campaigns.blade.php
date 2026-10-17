@@ -195,7 +195,9 @@
     </div>
 
     <!-- Duplicate Campaign Modal -->
-    <div id="duplicate-campaign-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4">
+    {{-- Modals reset their margin: <main> uses space-y-*, which (Tailwind v4) adds a bottom margin to every child
+         but the last, and that margin would leave a gap under a fixed full-screen backdrop. --}}
+    <div id="duplicate-campaign-modal" class="fixed inset-0 z-50 !m-0 hidden items-center justify-center bg-black/60 p-4">
         <div class="w-full max-w-sm rounded-xl bg-surface-container-lowest p-5 shadow-xl">
             <h2 class="text-base font-bold text-on-surface">{{ __('admin.duplicate_campaign') }}</h2>
             <p class="mt-2 text-xs text-outline">{{ __('admin.confirm_duplicate_campaign') }}</p>
@@ -210,7 +212,7 @@
     <x-admin.close-campaign-modal :room="$room" />
 
     <!-- Cancel Campaign Confirmation Modal -->
-    <div id="cancel-campaign-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="cancel-campaign-modal-title" data-error-message="{{ __('admin.cancel_campaign_failed') }}">
+    <div id="cancel-campaign-modal" class="fixed inset-0 z-50 !m-0 hidden items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="cancel-campaign-modal-title" data-error-message="{{ __('admin.cancel_campaign_failed') }}">
         <div class="w-full max-w-sm rounded-xl bg-surface-container-lowest border border-outline-variant p-5 shadow-xl">
             <div class="flex items-start gap-3">
                 <div class="w-10 h-10 shrink-0 rounded-full bg-error-container/60 text-error flex items-center justify-center" aria-hidden="true">
@@ -236,7 +238,7 @@
     </div>
 
     <!-- Archive Campaign Confirmation Modal -->
-    <div id="archive-campaign-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="archive-campaign-modal-title" data-error-message="{{ __('admin.archive_campaign_failed') }}">
+    <div id="archive-campaign-modal" class="fixed inset-0 z-50 !m-0 hidden items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="archive-campaign-modal-title" data-error-message="{{ __('admin.archive_campaign_failed') }}">
         <div class="w-full max-w-sm rounded-xl bg-surface-container-lowest border border-outline-variant p-5 shadow-xl">
             <div class="flex items-center gap-2 text-primary mb-2">
                 <span class="material-symbols-outlined text-[22px]">archive</span>
