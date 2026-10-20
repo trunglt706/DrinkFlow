@@ -37,4 +37,9 @@ return [
         'Thêm một tuổi mới, thêm nhiều trải nghiệm đẹp. Chúc :name mọi ước mơ đều thành hiện thực!',
         'Chúc :name một năm ngọt ngào như trà đào, tươi mát như nước ép và đậm đà như cà phê muối!',
     ],
+    // Bottom reminder for members who have not entered their birthday yet.
+    'prompt_label' => 'Nhắc cập nhật ngày sinh nhật',
+    'prompt_text' => 'Nhập ngày sinh để cả phòng cùng chúc mừng bạn vào ngày đặc biệt nhé! 🎂',
+    'prompt_cta' => 'Cập nhật ngay',
+    'prompt_close' => 'Ẩn nhắc nhở trong 1 ngày',
 ];

@@ -87,6 +87,9 @@
   <!-- Shared Global Page Loading & Submit Overlay -->
   <x-global.loading />
 
+  <!-- Reminder to enter a birthday (members without one) -->
+  <x-user.birthday-prompt />
+
   <!-- Shared Global Go To Top Floating Button -->
   <x-global.go-to-top />
 

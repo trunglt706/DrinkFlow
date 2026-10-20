@@ -30,5 +30,18 @@ enum NotificationType: string
     case RoomInvite = 'room.invite';
     case AdminBroadcast = 'admin.broadcast';
     case BirthdayToday = 'birthday.today';
+    case NewYear = 'occasion.new_year';
+    case LunarNewYear = 'occasion.lunar_new_year';
+    case InternationalWomensDay = 'occasion.intl_womens_day';
     case WomensDay = 'occasion.womens_day';
+    case MensDay = 'occasion.mens_day';
+    case Christmas = 'occasion.christmas';
+
+    /**
+     * Notification type of an occasion greeting.
+     */
+    public static function fromOccasion(RoomOccasion $occasion): self
+    {
+        return self::from('occasion.'.$occasion->value);
+    }
 }

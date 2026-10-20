@@ -118,6 +118,10 @@ Route::middleware(['auth:admin', 'admin.room', 'room.subscription'])
     Route::post('/sponsor-draws/{sponsorDraw}/eligible/sync', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'syncEligible'])->whereNumber('sponsorDraw')->middleware(['json.only', 'throttle:20,1'])->name('admin.sponsor-draws.eligible.sync');
     Route::post('/sponsor-draws/{sponsorDraw}/reset', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'reset'])->whereNumber('sponsorDraw')->middleware('throttle:20,1')->name('admin.sponsor-draws.reset');
     Route::post('/sponsor-draws/{sponsorDraw}/resend', [\App\Http\Controllers\Admin\SponsorDrawController::class, 'resend'])->whereNumber('sponsorDraw')->middleware('throttle:20,1')->name('admin.sponsor-draws.resend');
+    // Room events: upcoming birthdays and occasions with their notification status; send one that is due and unsent.
+    Route::get('/events', [\App\Http\Controllers\Admin\RoomEventController::class, 'index'])->name('admin.events.index');
+    Route::post('/events/send', [\App\Http\Controllers\Admin\RoomEventController::class, 'send'])->middleware('throttle:20,1')->name('admin.events.send');
+    Route::put('/events/settings', [\App\Http\Controllers\Admin\RoomEventController::class, 'settings'])->middleware('throttle:30,1')->name('admin.events.settings');
     Route::get('/orders/manage', [\App\Http\Controllers\Admin\OrderController::class, 'page'])->name('admin.orders.page');
     Route::get('/debts/ledger', [\App\Http\Controllers\Admin\DebtController::class, 'page'])->name('admin.debts.page');
     Route::get('/room-users/directory', [\App\Http\Controllers\Admin\RoomUserController::class, 'page'])->name('admin.room-users.page');

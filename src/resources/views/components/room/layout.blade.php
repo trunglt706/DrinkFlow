@@ -95,8 +95,8 @@
   />
 
   @if ($room)
-    <!-- Birthday banner: members whose birthday is within 3 days -->
-    <x-room.birthday-banner :room="$room" :viewer-code="$roomUser?->user_code" />
+    <!-- Events banner: occasions of the day (Tết: 7 days before / after) and birthdays within 3 days -->
+    <x-room.events-banner :room="$room" :viewer-code="$roomUser?->user_code" />
   @endif
 
   <!-- Main Slot Content -->
@@ -112,6 +112,9 @@
 
   <!-- Shared Global Page Loading & Submit Overlay -->
   <x-global.loading />
+
+  <!-- Reminder to enter a birthday (members without one) -->
+  <x-user.birthday-prompt />
 
   <!-- Shared Global Go To Top Floating Button -->
   <x-global.go-to-top :mobile-actions-in-footer="true" />

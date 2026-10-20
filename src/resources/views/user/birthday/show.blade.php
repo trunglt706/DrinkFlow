@@ -139,6 +139,7 @@
   <div class="balloons" aria-hidden="true" data-balloons></div>
 
   <a class="btn btn-ghost back" href="{{ route('user.dashboard', $room) }}">← {{ __('birthday.back_to_room') }}</a>
+  <x-occasion.audio :audio="$audio" melody="birthday" />
 
   <main data-birthday-page data-i18n="{{ json_encode(['wishes' => array_values($wishes), 'blown' => __('birthday.blown')], JSON_UNESCAPED_UNICODE) }}">
     <span class="eyebrow">🎉 {{ __('birthday.eyebrow', ['room' => $room->name]) }}</span>
@@ -314,6 +315,10 @@
           return;
         }
         cake.classList.add('is-blown');
+        // Blowing the candles starts the Happy Birthday tune (a click is needed for any sound).
+        window.EventAudio?.start();
+        window.EventAudio?.play('blow');
+        window.EventAudio?.play('chime', 450);
         const rect = cake.getBoundingClientRect();
         burst(220, rect.left + rect.width / 2, rect.top);
         toast.textContent = i18n.blown || '';

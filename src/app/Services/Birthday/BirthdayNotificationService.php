@@ -9,6 +9,7 @@ use App\Enums\RoomStatus;
 use App\Models\Room;
 use App\Services\Notification\RoomNotificationChannelDispatcher;
 use App\Services\Notification\UserNotificationService;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -57,6 +58,29 @@ class BirthdayNotificationService
         if (Carbon::now($today->getTimezone())->hour < self::SEND_HOUR) {
             return false;
         }
+
+        return $this->send($room, $today, false);
+    }
+
+    /**
+     * Send today's announcement from the admin events page, whatever the hour and as many times as the admin wants
+     * (only the automatic send is limited to once a day). The scheduler will not send it again afterwards.
+     *
+     * @param Room $room Room to announce in.
+     * @return bool False when nobody is born today.
+     */
+    public function sendFromAdmin(Room $room): bool
+    {
+        return $this->send($room, $this->birthdays->today($room), true);
+    }
+
+    /**
+     * Claim the (room, day) row, then announce the day's birthdays and record the (latest) delivery.
+     *
+     * @param bool $fromAdmin Send even when the day is already claimed (admin resend).
+     */
+    private function send(Room $room, CarbonImmutable $today, bool $fromAdmin): bool
+    {
         $celebrants = array_values(array_filter($this->birthdays->celebrants($room), static fn (array $celebrant): bool => $celebrant['offset'] === 0));
         if ($celebrants === []) {
             return false;
@@ -70,7 +94,7 @@ class BirthdayNotificationService
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        if ($claimed !== 1) {
+        if ($claimed !== 1 && ! $fromAdmin) {
             return false;
         }
 
