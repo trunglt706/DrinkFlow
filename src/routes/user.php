@@ -63,6 +63,7 @@ Route::middleware(['room.ip', 'global.user', 'room.user', 'room.subscription'])-
     Route::post('/rooms/{room}/orders/{order}/confirm-payment', [\App\Http\Controllers\User\OrderController::class, 'confirmPayment'])->name('user.orders.confirm-payment');
     Route::get('/rooms/{room}/debts', [\App\Http\Controllers\User\DebtController::class, 'index'])->name('user.debts.index');
     Route::post('/rooms/{room}/debts/confirm-payment', [\App\Http\Controllers\User\DebtController::class, 'confirmPayment'])->name('user.debts.confirm-payment');
+    Route::post('/rooms/{room}/debts/snooze-reminders', [\App\Http\Controllers\User\DebtController::class, 'snoozeReminders'])->middleware('throttle:10,1')->name('user.debts.snooze-reminders');
     Route::get('/rooms/{room}/analytics', [\App\Http\Controllers\User\AnalyticsController::class, 'room'])->name('user.analytics.room');
     Route::get('/rooms/{room}/socket-token', \App\Http\Controllers\User\SocketTokenController::class)->middleware('json.only')->name('user.socket-token');
     Route::get('/rooms/{room}/notifications', [\App\Http\Controllers\User\RoomNotificationController::class, 'index'])->name('user.rooms.notifications');

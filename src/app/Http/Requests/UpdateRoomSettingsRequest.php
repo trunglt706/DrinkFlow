@@ -62,6 +62,7 @@ class UpdateRoomSettingsRequest extends FormRequest
             'max_campaign_budget' => ['sometimes', 'nullable', 'integer', 'min:0'],
             'personal_debt_ceiling' => ['sometimes', 'nullable', 'integer', 'min:0'],
             'auto_lock_on_debt_limit' => ['sometimes', 'nullable', 'boolean'],
+            'auto_debt_reminders' => ['sometimes', 'nullable', 'boolean'],
             'is_public' => ['sometimes', 'boolean'],
             // Access rules: empty lists mean "no restriction".
             RoomAccessPolicy::ALLOWED_EMAIL_DOMAINS => ['sometimes', 'present', 'array', 'max:'.RoomAccessPolicy::MAX_ENTRIES],

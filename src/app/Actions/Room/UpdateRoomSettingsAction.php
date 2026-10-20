@@ -9,6 +9,7 @@ use App\Models\PaymentAccount;
 use App\Models\Room;
 use App\Models\RoomSetting;
 use App\Services\Audit\AuditService;
+use App\Services\Debt\DebtAutoReminderService;
 use App\Services\Room\RoomAccessPolicy;
 use Illuminate\Support\Facades\DB;
 
@@ -38,6 +39,7 @@ class UpdateRoomSettingsAction
             'max_campaign_budget' => RoomSetting::TYPE_INTEGER,
             'personal_debt_ceiling' => RoomSetting::TYPE_INTEGER,
             'auto_lock_on_debt_limit' => RoomSetting::TYPE_BOOLEAN,
+            DebtAutoReminderService::SETTING_KEY => RoomSetting::TYPE_BOOLEAN,
             'is_public' => RoomSetting::TYPE_BOOLEAN,
         ];
 
@@ -110,6 +112,7 @@ class UpdateRoomSettingsAction
             'max_campaign_budget' => $settings->get('max_campaign_budget')?->value !== null ? (int) $settings->get('max_campaign_budget')->value : 70000,
             'personal_debt_ceiling' => $settings->get('personal_debt_ceiling')?->value !== null ? (int) $settings->get('personal_debt_ceiling')->value : 150000,
             'auto_lock_on_debt_limit' => $settings->get('auto_lock_on_debt_limit')?->value !== null ? filter_var($settings->get('auto_lock_on_debt_limit')->value, FILTER_VALIDATE_BOOLEAN) : true,
+            DebtAutoReminderService::SETTING_KEY => $settings->get(DebtAutoReminderService::SETTING_KEY)?->value !== null ? filter_var($settings->get(DebtAutoReminderService::SETTING_KEY)->value, FILTER_VALIDATE_BOOLEAN) : true,
             'is_public' => $settings->get('is_public')?->value !== null ? filter_var($settings->get('is_public')->value, FILTER_VALIDATE_BOOLEAN) : true,
         ], array_fill_keys(array_diff(RoomAccessPolicy::LIST_KEYS, array_keys($extra)), []));
     }
