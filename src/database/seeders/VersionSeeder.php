@@ -27,7 +27,16 @@ class VersionSeeder extends Seeder
                 'force_refresh' => false,
                 'important' => true,
                 'created_by_superadmin_id' => $superadmin?->id,
-            ]
+            ],
+            [
+                'version' => 'v2.4.0',
+                'title' => 'Room Events, Lucky Draw & Yearly Achievements',
+                'changelog' => 'Bản phát hành v2.4.0: sự kiện sinh nhật và 6 ngày lễ (Tết Dương lịch, Tết Nguyên Đán, 8/3, 20/10, 19/11, Giáng sinh) với banner, trang chúc mừng có hiệu ứng, âm thanh, lời chúc tuỳ chỉnh và thông báo tự động lúc 9:00; trang quản lý sự kiện cho Admin (gửi/gửi lại thông báo, cấu hình âm thanh và lời chúc); vòng quay may mắn quay nhà tài trợ/chọn quán minh bạch; trang Thành tích với huy chương TOP nhà tài trợ trong năm; banner nhắc cập nhật ngày sinh và tài liệu hướng dẫn mới cho User và Admin.',
+                'release_date' => Carbon::createFromFormat('d/m/Y', '20/10/2026')->toDateString(),
+                'force_refresh' => false,
+                'important' => true,
+                'created_by_superadmin_id' => $superadmin?->id,
+            ],
         ];
 
         foreach ($versions as $item) {

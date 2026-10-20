@@ -37,4 +37,9 @@ return [
         '新しい一年に素敵な思い出がたくさん増えますように。:nameさんの夢がすべて叶いますように！',
         ':nameさんの一年が、ピーチティーのように甘く、ジュースのように爽やかでありますように！',
     ],
+    // Bottom reminder for members who have not entered their birthday yet.
+    'prompt_label' => '誕生日登録のお知らせ',
+    'prompt_text' => '誕生日を登録して、特別な日にルームのみんなからお祝いしてもらいましょう！🎂',
+    'prompt_cta' => '今すぐ更新',
+    'prompt_close' => '1日間このお知らせを非表示',
 ];

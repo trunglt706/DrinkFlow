@@ -49,9 +49,10 @@ Schedule::command('drinkflow:notify-birthdays')
     ->hourlyAt(0)
     ->withoutOverlapping();
 
-// Vietnamese Women's Day greeting at 10:00 room time on 20/10 (hourly from 19 to 21 October so every room timezone is covered; once a year per room).
-Schedule::command('drinkflow:notify-womens-day')
-    ->cron('5 * 19-21 10 *')
+// Occasion greetings (New Year, Tết, 8/3, 20/10, 19/11, Christmas) at 9:00 room time on the day (hourly so every room
+// timezone is covered; the command returns at once on the other days of the year; once a year per room and occasion).
+Schedule::command('drinkflow:notify-occasions')
+    ->hourlyAt(5)
     ->withoutOverlapping();
 
 // Remind Agents a few days before their package period ends (once per period).

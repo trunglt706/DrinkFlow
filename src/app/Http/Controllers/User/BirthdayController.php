@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\User;
 
+use App\Actions\Room\SendRoomEventNotificationAction;
 use App\Http\Controllers\Controller;
 use App\Models\Room;
 use App\Services\Birthday\RoomBirthdayService;
+use App\Services\Occasion\RoomEventSettingsService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 
@@ -23,18 +25,25 @@ class BirthdayController extends Controller
      * @param Request $request Current request (room attributes set by the room middleware).
      * @param Room $room Room whose members are celebrated.
      * @param RoomBirthdayService $birthdays Birthday lookup.
+     * @param RoomEventSettingsService $settings Music and sound settings of the page.
      * @return View Celebration page.
      */
-    public function show(Request $request, Room $room, RoomBirthdayService $birthdays): View
+    public function show(Request $request, Room $room, RoomBirthdayService $birthdays, RoomEventSettingsService $settings): View
     {
         $room = $request->attributes->get('room') ?? $room;
         $celebrants = $birthdays->celebrants($room);
+        // Locally the page can be previewed without any birthday in the window, with a "Demo" celebrant.
+        if ($celebrants === [] && app()->isLocal()) {
+            $celebrants = [$birthdays->demoCelebrant($room)];
+        }
         abort_if($celebrants === [], 404);
 
         return view('user.birthday.show', [
             'room' => $room,
             'celebrants' => $celebrants,
             'viewerCode' => (string) $request->attributes->get('room_user')?->user_code,
+            'audio' => $settings->forEvent($room, SendRoomEventNotificationAction::TYPE_BIRTHDAY),
+            'wishes' => $settings->wishes($room, SendRoomEventNotificationAction::TYPE_BIRTHDAY),
         ]);
     }
 }

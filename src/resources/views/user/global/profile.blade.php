@@ -169,7 +169,8 @@
                   <label for="contact-birthday" class="text-xs font-semibold text-slate-700">{{ __('global.profile.birthday_label') }}</label>
                   <div class="relative">
                     <span class="material-symbols-outlined absolute left-3 top-1/4 text-slate-400 text-[18px] leading-none pointer-events-none">cake</span>
-                    <input id="contact-birthday" name="birthday" type="date" value="{{ old('birthday', $birthday) }}" min="1900-01-01" max="{{ now()->subDay()->toDateString() }}" aria-describedby="contact-birthday-hint" class="w-full h-10 pl-9 pr-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:border-[#006948] focus:ring-1 focus:ring-[#006948] transition-all">
+                    {{-- Target of the birthday reminder link (#contact-birthday): stops below the sticky header, label included. --}}
+                    <input id="contact-birthday" name="birthday" type="date" value="{{ old('birthday', $birthday) }}" min="1900-01-01" max="{{ now()->subDay()->toDateString() }}" aria-describedby="contact-birthday-hint" style="scroll-margin-top: 10rem" class="w-full h-10 pl-9 pr-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:border-[#006948] focus:ring-1 focus:ring-[#006948] transition-all">
                   </div>
                   <p id="contact-birthday-hint" class="text-xs text-slate-400">{{ __('global.profile.birthday_hint') }}</p>
                   @error('birthday')<p class="text-xs text-rose-600" role="alert">{{ $message }}</p>@enderror

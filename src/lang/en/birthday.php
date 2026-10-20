@@ -37,4 +37,9 @@ return [
         'Another year, more great memories. May all of :name\'s dreams come true!',
         'Wishing :name a year as sweet as peach tea, as fresh as juice and as rich as salted coffee!',
     ],
+    // Bottom reminder for members who have not entered their birthday yet.
+    'prompt_label' => 'Birthday reminder',
+    'prompt_text' => 'Add your birthday so the whole room can celebrate your special day! 🎂',
+    'prompt_cta' => 'Update now',
+    'prompt_close' => 'Hide this reminder for a day',
 ];

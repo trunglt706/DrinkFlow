@@ -27,6 +27,9 @@ Chào mừng bạn đến với **DrinkFlow** — nền tảng gom đơn đồ u
 | 11 | [Khi tài khoản bị khoá / hạn chế](11-tai-khoan-bi-khoa.md) | Phân biệt khoá toàn hệ thống và hạn chế theo Room, cách gửi khiếu nại |
 | 12 | [Đặt món giúp thành viên khác (Order dùm)](12-dat-ho-thanh-vien-khac.md) | Điều kiện đặt hộ, cách gán món cho người nhận, giới hạn hạn mức nợ |
 | 13 | [Món trả riêng (không dùng tài trợ)](13-mon-tra-rieng.md) | Đánh dấu món không dùng tài trợ, ảnh hưởng đến công nợ cá nhân |
+| 14 | [Sự kiện của phòng (sinh nhật & ngày lễ)](14-su-kien-cua-phong.md) | Banner sự kiện, trang chúc mừng, âm thanh, thông báo 9:00, cập nhật ngày sinh |
+| 15 | [Vòng quay may mắn](15-vong-quay-may-man.md) | Theo dõi trực tiếp phiên quay nhà tài trợ / chọn quán, tính minh bạch của kết quả |
+| 16 | [Thành tích trong năm](16-thanh-tich.md) | Huy chương TOP nhà tài trợ theo từng tháng, tổng huy chương, lời nhắn động viên |
 
 ## Ghi chú về hình ảnh minh họa
 

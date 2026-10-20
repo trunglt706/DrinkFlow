@@ -24,6 +24,9 @@ Bộ tài liệu này dành cho **Admin** — quản trị viên phụ trách v�
 | 9 | [Tích hợp Bot thông báo & Gửi thông báo](09-kenh-thong-bao-broadcast.md) | Kết nối Slack/Telegram/Webhook, gửi thông báo hàng loạt tới thành viên |
 | 10 | [Báo cáo & Phân tích Logistics](10-bao-cao-thong-ke.md) | Tỉ lệ tham gia, thống kê công nợ, xuất báo cáo |
 | 11 | [Nhật ký hoạt động (Audit Log)](11-nhat-ky-hoat-dong.md) | Lịch sử toàn bộ thao tác quan trọng của Admin trong Room |
+| 12 | [Quản lý sự kiện](12-quan-ly-su-kien.md) | Sự kiện sắp tới, trạng thái & gửi lại thông báo, cấu hình âm thanh và lời chúc |
+| 13 | [Vòng quay may mắn (Quay sponsor)](13-vong-quay-may-man.md) | Tạo phiên, phát hành link, quay, xác nhận & thông báo, biên bản kiểm chứng |
+| 14 | [Huy hiệu nhà tài trợ & thành tích trong năm](14-huy-hieu-thanh-tich.md) | Cách tính huy hiệu, thống kê lại, báo cáo theo năm, trang Thành tích của thành viên |
 
 ## Ghi chú về hình ảnh minh họa
 

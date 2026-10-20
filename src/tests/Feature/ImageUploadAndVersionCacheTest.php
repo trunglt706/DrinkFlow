@@ -65,8 +65,12 @@ class ImageUploadAndVersionCacheTest extends TestCase
             'version' => 'v2.3.0',
             'title' => 'Multi-room Ordering, Proxy Orders & VietQR Settlement',
         ]);
+        $this->assertDatabaseHas('versions', [
+            'version' => 'v2.4.0',
+            'title' => 'Room Events, Lucky Draw & Yearly Achievements',
+        ]);
 
-        $this->assertSame('v2.3.0', Version::getLatestVersionString());
+        $this->assertSame('v2.4.0', Version::getLatestVersionString());
     }
 
     public function test_version_model_latest_string_caches_and_invalidates_on_crud(): void

@@ -114,11 +114,56 @@ class RoomBirthdayService
     }
 
     /**
-     * @return list<array{user_code: string, name: string, avatar_url: string, day: int, month: int, offset: int}>
+     * Placeholder celebrant (birthday today) used to preview the celebration page locally when nobody is celebrated.
+     *
+     * @param Room $room Room whose page is previewed.
+     * @return array{user_code: string, name: string, avatar_url: string, day: int, month: int, offset: int, joined_on: null, bio_html: string}
      */
-    private function computeCelebrants(Room $room, CarbonImmutable $today): array
+    public function demoCelebrant(Room $room): array
     {
-        $members = RoomUser::query()
+        $today = $this->today($room);
+
+        return ['user_code' => 'DEMO', 'name' => 'Demo', 'avatar_url' => '', 'day' => $today->day, 'month' => $today->month, 'offset' => 0, 'joined_on' => null, 'bio_html' => ''];
+    }
+
+    /**
+     * Members of the room whose birthday is from WINDOW_DAYS ago up to `$daysAhead` days from now, for the admin
+     * events page. Only names, day and month, never the birth year.
+     *
+     * @param Room $room Room whose members are checked.
+     * @param int $daysAhead Last day (from today) included.
+     * @return list<array{name: string, day: int, month: int, offset: int}> Closest date first.
+     */
+    public function upcoming(Room $room, int $daysAhead): array
+    {
+        $today = $this->today($room);
+        $birthdays = [];
+        foreach ($this->membersWithBirthday($room) as $member) {
+            $birthday = CarbonImmutable::parse($member->globalUser->birthday->toDateString());
+            $offset = $this->offsetFromToday($birthday, $today);
+            if ($offset < -self::WINDOW_DAYS || $offset > $daysAhead) {
+                continue;
+            }
+            $birthdays[] = [
+                'name' => (string) ($member->payerName() ?: $member->globalUser->name),
+                'day' => $birthday->day,
+                'month' => $birthday->month,
+                'offset' => $offset,
+            ];
+        }
+        usort($birthdays, static fn (array $a, array $b): int => [$a['offset'], $a['name']] <=> [$b['offset'], $b['name']]);
+
+        return $birthdays;
+    }
+
+    /**
+     * Active members of the room (active accounts) who entered their birthday.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, RoomUser>
+     */
+    private function membersWithBirthday(Room $room): \Illuminate\Database\Eloquent\Collection
+    {
+        return RoomUser::query()
             ->where('room_id', $room->id)
             ->where('status', RoomUserStatus::Active->value)
             ->whereHas('globalUser', static fn (Builder $query) => $query
@@ -126,9 +171,15 @@ class RoomBirthdayService
                 ->whereNotNull('birthday'))
             ->with('globalUser:id,name,avatar_url,birthday,bio')
             ->get();
+    }
 
+    /**
+     * @return list<array{user_code: string, name: string, avatar_url: string, day: int, month: int, offset: int}>
+     */
+    private function computeCelebrants(Room $room, CarbonImmutable $today): array
+    {
         $celebrants = [];
-        foreach ($members as $member) {
+        foreach ($this->membersWithBirthday($room) as $member) {
             $birthday = CarbonImmutable::parse($member->globalUser->birthday->toDateString());
             $offset = $this->offsetFromToday($birthday, $today);
             if (abs($offset) > self::WINDOW_DAYS) {

@@ -135,6 +135,38 @@ class RoomBirthdayTest extends TestCase
         $this->assertNotSame(200, $this->actingAs($stranger->globalUser, 'web')->get($url)->getStatusCode());
     }
 
+    public function test_celebration_page_shows_a_demo_celebrant_locally_when_nobody_is_celebrated(): void
+    {
+        $viewer = $this->member('Viewer', '1990-05-05');
+        $this->app->detectEnvironment(static fn (): string => 'local');
+
+        $this->actingAs($viewer->globalUser, 'web')->get(route('user.rooms.birthday', $this->room))
+            ->assertOk()
+            ->assertSee('data-birthday-person="DEMO"', false)
+            ->assertSee(__('birthday.page_title', ['name' => 'Demo']));
+        // The banner and the notifications still follow the real birthdays.
+        $this->actingAs($viewer->globalUser, 'web')->get(route('user.dashboard', $this->room->slug))->assertDontSee('data-birthday-banner', false);
+    }
+
+    public function test_members_without_a_birthday_are_reminded_to_enter_it(): void
+    {
+        $without = $this->member('No Birthday', null);
+        $with = $this->member('Has Birthday', '1990-05-05');
+
+        foreach ([route('user.dashboard', $this->room->slug), route('user.me.dashboard')] as $url) {
+            $this->actingAs($without->globalUser, 'web')->get($url)
+                ->assertOk()
+                ->assertSee('data-birthday-prompt', false)
+                ->assertSee(__('birthday.prompt_text'))
+                ->assertSee('href="'.route('user.me.profile').'#contact-birthday"', false)
+                ->assertSee('df_birthday_prompt_dismissed', false);
+            $this->actingAs($with->globalUser, 'web')->get($url)->assertOk()->assertDontSee('data-birthday-prompt', false);
+        }
+        // Also on the profile page itself, where the link jumps to the birthday field.
+        $this->actingAs($without->globalUser, 'web')->get(route('user.me.profile'))->assertOk()
+            ->assertSee('data-birthday-prompt', false)->assertSee('id="contact-birthday"', false);
+    }
+
     public function test_celebration_page_is_hidden_from_robots(): void
     {
         $viewer = $this->member('Viewer', null);

@@ -15,6 +15,9 @@
 - [9. Tích hợp Bot thông báo & Gửi thông báo](09-kenh-thong-bao-broadcast.md)
 - **10. Báo cáo & Phân tích Logistics** ← *đang xem*
 - [11. Nhật ký hoạt động (Audit Log)](11-nhat-ky-hoat-dong.md)
+- [12. Quản lý sự kiện (sinh nhật, ngày lễ, âm thanh & lời chúc)](12-quan-ly-su-kien.md)
+- [13. Vòng quay may mắn (Quay sponsor)](13-vong-quay-may-man.md)
+- [14. Huy hiệu nhà tài trợ & thành tích trong năm](14-huy-hieu-thanh-tich.md)
 
 </details>
 
