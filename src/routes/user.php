@@ -71,6 +71,8 @@ Route::middleware(['room.ip', 'global.user', 'room.user', 'room.subscription'])-
     Route::get('/rooms/{room}/guides/{slug}', [\App\Http\Controllers\User\RoomGuideController::class, 'show'])->name('user.rooms.guides.show');
     // Stand-alone birthday celebration page of the room: every member whose birthday is within 3 days.
     Route::get('/rooms/{room}/birthday', [\App\Http\Controllers\User\BirthdayController::class, 'show'])->middleware('throttle:60,1')->name('user.rooms.birthday');
+    // Stand-alone Vietnamese Women's Day (20/10) page of the room, linked from the yearly greeting notification.
+    Route::get('/rooms/{room}/20-10', [\App\Http\Controllers\User\WomensDayController::class, 'show'])->middleware('throttle:60,1')->name('user.rooms.womens-day');
     // Sponsor draw landing page (read-only); link token + campaign membership checked on every request.
     Route::get('/rooms/{room}/sponsor-draws/{token}', [\App\Http\Controllers\User\SponsorDrawController::class, 'show'])->where('token', '[A-Za-z0-9]{40,128}')->middleware('throttle:60,1')->name('user.sponsor-draws.show');
     Route::get('/rooms/{room}/sponsor-draws/{token}/state', [\App\Http\Controllers\User\SponsorDrawController::class, 'state'])->where('token', '[A-Za-z0-9]{40,128}')->middleware(['json.only', 'throttle:120,1'])->name('user.sponsor-draws.state');

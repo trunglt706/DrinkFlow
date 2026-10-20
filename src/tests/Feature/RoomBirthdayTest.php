@@ -135,6 +135,17 @@ class RoomBirthdayTest extends TestCase
         $this->assertNotSame(200, $this->actingAs($stranger->globalUser, 'web')->get($url)->getStatusCode());
     }
 
+    public function test_celebration_page_is_hidden_from_robots(): void
+    {
+        $viewer = $this->member('Viewer', null);
+        $this->member('Today Tran', '1995-10-16');
+
+        $this->actingAs($viewer->globalUser, 'web')->get(route('user.rooms.birthday', $this->room))
+            ->assertOk()
+            ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive')
+            ->assertSee('<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">', false);
+    }
+
     public function test_profile_saves_the_birthday_and_refreshes_the_banner(): void
     {
         $member = $this->member('Self Member', null);
