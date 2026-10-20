@@ -43,6 +43,7 @@ class BirthdayController extends Controller
             'celebrants' => $celebrants,
             'viewerCode' => (string) $request->attributes->get('room_user')?->user_code,
             'audio' => $settings->forEvent($room, SendRoomEventNotificationAction::TYPE_BIRTHDAY),
+            'wishes' => $settings->wishes($room, SendRoomEventNotificationAction::TYPE_BIRTHDAY),
         ]);
     }
 }

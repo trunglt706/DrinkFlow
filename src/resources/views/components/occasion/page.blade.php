@@ -4,11 +4,12 @@
      Each page passes its centerpiece SVG (slot), its own CSS (`styles` slot), its palette (`theme`: CSS custom
      properties), its particles and sound effects played on open (`effects`, `sounds`: [[effect, delay ms], ...]) and
      the room's music settings (`audio`). Texts come from lang/{locale}/occasions.php under the occasion key. --}}
-@props(['room', 'occasion', 'year', 'audio' => \App\Services\Occasion\RoomEventSettingsService::defaults(), 'theme' => '', 'effects' => [], 'styles' => null, 'extra' => null])
+@props(['room', 'occasion', 'year', 'wishes' => null, 'audio' => \App\Services\Occasion\RoomEventSettingsService::defaults(), 'theme' => '', 'effects' => [], 'styles' => null, 'extra' => null])
 @php
     /** @var \App\Enums\RoomOccasion $occasion */
     $key = 'occasions.'.$occasion->value;
-    $wishes = array_values((array) __($key.'.wishes'));
+    // The room's own wishes (admin events page), otherwise the default sample wishes of the occasion.
+    $wishes = array_values($wishes ?? (array) __($key.'.wishes'));
     $total = count($wishes);
     $params = ['room' => $room->name, 'year' => $year];
 @endphp

@@ -17,6 +17,9 @@
 - [11. Khi tài khoản bị khoá / hạn chế](11-tai-khoan-bi-khoa.md)
 - [12. Đặt món giúp thành viên khác (Order dùm)](12-dat-ho-thanh-vien-khac.md)
 - **13. Món trả riêng (không dùng tài trợ)** ← *đang xem*
+- [14. Sự kiện của phòng (sinh nhật & ngày lễ)](14-su-kien-cua-phong.md)
+- [15. Vòng quay may mắn (quay nhà tài trợ / quay chọn quán)](15-vong-quay-may-man.md)
+- [16. Thành tích trong năm (huy chương TOP nhà tài trợ)](16-thanh-tich.md)
 
 </details>
 
@@ -51,4 +54,4 @@ Một món **không thể vừa đánh dấu "Trả riêng" vừa đặt hộ ch
 
 ---
 
-⬅️ [Trang trước: 12. Đặt món giúp thành viên khác (Order dùm)](12-dat-ho-thanh-vien-khac.md) &nbsp;|&nbsp; [🏠 Mục lục](README.md)
+⬅️ [Trang trước: 12. Đặt món giúp thành viên khác (Order dùm)](12-dat-ho-thanh-vien-khac.md) &nbsp;|&nbsp; [🏠 Mục lục](README.md) &nbsp;|&nbsp; [Trang sau: 14. Sự kiện của phòng (sinh nhật & ngày lễ) ➡️](14-su-kien-cua-phong.md)

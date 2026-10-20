@@ -16,7 +16,8 @@
         };
     };
     $isSelf = $viewerCode !== '' && in_array($viewerCode, array_column($celebrants, 'user_code'), true);
-    $wishes = array_map(static fn (string $wish): string => str_replace(':name', $name, $wish), (array) __('birthday.wishes'));
+    // The room's own wishes (admin events page) or the default ones; `:name` becomes the celebrants' names.
+    $wishes = array_map(static fn (string $wish): string => str_replace(':name', $name, $wish), $wishes);
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">

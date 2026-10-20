@@ -4,7 +4,7 @@
     // Foam bubbles: [x offset, size, delay] around the bottle mouth.
     $bubbles = [[-14, 9, 0], [8, 12, 0.05], [-4, 7, 0.1], [16, 8, 0.15], [-18, 11, 0.2], [2, 14, 0.25], [12, 6, 0.3], [-8, 10, 0.35]];
 @endphp
-<x-occasion.page :room="$room" :occasion="$occasion" :year="$year" :audio="$audio"
+<x-occasion.page :room="$room" :occasion="$occasion" :year="$year" :wishes="$wishes" :audio="$audio"
   theme="--accent:#a78bfa;--accent-2:#fcd34d;--soft:#fde68a;--line:rgba(253,230,138,.22);--card-1:rgba(36,30,90,.93);--card-2:rgba(16,14,48,.92);--hint-1:rgba(60,40,140,.88);--hint-2:rgba(120,90,20,.8);--bokeh:253,230,138;--bg:linear-gradient(160deg,#0b0b2b,#1e1b4b 50%,#0a0a1f);--glow-1:rgba(167,139,250,.26);--glow-2:rgba(252,211,77,.2);--glow-3:rgba(56,189,248,.18);"
   :effects="['sounds' => [['pop', 450], ['fizz', 500], ['chime', 900]], 'rain' => ['confetti', 'confetti', 'star'], 'rainColors' => ['#fcd34d', '#a78bfa', '#f472b6', '#38bdf8', '#ffffff'], 'rainEvery' => 260, 'burst' => ['confetti', 'star'], 'burstColors' => ['#fcd34d', '#fde68a', '#a78bfa', '#f472b6', '#38bdf8', '#34d399', '#ffffff'], 'fireworks' => true]">
   <x-slot:styles>

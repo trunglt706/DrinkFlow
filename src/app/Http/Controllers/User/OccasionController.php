@@ -41,6 +41,7 @@ class OccasionController extends Controller
             'occasion' => $current,
             'year' => $events->occurrence($current, $events->today($room))['date']->year,
             'audio' => $settings->forEvent($room, $current->value),
+            'wishes' => $settings->wishes($room, $current->value),
         ]);
     }
 }

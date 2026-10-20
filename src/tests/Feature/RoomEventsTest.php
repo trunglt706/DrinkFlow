@@ -406,6 +406,59 @@ class RoomEventsTest extends TestCase
         $this->actingAs($viewer, 'web')->get($this->occasionUrl(RoomOccasion::Christmas))->assertOk()->assertSee('data-event-sound', false);
     }
 
+    public function test_event_pages_use_the_sample_wishes_until_the_admin_saves_its_own(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $admin = $this->admin();
+        $viewer = $this->member('Happy Hoa', '1995-10-20')->globalUser;
+        $page = $this->occasionUrl(RoomOccasion::WomensDay);
+        $save = route('admin.events.wishes', $this->room->slug);
+        $samples = (array) __('occasions.womens_day.wishes');
+
+        // Defaults: the sample wishes, also pre-filled in the admin editor.
+        $this->actingAs($viewer, 'web')->get($page)->assertOk()->assertSee($samples[0]);
+        $this->actingAs($admin, 'admin')->get(route('admin.events.index', $this->room->slug))
+            ->assertOk()->assertSee('data-wishes-panel="womens_day"', false)->assertSee(__('occasions.admin.wishes_using_default'))->assertSee($samples[0]);
+
+        // The room's own list (blank lines dropped, order kept).
+        $this->actingAs($admin, 'admin')->putJson($save, ['type' => 'womens_day', 'wishes' => ['  Chúc chị em luôn vui  ', '', 'Chúc cả phòng 20/10 rực rỡ']])
+            ->assertOk()->assertJsonPath('custom', true)->assertJsonPath('wishes', ['Chúc chị em luôn vui', 'Chúc cả phòng 20/10 rực rỡ']);
+        $html = $this->actingAs($viewer, 'web')->get($page)->assertOk()
+            ->assertSeeInOrder(['Chúc chị em luôn vui', 'Chúc cả phòng 20/10 rực rỡ'])->assertDontSee($samples[0])->getContent();
+        $this->assertSame(2, substr_count($html, 'data-slide>'));
+
+        // Saving the music keeps the wishes.
+        $this->actingAs($admin, 'admin')->putJson(route('admin.events.settings', $this->room->slug), ['type' => 'womens_day', 'music_mode' => 'off'])->assertOk();
+        $this->actingAs($viewer, 'web')->get($page)->assertSee('Chúc chị em luôn vui');
+
+        // Birthday wishes: ":name" becomes the celebrants' names.
+        $this->actingAs($admin, 'admin')->putJson($save, ['type' => 'birthday', 'wishes' => ['Chúc mừng sinh nhật :name nhé!']])->assertOk();
+        $this->actingAs($viewer, 'web')->get(route('user.rooms.birthday', $this->room->slug))->assertOk()->assertSee('Chúc mừng sinh nhật Happy Hoa nhé!');
+
+        // Back to the samples.
+        $this->actingAs($admin, 'admin')->put($save, ['type' => 'womens_day', 'use_default' => '1'])
+            ->assertRedirect()->assertSessionHas('status', __('occasions.admin.wishes_reset'));
+        $this->assertNull(\App\Models\RoomEventSetting::query()->where('room_id', $this->room->id)->where('event_type', 'womens_day')->value('wishes'));
+        $this->actingAs($viewer, 'web')->get($page)->assertSee($samples[0])->assertDontSee('Chúc chị em luôn vui');
+    }
+
+    public function test_wishes_are_validated(): void
+    {
+        $admin = $this->admin();
+        $save = route('admin.events.wishes', $this->room->slug);
+        $cases = [
+            [['type' => 'womens_day', 'wishes' => ['', '  ']], 'wishes'],
+            [['type' => 'womens_day', 'wishes' => array_map(static fn (int $i): string => "Lời chúc {$i}", range(1, 21))], 'wishes'],
+            [['type' => 'womens_day', 'wishes' => [str_repeat('a', 301)]], 'wishes.0'],
+            [['type' => 'womens_day', 'wishes' => ['Giống nhau', 'Giống nhau']], 'wishes.0'],
+            [['type' => 'halloween', 'wishes' => ['Hello']], 'type'],
+        ];
+        foreach ($cases as [$data, $field]) {
+            $this->actingAs($admin, 'admin')->putJson($save, $data)->assertStatus(422)->assertJsonValidationErrors($field);
+        }
+        $this->assertDatabaseCount('room_event_settings', 0);
+    }
+
     /**
      * The (HTML-escaped) data-config attribute of the sound button of a page.
      */
@@ -421,5 +474,7 @@ class RoomEventsTest extends TestCase
         $this->get(route('admin.events.index', $this->room->slug))->assertRedirect();
         $this->actingAs($other, 'admin')->get(route('admin.events.index', $this->room->slug))->assertRedirect(route('admin.login.page'));
         $this->actingAs($other, 'admin')->postJson(route('admin.events.send', $this->room->slug), ['type' => 'womens_day'])->assertForbidden();
+        $this->actingAs($other, 'admin')->putJson(route('admin.events.wishes', $this->room->slug), ['type' => 'womens_day', 'wishes' => ['Hello']])->assertForbidden();
+        $this->actingAs($other, 'admin')->putJson(route('admin.events.settings', $this->room->slug), ['type' => 'womens_day', 'music_mode' => 'off'])->assertForbidden();
     }
 }

@@ -13,7 +13,7 @@
         -0.62 * $l, -0.2 * $l, -0.58 * $l, -0.98 * $l, -$l, 0.58 * $l, 0.62 * $l);
     $sparkles = [[70, 120, 0], [232, 96, 0.7], [214, 236, 1.4], [84, 262, 2.1], [150, 52, 1.1], [258, 176, 1.8], [44, 190, 0.4]];
 @endphp
-<x-occasion.page :room="$room" :occasion="$occasion" :year="$year" :audio="$audio"
+<x-occasion.page :room="$room" :occasion="$occasion" :year="$year" :wishes="$wishes" :audio="$audio"
   :effects="['sounds' => [['bloom', 0], ['chime', 700]], 'rain' => ['petal'], 'rainColors' => ['#ff4f7b', '#ff7d9c', '#ffb3c6', '#e0315b'], 'burst' => ['petal', 'heart'], 'burstColors' => ['#ff4f7b', '#ff7d9c', '#ffb3c6', '#e0315b', '#f7c873', '#ffffff']]">
   <x-slot:styles>
     <style>

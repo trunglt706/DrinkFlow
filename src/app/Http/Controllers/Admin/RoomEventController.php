@@ -9,6 +9,7 @@ use App\Enums\EventMusicMode;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SendRoomEventNotificationRequest;
 use App\Http\Requests\UpdateRoomEventSettingsRequest;
+use App\Http\Requests\UpdateRoomEventWishesRequest;
 use App\Models\Room;
 use App\Services\Occasion\RoomEventService;
 use App\Services\Occasion\RoomEventSettingsService;
@@ -67,7 +68,29 @@ class RoomEventController extends Controller
             ]);
         }
 
-        return redirect()->route('admin.events.index', $room)->withFragment('event-settings')->with('status', __('occasions.admin.settings_saved'));
+        return redirect()->route('admin.events.index', $room)->with('status', __('occasions.admin.settings_saved'));
+    }
+
+    /**
+     * Save the wishes of one event page: the room's own list, or back to the default sample wishes.
+     *
+     * @param UpdateRoomEventWishesRequest $request Validated wishes.
+     * @param Room $room Room whose page is set.
+     * @param RoomEventSettingsService $settings Event page settings.
+     * @return JsonResponse|RedirectResponse JSON for the page script (saved in place), otherwise back to the events page.
+     */
+    public function wishes(UpdateRoomEventWishesRequest $request, Room $room, RoomEventSettingsService $settings): JsonResponse|RedirectResponse
+    {
+        $type = (string) $request->validated('type');
+        $useDefault = $request->boolean('use_default');
+        $settings->updateWishes($room, $type, $useDefault ? null : array_values((array) $request->validated('wishes')));
+        $message = __($useDefault ? 'occasions.admin.wishes_reset' : 'occasions.admin.wishes_saved');
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message, 'custom' => ! $useDefault, 'wishes' => $settings->wishes($room, $type)]);
+        }
+
+        return redirect()->route('admin.events.index', $room)->with('status', $message);
     }
 
     /**

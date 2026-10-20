@@ -122,6 +122,7 @@ Route::middleware(['auth:admin', 'admin.room', 'room.subscription'])
     Route::get('/events', [\App\Http\Controllers\Admin\RoomEventController::class, 'index'])->name('admin.events.index');
     Route::post('/events/send', [\App\Http\Controllers\Admin\RoomEventController::class, 'send'])->middleware('throttle:20,1')->name('admin.events.send');
     Route::put('/events/settings', [\App\Http\Controllers\Admin\RoomEventController::class, 'settings'])->middleware('throttle:30,1')->name('admin.events.settings');
+    Route::put('/events/wishes', [\App\Http\Controllers\Admin\RoomEventController::class, 'wishes'])->middleware('throttle:30,1')->name('admin.events.wishes');
     Route::get('/orders/manage', [\App\Http\Controllers\Admin\OrderController::class, 'page'])->name('admin.orders.page');
     Route::get('/debts/ledger', [\App\Http\Controllers\Admin\DebtController::class, 'page'])->name('admin.debts.page');
     Route::get('/room-users/directory', [\App\Http\Controllers\Admin\RoomUserController::class, 'page'])->name('admin.room-users.page');
