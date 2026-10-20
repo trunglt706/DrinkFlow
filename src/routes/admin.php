@@ -123,6 +123,15 @@ Route::middleware(['auth:admin', 'admin.room', 'room.subscription'])
     Route::post('/events/send', [\App\Http\Controllers\Admin\RoomEventController::class, 'send'])->middleware('throttle:20,1')->name('admin.events.send');
     Route::put('/events/settings', [\App\Http\Controllers\Admin\RoomEventController::class, 'settings'])->middleware('throttle:30,1')->name('admin.events.settings');
     Route::put('/events/wishes', [\App\Http\Controllers\Admin\RoomEventController::class, 'wishes'])->middleware('throttle:30,1')->name('admin.events.wishes');
+    // Room fund ledger (append-only): balance, history, deposits / expenses / adjustments and export.
+    Route::get('/fund', [\App\Http\Controllers\Admin\RoomFundController::class, 'index'])->name('admin.fund.index');
+    Route::post('/fund/transactions', [\App\Http\Controllers\Admin\RoomFundController::class, 'store'])->middleware('throttle:30,1')->name('admin.fund.store');
+    Route::get('/fund/export', [\App\Http\Controllers\Admin\RoomFundController::class, 'export'])->middleware('throttle:admin-export')->name('admin.fund.export');
+    // Automatic bank reconciliation (SePay): connection settings, received transfers, unmatched ones to assign / dismiss.
+    Route::get('/bank-sync', [\App\Http\Controllers\Admin\BankSyncController::class, 'index'])->name('admin.bank-sync.index');
+    Route::put('/bank-sync/settings', [\App\Http\Controllers\Admin\BankSyncController::class, 'settings'])->middleware('throttle:20,1')->name('admin.bank-sync.settings');
+    Route::post('/bank-sync/transactions/{transaction}/assign', [\App\Http\Controllers\Admin\BankSyncController::class, 'assign'])->whereNumber('transaction')->middleware('throttle:30,1')->name('admin.bank-sync.assign');
+    Route::post('/bank-sync/transactions/{transaction}/ignore', [\App\Http\Controllers\Admin\BankSyncController::class, 'ignore'])->whereNumber('transaction')->middleware('throttle:30,1')->name('admin.bank-sync.ignore');
     Route::get('/orders/manage', [\App\Http\Controllers\Admin\OrderController::class, 'page'])->name('admin.orders.page');
     Route::get('/debts/ledger', [\App\Http\Controllers\Admin\DebtController::class, 'page'])->name('admin.debts.page');
     Route::get('/room-users/directory', [\App\Http\Controllers\Admin\RoomUserController::class, 'page'])->name('admin.room-users.page');

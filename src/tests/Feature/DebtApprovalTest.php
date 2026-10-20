@@ -220,15 +220,23 @@ class DebtApprovalTest extends TestCase
             ->assertSee("'".$debt->code."')", false);
     }
 
-    /** Paying all debts uses only the member's name (ASCII, uppercase) as the transfer content. */
-    public function test_pay_all_transfer_content_is_member_name_only(): void
+    /**
+     * Paying all debts uses the member's name (ASCII, uppercase) plus the member reference TV{id}, which bank
+     * reconciliation matches to the member; long names are shortened so the content stays within 25 characters.
+     */
+    public function test_pay_all_transfer_content_is_member_name_and_reference(): void
     {
         [, $room] = $this->adminWithRoom('pay-all-name@example.test', 'pay-all-name-room');
         $member = $this->member($room, 'Trần Thị Đào', 'ttdao@example.test');
 
         $data = app(\App\Services\Debt\UserRoomDebtService::class)->getDebtViewData($room, $member->fresh(), $member->globalUser);
 
-        $this->assertSame('TRAN THI DAO', $data['payAllContent']);
+        $this->assertSame('TRAN THI DAO TV'.$member->id, $data['payAllContent']);
+
+        $vietQr = app(\App\Services\Payment\VietQrService::class);
+        $long = $vietQr->payAllContent('Nguyễn Hoàng Phương Thảo Nguyên', 123456);
+        $this->assertSame('NGUYEN HOANG PHU TV123456', $long);
+        $this->assertSame(123456, $vietQr->memberReferenceIn('MBVCB.123.'.str_replace(' ', '', $long).'.CT tu 0123'));
     }
 
     /**

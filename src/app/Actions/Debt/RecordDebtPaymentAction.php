@@ -9,6 +9,7 @@ use App\Models\Debt;
 use App\Models\DebtPayment;
 use App\Services\Audit\AuditService;
 use App\Services\Notification\UserNotificationService;
+use App\Services\RoomFund\RoomFundService;
 use App\Support\Helpers\FormatHelper;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -40,13 +41,15 @@ class RecordDebtPaymentAction
                     'amount' => __('admin.payment_exceeds_balance'),
                 ]);
             }
-            DebtPayment::create([
+            $payment = DebtPayment::create([
                 'debt_id' => $debt->id,
                 'amount' => $amount,
                 'payment_method' => $method,
                 'reference' => $reference,
                 'created_by_admin_id' => request()->user('admin')?->id,
             ]);
+            // Paid with the room fund: take it out of the fund ledger (rolls the payment back when the fund is short).
+            app(RoomFundService::class)->chargeDebtPayment($payment, $debt);
             $debt->paid_amount += $amount;
             $debt->remaining_amount -= $amount;
             $debt->status = $debt->remaining_amount === 0 ? DebtStatus::Paid : DebtStatus::Partial;

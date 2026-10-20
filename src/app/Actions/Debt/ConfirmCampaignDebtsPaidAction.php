@@ -13,6 +13,7 @@ use App\Models\Debt;
 use App\Models\DebtPayment;
 use App\Models\Order;
 use App\Services\Audit\AuditService;
+use App\Services\RoomFund\RoomFundService;
 use Illuminate\Support\Facades\DB;
 
 class ConfirmCampaignDebtsPaidAction
@@ -31,17 +32,20 @@ class ConfirmCampaignDebtsPaidAction
                 ->get();
 
             $audit = app(AuditService::class);
+            $fund = app(RoomFundService::class);
             $paidAt = now();
             foreach ($debts as $debt) {
                 $before = ['status' => $debt->status->value, 'remaining_amount' => $debt->remaining_amount];
                 $amount = (int) $debt->remaining_amount;
-                DebtPayment::create([
+                $payment = DebtPayment::create([
                     'debt_id' => $debt->id,
                     'amount' => $amount,
                     'payment_method' => $paymentMethod->value,
                     'paid_at' => $paidAt,
                     'created_by_admin_id' => $adminId,
                 ]);
+                // Paid with the room fund: the whole batch is rolled back when the fund cannot cover every debt.
+                $fund->chargeDebtPayment($payment, $debt);
                 $debt->paid_amount += $debt->remaining_amount;
                 $debt->remaining_amount = 0;
                 $debt->status = DebtStatus::Paid;

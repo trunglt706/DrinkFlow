@@ -1,0 +1,46 @@
+<?php
+
+return [
+    'nav' => 'Fund ledger',
+    'title' => 'Room fund ledger',
+    'description' => 'Money in and out of the shared fund: deposits, expenses and debts paid with the fund. Entries are only ever appended, never edited or deleted; to fix a mistake, add an adjustment.',
+    'export' => 'Export Excel',
+    'balance' => 'Current balance',
+    'month_in' => 'In this month',
+    'month_out' => 'Out this month',
+
+    'form_title' => 'Record a fund entry',
+    'field_type' => 'Entry type',
+    'field_amount' => 'Amount (VND)',
+    'field_member' => 'Depositing member',
+    'field_note' => 'Description',
+    'member_none' => '— No member —',
+    'note_placeholder' => 'e.g. Birthday cake for October',
+    'adjustment_hint' => 'Enter a negative number to decrease the fund, a positive one to increase it.',
+    'submit' => 'Add to ledger',
+
+    'filter_label' => 'Filter by entry type',
+    'filter_all' => 'All',
+    'empty' => 'No fund entries yet.',
+
+    'col_time' => 'Time',
+    'col_type' => 'Type',
+    'col_amount' => 'Amount',
+    'col_balance' => 'Balance after',
+    'col_member' => 'Member',
+    'col_campaign' => 'Campaign',
+    'col_note' => 'Description',
+    'col_admin' => 'Recorded by',
+
+    'types' => [
+        'deposit' => 'Deposit',
+        'expense' => 'Expense',
+        'debt_payment' => 'Debt paid by fund',
+        'adjustment' => 'Adjustment',
+    ],
+
+    'saved' => 'Entry recorded. Fund balance: :balance.',
+    'insufficient' => 'The room fund does not have enough money (balance: :balance).',
+    'invalid_amount' => 'The amount must not be zero.',
+    'invalid_type' => 'Invalid entry type.',
+];

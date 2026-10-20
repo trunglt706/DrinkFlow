@@ -57,6 +57,10 @@ Route::get('/lang/{locale}', function (string $locale) {
 require __DIR__.'/user.php';
 // Signed payment notifications of the platform invoice gateway (no session, no CSRF).
 Route::post('/payments/webhook', \App\Http\Controllers\Public\PaymentWebhookController::class)->middleware('throttle:60,1')->name('payments.webhook');
+// Bank-feed notifications of a room (SePay): secret token in the URL + provider API key (no session, no CSRF).
+Route::post('/webhooks/bank/{provider}/{token}', \App\Http\Controllers\Public\BankWebhookController::class)
+    ->where(['provider' => '[a-z]+', 'token' => '[A-Za-z0-9]{32,64}'])
+    ->middleware('throttle:120,1')->name('webhooks.bank');
 
 require __DIR__.'/admin.php';
 require __DIR__.'/superadmin.php';
