@@ -67,6 +67,8 @@ Route::middleware(['room.ip', 'global.user', 'room.user', 'room.subscription'])-
     Route::get('/rooms/{room}/socket-token', \App\Http\Controllers\User\SocketTokenController::class)->middleware('json.only')->name('user.socket-token');
     Route::get('/rooms/{room}/notifications', [\App\Http\Controllers\User\RoomNotificationController::class, 'index'])->name('user.rooms.notifications');
     Route::get('/rooms/{room}/profile', [\App\Http\Controllers\User\RoomProfileController::class, 'index'])->name('user.rooms.profile');
+    // The viewer's TOP 1-3 sponsor medals of the current year, month by month.
+    Route::get('/rooms/{room}/achievements', [\App\Http\Controllers\User\AchievementController::class, 'index'])->name('user.rooms.achievements');
     Route::get('/rooms/{room}/guides', [\App\Http\Controllers\User\RoomGuideController::class, 'index'])->name('user.rooms.guides');
     Route::get('/rooms/{room}/guides/{slug}', [\App\Http\Controllers\User\RoomGuideController::class, 'show'])->name('user.rooms.guides.show');
     // Stand-alone birthday celebration page of the room: every member whose birthday is within 3 days.

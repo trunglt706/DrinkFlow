@@ -1,0 +1,26 @@
+<?php
+
+return [
+    'page_title' => 'Achievements',
+    'eyebrow' => 'TOP sponsor medals',
+    'title' => 'Achievements :year',
+    'subtitle' => 'The medals you earned each month in :room.',
+    'total_label' => 'Total medals',
+    'gold' => 'Gold',
+    'silver' => 'Silver',
+    'bronze' => 'Bronze',
+    'months_title' => 'Month by month',
+    'month' => 'Month :month',
+    'rank' => 'TOP :rank',
+    'sponsored' => 'Sponsored :amount',
+    'position' => 'Rank :position this month',
+    'no_medal' => 'No medal',
+    'no_sponsor' => 'No contribution',
+    'current' => 'In progress',
+    'current_hint' => 'Results are settled on :date',
+    'upcoming' => 'Coming up',
+    'cheer_title' => 'A note for you',
+    'cheer' => '{0} No medal yet this year – every drink you treat others to gives the whole room energy. Let\'s go for it in the coming months! ☕|{1} You earned your first medal of the year – a great start, keep the fire burning! 💪|[2,4] You have collected :count medals – very consistent, keep going for many more! 🌟|[5,*] :count medals in one year – you are the star of the room! Thank you, and keep shining! 🏆',
+    'how_title' => 'How to earn medals',
+    'how_body' => 'At the start of each month, the 3 members who sponsored the most in the previous month (completed orders) receive the Gold, Silver and Bronze medals.',
+];

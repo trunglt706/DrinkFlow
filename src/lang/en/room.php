@@ -19,6 +19,7 @@ return [
         'payment_debts' => 'Payment & Debts',
         'room_analytics' => 'Room Analytics',
         'notifications' => 'Notifications',
+        'achievements' => 'Achievements',
         'profile' => 'Profile',
         'user_guide' => 'Guide',
     ],

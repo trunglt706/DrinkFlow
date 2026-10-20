@@ -266,6 +266,14 @@
           <span>{{ __('room.nav.notifications') }}</span>
         </a>
 
+        <!-- Tab: Thành tích (TOP 1-3 sponsor medals of the year) -->
+        <a href="{{ $room ? route('user.rooms.achievements', $room->slug) : '#' }}"
+          @if ($activeTab === 'achievements') aria-current="page" @endif data-room-tab-achievements
+          class="h-full px-3.5 inline-flex items-center gap-1.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap {{ $activeTab === 'achievements' ? 'border-[#006948] text-[#006948] bg-emerald-50/40' : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
+          <span class="material-symbols-outlined text-[16px]">emoji_events</span>
+          <span>{{ __('room.nav.achievements') }}</span>
+        </a>
+
         <!-- Tab 7: Hồ sơ -->
         <a href="{{ $room ? route('user.rooms.profile', $room->slug) : '#' }}"
           @if ($activeTab === 'profile') aria-current="page" @endif

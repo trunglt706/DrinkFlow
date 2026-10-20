@@ -1,0 +1,26 @@
+<?php
+
+return [
+    'page_title' => 'Thành tích',
+    'eyebrow' => 'Huy chương TOP nhà tài trợ',
+    'title' => 'Thành tích năm :year',
+    'subtitle' => 'Những huy chương bạn đạt được mỗi tháng tại :room.',
+    'total_label' => 'Tổng huy chương',
+    'gold' => 'Vàng',
+    'silver' => 'Bạc',
+    'bronze' => 'Đồng',
+    'months_title' => 'Theo từng tháng',
+    'month' => 'Tháng :month',
+    'rank' => 'TOP :rank',
+    'sponsored' => 'Đã tài trợ :amount',
+    'position' => 'Hạng :position trong tháng',
+    'no_medal' => 'Chưa có huy chương',
+    'no_sponsor' => 'Chưa có đóng góp',
+    'current' => 'Đang diễn ra',
+    'current_hint' => 'Kết quả được chốt ngày :date',
+    'upcoming' => 'Sắp tới',
+    'cheer_title' => 'Lời nhắn dành cho bạn',
+    'cheer' => '{0} Năm nay bạn chưa có huy chương nào – mỗi ly nước bạn mời đều tiếp thêm năng lượng cho cả phòng. Cùng cố gắng ở những tháng tới nhé! ☕|{1} Bạn đã có huy chương đầu tiên của năm – một khởi đầu thật tuyệt, tiếp tục giữ lửa nhé! 💪|[2,4] Bạn đã gom được :count huy chương – phong độ rất ổn định, cố lên để có thêm thật nhiều nữa nhé! 🌟|[5,*] :count huy chương trong một năm – bạn đúng là ngôi sao của phòng! Cảm ơn bạn và tiếp tục toả sáng nhé! 🏆',
+    'how_title' => 'Cách nhận huy chương',
+    'how_body' => 'Đầu mỗi tháng, 3 thành viên tài trợ nhiều nhất của tháng trước (tính trên các đơn đã hoàn thành) nhận huy chương Vàng, Bạc và Đồng.',
+];

@@ -19,6 +19,7 @@ return [
         'payment_debts' => 'Thanh toán & Nợ',
         'room_analytics' => 'Thống kê Room',
         'notifications' => 'Thông báo',
+        'achievements' => 'Thành tích',
         'profile' => 'Hồ sơ',
         'user_guide' => 'Hướng dẫn',
     ],

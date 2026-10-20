@@ -19,6 +19,7 @@ return [
         'payment_debts' => '決済＆未払い管理',
         'room_analytics' => 'ルーム統計',
         'notifications' => '通知センター',
+        'achievements' => '実績',
         'profile' => 'メンバー情報',
         'user_guide' => '使い方ガイド',
     ],
