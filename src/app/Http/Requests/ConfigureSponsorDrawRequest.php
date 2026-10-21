@@ -10,7 +10,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Settings of a draw session, saved from the draw page: sponsors (how many, optional target campaign) or shops
+ * Settings of a draw session, from the "New session" dialog of the list or the draw page: sponsors (how many, optional target campaign) or shops
  * (suggested names ticked + new names typed one per line).
  */
 class ConfigureSponsorDrawRequest extends FormRequest

@@ -1,24 +1,25 @@
 <x-admin.layout :title="__('sponsor_draw.admin.title')" active="sponsor-draws" :room="$room">
-    <div class="space-y-6">
+    @php
+        // The "New session" dialog reopens with its errors when the settings were refused.
+        $openSettings = $errors->hasAny(['type', 'target_winner_count', 'target_campaign_id', 'shops', 'shops.*', 'new_shops']);
+    @endphp
+    <div class="space-y-6" x-data="{ settingsOpen: @js($openSettings), type: @js(old('type', \App\Enums\SponsorDrawType::Sponsors->value)) }">
         <section class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-outline-variant/40">
             <div>
                 <h1 class="text-2xl font-bold tracking-tight text-on-surface">{{ __('sponsor_draw.admin.title') }}</h1>
                 <p class="mt-1 max-w-3xl text-xs text-outline">{{ __('sponsor_draw.admin.description') }}</p>
             </div>
-            {{-- A new session starts as a draft; its type and list are set on the draw page. --}}
-            <form method="POST" action="{{ route('admin.sponsor-draws.store', $room) }}" data-loading-form="true" class="shrink-0">
-                @csrf
-                <button type="submit" data-sponsor-draw-create
-                    class="h-10 inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-on-primary hover:bg-primary-container shadow-sm cursor-pointer">
-                    <span class="material-symbols-outlined !text-[18px]" aria-hidden="true">add_circle</span>{{ __('sponsor_draw.admin.new_session') }}
-                </button>
-            </form>
+            {{-- "New session" asks for the settings first; the session is only created when they are saved. --}}
+            <button type="button" @click="settingsOpen = true" data-sponsor-draw-create aria-haspopup="dialog"
+                class="shrink-0 h-10 inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 text-sm font-semibold text-on-primary hover:bg-primary-container shadow-sm cursor-pointer">
+                <span class="material-symbols-outlined !text-[18px]" aria-hidden="true">add_circle</span>{{ __('sponsor_draw.admin.new_session') }}
+            </button>
         </section>
 
         @if (session('status'))
             <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" role="status">{{ session('status') }}</div>
         @endif
-        @if ($errors->any())
+        @if ($errors->any() && ! $openSettings)
             <div class="rounded-xl border border-error/30 bg-error-container p-3 text-sm text-on-error-container" role="alert">{{ $errors->first() }}</div>
         @endif
 
@@ -65,5 +66,8 @@
                 <div class="px-5 py-3">{{ $sessions->links() }}</div>
             @endif
         </section>
+
+        {{-- `session` passed explicitly: the table loop above leaves its last row in $session. --}}
+        @include('admin.sponsor-draws._settings-modal', ['session' => null, 'currentShops' => []])
     </div>
 </x-admin.layout>

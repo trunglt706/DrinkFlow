@@ -3,8 +3,8 @@
         $status = $session->status;
         $isDraft = $status === \App\Enums\SponsorDrawStatus::Draft;
         $canReset = in_array($status, [\App\Enums\SponsorDrawStatus::Drawing, \App\Enums\SponsorDrawStatus::Completed], true);
-        // The settings dialog opens by itself right after "New session" and when its validation failed.
-        $openSettings = $canConfigure && (session('open_settings') || $errors->hasAny(['type', 'target_winner_count', 'target_campaign_id', 'shops', 'shops.*', 'new_shops']));
+        // The settings dialog opens by itself when its validation failed.
+        $openSettings = $canConfigure && ($errors->hasAny(['type', 'target_winner_count', 'target_campaign_id', 'shops', 'shops.*', 'new_shops']));
     @endphp
     <div class="space-y-5" x-data="{ settingsOpen: @js($openSettings), type: @js(old('type', $session->type->value)) }">
         <section class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-outline-variant/40">

@@ -111,6 +111,24 @@ class SponsorDrawService
     }
 
     /**
+     * Create a session with its settings at once (the "New session" dialog of the list): nothing is kept when the
+     * settings are invalid.
+     *
+     * @param Room $room Room of the session.
+     * @param Admin $admin Admin creating it.
+     * @param SponsorDrawType $type What is drawn.
+     * @param int $winners Number of sponsors (ignored for shops: always one).
+     * @param Campaign|null $target Campaign receiving the sponsors (sponsors only).
+     * @param list<string> $shops Shop names (shops only).
+     * @return array{session: SponsorDrawSession, token: string|null} Ready session and the plain token of its link.
+     * @throws ValidationException When the settings are invalid (no session is created).
+     */
+    public function create(Room $room, Admin $admin, SponsorDrawType $type, int $winners, ?Campaign $target = null, array $shops = []): array
+    {
+        return DB::transaction(fn (): array => $this->configure($this->createDraft($room, $admin), $admin, $type, $winners, $target, $shops));
+    }
+
+    /**
      * Save the settings: freeze the eligible list, commit to a new seed and make sure an access link exists.
      *
      * - Sponsors: every active member of the room is eligible; `$winners` sponsors are drawn and, when a target
