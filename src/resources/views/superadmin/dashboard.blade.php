@@ -393,6 +393,27 @@
         <div class="sa-tab-panel" role="tabpanel" id="sa-panel-trends" aria-labelledby="sa-tab-trends" data-sa-tab-panel="trends" hidden>
         @php($trends = \App\Services\Dashboard\SuperadminTrendsService::class)
         <div id="sa-trends-notice" class="sa-notice error" role="alert"></div>
+        @php($product = \App\Services\Dashboard\ProductMetricsService::class)
+        <section class="sa-card sa-section" aria-labelledby="sa-product-title" data-product-metrics>
+            <div class="sa-section-header">
+                <div>
+                    <h2 id="sa-product-title">{{ __('superadmin.analytics.product_title') }}</h2>
+                    <p>{{ __('superadmin.analytics.product_description', ['days' => $product::ACTIVITY_DAYS]) }}</p>
+                </div>
+            </div>
+            <div class="sa-infra-stats">
+                <div title="{{ __('superadmin.analytics.product_dau_hint') }}"><span>{{ __('superadmin.analytics.product_dau') }}</span><strong id="sa-product-dau">—</strong></div>
+                <div title="{{ __('superadmin.analytics.product_wau_hint', ['days' => $product::WEEK_DAYS]) }}"><span>{{ __('superadmin.analytics.product_wau') }}</span><strong id="sa-product-wau">—</strong></div>
+                <div title="{{ __('superadmin.analytics.product_mau_hint', ['days' => $product::ACTIVITY_DAYS]) }}"><span>{{ __('superadmin.analytics.product_mau') }}</span><strong id="sa-product-mau">—</strong></div>
+                <div title="{{ __('superadmin.analytics.product_stickiness_hint') }}"><span>{{ __('superadmin.analytics.product_stickiness') }}</span><strong id="sa-product-stickiness">—</strong></div>
+                <div title="{{ __('superadmin.analytics.product_participation_hint', ['days' => $product::CAMPAIGN_DAYS]) }}"><span>{{ __('superadmin.analytics.product_participation') }}</span><strong id="sa-product-participation">—</strong></div>
+                <div title="{{ __('superadmin.analytics.product_debt_hint', ['days' => $product::DEBT_DAYS]) }}"><span>{{ __('superadmin.analytics.product_debt') }}</span><strong id="sa-product-debt">—</strong></div>
+            </div>
+            <figure class="sa-infra-chart">
+                <figcaption>{{ __('superadmin.analytics.product_chart', ['days' => $product::ACTIVITY_DAYS]) }}</figcaption>
+                <div class="sa-chart sa-chart-small" id="sa-product-chart" role="img" aria-label="{{ __('superadmin.analytics.product_chart', ['days' => $product::ACTIVITY_DAYS]) }}"></div>
+            </figure>
+        </section>
         <section class="sa-card sa-section" aria-labelledby="sa-cohort-title">
             <div class="sa-section-header">
                 <div>

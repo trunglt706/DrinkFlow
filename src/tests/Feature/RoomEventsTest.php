@@ -11,12 +11,15 @@ use App\Models\Room;
 use App\Models\RoomUser;
 use App\Models\UserNotification;
 use App\Services\Notification\RoomNotificationChannelDispatcher;
+use App\Services\Occasion\RoomEventSettingsService;
 use App\Support\Helpers\LunarCalendar;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -107,7 +110,8 @@ class RoomEventsTest extends TestCase
                 ->assertSee('<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">', false)
                 ->assertSee('data-stage-button', false)
                 ->assertSee(__('occasions.'.$occasion->value.'.tap_hint'))
-                ->assertSee('const SLIDE_MS = 2000;', false)
+                // Each wish stays long enough to be read: 5 to 10 seconds depending on its length.
+                ->assertSee('Math.min(10000, Math.max(5000, (slide?.textContent', false)
                 ->getContent();
 
             $this->assertStringEndsWith('/rooms/flower-room'.$path, $this->occasionUrl($occasion));
@@ -406,6 +410,48 @@ class RoomEventsTest extends TestCase
         $this->actingAs($viewer, 'web')->get($this->occasionUrl(RoomOccasion::Christmas))->assertOk()->assertSee('data-event-sound', false);
     }
 
+    public function test_admin_uploads_the_music_file_of_an_event_page(): void
+    {
+        Storage::fake('public');
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $admin = $this->admin();
+        $viewer = $this->member('Viewer Lan')->globalUser;
+        $save = route('admin.events.settings', $this->room->slug);
+        $song = static fn (string $name = 'chuc-mung.mp3', int $kb = 300): UploadedFile => UploadedFile::fake()->create($name, $kb, 'audio/mpeg');
+
+        // The upload mode needs a file, of an audio type and within the size limit.
+        $this->actingAs($admin, 'admin')->putJson($save, ['type' => 'womens_day', 'music_mode' => 'upload'])->assertStatus(422)->assertJsonValidationErrors('music_file');
+        $this->actingAs($admin, 'admin')->putJson($save, ['type' => 'womens_day', 'music_mode' => 'upload', 'music_file' => UploadedFile::fake()->create('song.php', 10, 'text/x-php')])
+            ->assertStatus(422)->assertJsonValidationErrors('music_file');
+        $this->actingAs($admin, 'admin')->putJson($save, ['type' => 'womens_day', 'music_mode' => 'upload', 'music_file' => $song('big.mp3', RoomEventSettingsService::MUSIC_FILE_MAX_KB + 1)])
+            ->assertStatus(422)->assertJsonValidationErrors('music_file');
+        $this->assertSame([], Storage::disk('public')->allFiles());
+
+        $this->actingAs($admin, 'admin')->putJson($save, ['type' => 'womens_day', 'music_mode' => 'upload', 'music_file' => $song(), 'sound_effects' => true])
+            ->assertOk()->assertJsonPath('settings.music_mode', 'upload')->assertJsonPath('settings.music_name', 'chuc-mung.mp3');
+        $first = (string) DB::table('room_event_settings')->where('event_type', 'womens_day')->value('music_path');
+        $this->assertMatchesRegularExpression('#^event-music/'.$this->room->id.'/[0-9a-f]{32}\.mp3$#', $first);
+        Storage::disk('public')->assertExists($first);
+
+        // Members hear the uploaded file; the admin sees its name.
+        $page = html_entity_decode($this->audioConfig($this->actingAs($viewer, 'web')->get($this->occasionUrl(RoomOccasion::WomensDay))->getContent()));
+        $this->assertStringContainsString('"music":"custom","url":"'.Storage::disk('public')->url($first).'"', $page);
+        $this->actingAs($admin, 'admin')->get(route('admin.events.index', $this->room->slug))->assertOk()->assertSee('chuc-mung.mp3');
+
+        // Saving again without a file keeps it; a new file replaces (and deletes) the previous one.
+        $this->actingAs($admin, 'admin')->putJson($save, ['type' => 'womens_day', 'music_mode' => 'upload', 'sound_effects' => false])->assertOk()->assertJsonPath('settings.music_name', 'chuc-mung.mp3');
+        Storage::disk('public')->assertExists($first);
+        $this->actingAs($admin, 'admin')->putJson($save, ['type' => 'womens_day', 'music_mode' => 'upload', 'music_file' => $song('moi.ogg')])->assertOk()->assertJsonPath('settings.music_name', 'moi.ogg');
+        $second = (string) DB::table('room_event_settings')->where('event_type', 'womens_day')->value('music_path');
+        Storage::disk('public')->assertMissing($first);
+        Storage::disk('public')->assertExists($second);
+
+        // Leaving the upload mode deletes the file.
+        $this->actingAs($admin, 'admin')->putJson($save, ['type' => 'womens_day', 'music_mode' => 'builtin'])->assertOk()->assertJsonPath('settings.music_file_url', null);
+        Storage::disk('public')->assertMissing($second);
+        $this->assertDatabaseHas('room_event_settings', ['event_type' => 'womens_day', 'music_path' => null, 'music_name' => null]);
+    }
+
     public function test_event_pages_use_the_sample_wishes_until_the_admin_saves_its_own(): void
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);
@@ -465,6 +511,25 @@ class RoomEventsTest extends TestCase
     private function audioConfig(string $html): string
     {
         return preg_match('/data-event-sound data-config="([^"]*)"/', $html, $match) === 1 ? $match[1] : '';
+    }
+
+    public function test_admin_previews_every_event_page_at_any_date(): void
+    {
+        $admin = $this->admin();
+        $this->actingAs($admin, 'admin')->get(route('admin.events.index', $this->room->slug))
+            ->assertOk()->assertSee('data-room-event-preview="womens_day"', false)->assertSee(route('admin.events.preview', [$this->room->slug, 'womens_day']), false);
+
+        // Christmas is not shown on 20/10, but the admin preview opens it, without the members' wishes wall.
+        $this->actingAs($admin, 'admin')->get(route('admin.events.preview', [$this->room->slug, 'christmas']))
+            ->assertOk()->assertSee(__('occasions.ui.preview_badge'))->assertSee(route('admin.events.index', $this->room->slug), false)
+            ->assertSee('data-occasion-page="christmas"', false)->assertDontSee('data-wish-wall', false);
+        // Nobody's birthday is near: a "Demo" celebrant is shown.
+        $this->actingAs($admin, 'admin')->get(route('admin.events.preview', [$this->room->slug, 'birthday']))
+            ->assertOk()->assertSee('Demo')->assertSee(__('occasions.ui.preview_badge'));
+        $this->actingAs($admin, 'admin')->get('/admin/'.$this->room->slug.'/events/halloween/preview')->assertNotFound();
+
+        $other = Admin::create(['name' => 'Other', 'email' => 'other-preview@example.test', 'password' => 'secret123', 'status' => 'active']);
+        $this->actingAs($other, 'admin')->get(route('admin.events.preview', [$this->room->slug, 'christmas']))->assertRedirect();
     }
 
     public function test_events_page_is_only_for_admins_of_the_room(): void

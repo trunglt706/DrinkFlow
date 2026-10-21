@@ -9,6 +9,7 @@ use App\Enums\RoomUserStatus;
 use App\Exceptions\RoomAccessDeniedException;
 use App\Models\Room;
 use App\Services\Auth\DeviceTrustService;
+use App\Services\Dashboard\ProductMetricsService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -107,6 +108,10 @@ class ResolveRoomUser
 
         $lastActive = $roomUser->last_active_at;
         if ($lastActive === null || $lastActive->lte(now()->subMinutes(5))) {
+            // First visit of the day: counted once in the daily active members (product metrics).
+            if ($lastActive === null || ! $lastActive->isSameDay(now())) {
+                app(ProductMetricsService::class)->recordActivity($roomUser);
+            }
             $roomUser->update(['last_active_at' => now()]);
         }
         $request->attributes->set('room', $room);

@@ -6,6 +6,9 @@
         isSubmittingPayment: false,
         currentDebtId: null,
         currentDebtPending: false,
+        // Snooze state of the automatic reminders, keyed by debt ID ({ until, remaining }); empty when they are off.
+        reminderSnoozes: {{ Js::from($reminderSnoozes ?? []) }},
+        isSnoozing: false,
         campaignModalOpen: false,
         campaignLoading: false,
         campaignData: null,
@@ -116,6 +119,33 @@
             this.paymentDetails.amount = this.qrData.formattedAmount;
             this.qrModalOpen = false;
             this.paymentConfirmModalOpen = true;
+        },
+        async snoozeReminders() {
+            if (this.isSnoozing || !this.currentDebtId) return;
+            this.isSnoozing = true;
+            try {
+                const response = await fetch('{{ route('user.debts.snooze-reminders', $room) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ debt_id: this.currentDebtId }),
+                    credentials: 'same-origin'
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    this.reminderSnoozes[this.currentDebtId] = result.snooze;
+                    window.notify?.(result.message, 'success');
+                } else {
+                    window.notify?.(result.errors?.debt_id?.[0] || result.message || {{ Js::from(__('global.common.error')) }}, 'error');
+                }
+            } catch (err) {
+                window.notify?.({{ Js::from(__('room.orders.connection_error')) }}, 'error');
+            } finally {
+                this.isSnoozing = false;
+            }
         },
         closePaymentConfirm() {
             if (this.isSubmittingPayment) return;
@@ -497,6 +527,24 @@
                                         x-text="copiedField === 'content' ? 'check' : 'content_copy'">content_copy</span>
                                 </button>
                             </div>
+                        </div>
+
+                        <!-- Automatic reminder snooze (the debtor may postpone a debt's reminders a few times) -->
+                        <div x-show="currentDebtId && !currentDebtPending && reminderSnoozes[currentDebtId]" x-cloak
+                            data-debt-snooze
+                            class="flex items-center justify-between gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-low px-2.5 py-2 text-[11px]">
+                            <span class="flex min-w-0 items-center gap-1.5 text-on-surface-variant">
+                                <span class="material-symbols-outlined shrink-0 text-[16px]">notifications_paused</span>
+                                <span
+                                    x-text="reminderSnoozes[currentDebtId]?.until
+                                        ? {{ Js::from(__('debt_reminder.snoozed_until')) }}.replace(':date', reminderSnoozes[currentDebtId].until)
+                                        : (reminderSnoozes[currentDebtId]?.remaining > 0 ? {{ Js::from(__('debt_reminder.snooze_hint')) }} : {{ Js::from(__('debt_reminder.snooze_none_left')) }})"></span>
+                            </span>
+                            <button type="button" x-show="reminderSnoozes[currentDebtId]?.remaining > 0"
+                                :disabled="isSnoozing" @click="snoozeReminders()"
+                                class="shrink-0 rounded-lg border border-outline-variant bg-surface-container-lowest px-2.5 py-1 font-semibold text-on-surface transition-colors hover:bg-surface-container-high cursor-pointer disabled:opacity-50">
+                                {{ __('debt_reminder.snooze_button', ['days' => \App\Services\Debt\DebtAutoReminderService::SNOOZE_DAYS]) }}
+                            </button>
                         </div>
 
                         <!-- Footer Actions in QR Modal -->

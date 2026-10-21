@@ -7,8 +7,10 @@ namespace App\Http\Controllers\User;
 use App\Enums\RoomOccasion;
 use App\Http\Controllers\Controller;
 use App\Models\Room;
+use App\Models\RoomUser;
 use App\Services\Occasion\RoomEventService;
 use App\Services\Occasion\RoomEventSettingsService;
+use App\Services\Occasion\RoomEventWishWallService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 
@@ -27,14 +29,17 @@ class OccasionController extends Controller
      * @param Room $room Room celebrating.
      * @param string $occasion Occasion slug (constrained by the route).
      * @param RoomEventService $events Room events.
+     * @param RoomEventSettingsService $settings Music, sound and wishes of the page.
+     * @param RoomEventWishWallService $wall Wishes wall of the page.
      * @return View Occasion page.
      */
-    public function show(Request $request, Room $room, string $occasion, RoomEventService $events, RoomEventSettingsService $settings): View
+    public function show(Request $request, Room $room, string $occasion, RoomEventService $events, RoomEventSettingsService $settings, RoomEventWishWallService $wall): View
     {
         $room = $request->attributes->get('room') ?? $room;
         $current = RoomOccasion::fromSlug($occasion);
         // Locally every occasion page opens whatever the date, to preview it.
         abort_if($current === null || (! app()->isLocal() && ! $events->isActive($room, $current)), 404);
+        $member = $request->attributes->get('room_user');
 
         return view('user.occasions.'.str_replace('_', '-', $current->value), [
             'room' => $room,
@@ -42,6 +47,7 @@ class OccasionController extends Controller
             'year' => $events->occurrence($current, $events->today($room))['date']->year,
             'audio' => $settings->forEvent($room, $current->value),
             'wishes' => $settings->wishes($room, $current->value),
+            'wall' => $member instanceof RoomUser ? $wall->wall($room, $current->value, $member) : null,
         ]);
     }
 }

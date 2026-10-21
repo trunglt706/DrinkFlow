@@ -100,6 +100,7 @@ export function initAdminSettings() {
             max_campaign_budget: cleanNumber(budgetInput?.value),
             personal_debt_ceiling: cleanNumber(debtInput?.value),
             auto_lock_on_debt_limit: $('set-autolock-debt')?.checked ?? true,
+            auto_debt_reminders: $('set-auto-debt-reminders')?.checked ?? true,
             is_public: $('set-room-public')?.checked ?? true,
             // Access rules (allowed email domains, allowed / blocked IPs); empty lists = no restriction.
             ...collectTagsInputs(settingsForm),

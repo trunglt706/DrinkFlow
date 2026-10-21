@@ -3,7 +3,7 @@
 @php
     $sparkles = [[44, 160, 0], [258, 140, 0.8], [240, 330, 1.5], [56, 350, 2.1], [150, 54, 1.2]];
 @endphp
-<x-occasion.page :room="$room" :occasion="$occasion" :year="$year" :wishes="$wishes" :audio="$audio"
+<x-occasion.page :room="$room" :occasion="$occasion" :year="$year" :wishes="$wishes" :audio="$audio" :wall="$wall" :back-url="$backUrl ?? null" :preview="$preview ?? false"
   theme="--accent:#ef4444;--accent-2:#fcd34d;--soft:#fde68a;--line:rgba(253,224,71,.26);--card-1:rgba(122,12,18,.93);--card-2:rgba(70,6,10,.92);--hint-1:rgba(150,16,24,.9);--hint-2:rgba(150,100,10,.85);--bokeh:255,214,120;--bg:linear-gradient(160deg,#4a0508,#8b0e14 50%,#3a0306);--glow-1:rgba(252,211,77,.22);--glow-2:rgba(251,146,60,.22);--glow-3:rgba(239,68,68,.25);"
   :effects="['sounds' => [['paper', 0], ['whoosh', 300], ['coin', 650], ['chime', 900]], 'rain' => ['blossom', 'blossom', 'blossom', 'petal'], 'rainColors' => ['#facc15', '#fde047', '#fbbf24', '#fda4af'], 'rainEvery' => 330, 'burst' => ['coin', 'blossom', 'confetti'], 'burstColors' => ['#facc15', '#fde047', '#f59e0b', '#ef4444', '#ffffff']]">
   <x-slot:styles>

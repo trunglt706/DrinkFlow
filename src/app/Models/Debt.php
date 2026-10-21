@@ -35,7 +35,7 @@ class Debt extends Model
     /** Set while an approved payment request settles its children, the only write allowed on them. */
     private static bool $settlingPaymentRequest = false;
 
-    protected $fillable = ['room_id', 'code', 'campaign_id', 'room_user_id', 'original_amount', 'sponsor_amount', 'sponsor_type', 'sponsor_description', 'adjustment_amount', 'paid_amount', 'remaining_amount', 'status', 'payment_requested_at', 'payment_content', 'reviewed_at', 'reviewed_by_admin_id', 'review_reason', 'note'];
+    protected $fillable = ['room_id', 'code', 'campaign_id', 'room_user_id', 'original_amount', 'sponsor_amount', 'sponsor_type', 'sponsor_description', 'adjustment_amount', 'paid_amount', 'remaining_amount', 'status', 'payment_requested_at', 'payment_content', 'reviewed_at', 'reviewed_by_admin_id', 'review_reason', 'note', 'reminder_snoozed_until', 'reminder_snooze_count'];
 
     /**
      * Bootstrap the model and its traits.
@@ -74,6 +74,8 @@ class Debt extends Model
             'status' => DebtStatus::class,
             'payment_requested_at' => 'datetime',
             'reviewed_at' => 'datetime',
+            'reminder_snoozed_until' => 'datetime',
+            'reminder_snooze_count' => 'integer',
         ];
     }
 

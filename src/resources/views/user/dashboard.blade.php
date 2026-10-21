@@ -14,6 +14,47 @@
       <x-sponsor-honors :honors="$sponsorHonors" />
     @endif
 
+    @if(! empty($recapYear))
+      {{-- Recap season: the member's year recap. --}}
+      <a href="{{ route('user.rooms.recap', [$room, $recapYear]) }}" data-recap-banner
+         class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl p-4 text-white shadow-sm bg-gradient-to-r from-[#006948] via-indigo-800 to-violet-600 hover:brightness-110 transition">
+        <div>
+          <p class="text-sm font-bold">{{ __('recap.banner_title', ['year' => $recapYear]) }}</p>
+          <p class="mt-0.5 text-xs text-white/80">{{ __('recap.banner_desc') }}</p>
+        </div>
+        <span class="inline-flex shrink-0 items-center gap-1 self-start sm:self-auto rounded-full bg-white px-3 py-1.5 text-xs font-bold text-[#006948]">
+          {{ __('recap.banner_cta') }}<span class="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_forward</span>
+        </span>
+      </a>
+    @endif
+
+    @if(! empty($ratingsPending))
+      {{-- Recently received items to rate (1 tap per star). --}}
+      <section class="bg-white border border-amber-200/80 rounded-xl p-4 shadow-2xs" data-ratings-pending>
+        <h2 class="flex items-center gap-2 text-sm font-bold text-slate-900">
+          <span class="material-symbols-outlined text-[18px] text-amber-500" style="font-variation-settings:'FILL' 1" aria-hidden="true">star</span>{{ __('room.rating.pending_title') }}
+        </h2>
+        <p class="mt-0.5 text-xs text-slate-500">{{ __('room.rating.pending_description') }}</p>
+        <ul class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+          @foreach($ratingsPending as $pendingItem)
+            <li class="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-2.5">
+              <div class="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-slate-100 flex items-center justify-center text-[#006948]">
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">local_cafe</span>
+                @if($pendingItem['image_url'])
+                  <img src="{{ $pendingItem['image_url'] }}" alt="{{ $pendingItem['name'] }}" loading="lazy" class="absolute inset-0 h-full w-full object-cover" onerror="this.remove()">
+                @endif
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-xs font-bold text-slate-900">{{ $pendingItem['name'] }}</p>
+                <p class="truncate text-[11px] text-slate-500">{{ $pendingItem['restaurant'] }}</p>
+                <x-room.item-rating :rating="['can_rate' => true, 'stars' => null, 'comment' => null, 'url' => $pendingItem['url']]" :compact="true" />
+              </div>
+            </li>
+          @endforeach
+        </ul>
+      </section>
+    @endif
+
     <!-- Weekly charts followed by the active campaign -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
       

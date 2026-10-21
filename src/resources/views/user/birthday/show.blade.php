@@ -92,8 +92,21 @@
     .hint{font-size:13px;color:rgba(255,255,255,.75)}
     .card{width:min(100%,560px);padding:24px 26px;border-radius:22px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(10px);box-shadow:0 20px 60px -20px rgba(0,0,0,.5)}
     .card h2{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:10px}
-    .wish{font-size:clamp(16px,2.6vw,19px);line-height:1.6;font-weight:500;min-height:3.2em;transition:opacity .35s}
-    .wish.is-fading{opacity:0}
+    .wish{font-size:clamp(16px,2.6vw,19px);line-height:1.6;font-weight:500;min-height:3.2em;transition:opacity .9s cubic-bezier(.4,0,.2,1),transform 1s cubic-bezier(.22,1,.36,1)}
+    .wish.is-fading{opacity:0;transform:translateY(-8px)}
+    /* Desktop: the page fits one screen (sizes follow the window height); longer content just scrolls. */
+    @media (min-width:901px){
+      main{gap:clamp(8px,1.6vh,18px);padding:clamp(20px,3.5vh,40px) 20px clamp(16px,3vh,32px)}
+      h1{font-size:clamp(40px,min(9vw,8.5vh),92px)}
+      .name{font-size:clamp(24px,min(5vw,4.6vh),46px)}
+      .avatar{width:clamp(96px,14vh,132px);height:clamp(96px,14vh,132px)}
+      .avatar-inner{font-size:clamp(38px,5.5vh,52px)}
+      .cake-wrap{gap:6px}
+      .card{padding:clamp(16px,2.4vh,24px) 26px}
+    }
+    @media (min-width:901px) and (max-height:860px){
+      .cake{transform:scale(.8);margin:-17px 0}
+    }
     .actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:16px}
     .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:999px;border:0;font:600 14px 'Be Vietnam Pro',sans-serif;cursor:pointer;text-decoration:none;transition:transform .15s,filter .15s}
     .btn:hover{transform:translateY(-1px);filter:brightness(1.08)}
@@ -139,7 +152,10 @@
   <div class="stars" aria-hidden="true" data-stars></div>
   <div class="balloons" aria-hidden="true" data-balloons></div>
 
-  <a class="btn btn-ghost back" href="{{ route('user.dashboard', $room) }}">← {{ __('birthday.back_to_room') }}</a>
+  <a class="btn btn-ghost back" href="{{ $backUrl ?? route('user.dashboard', $room) }}">← {{ ($preview ?? false) ? __('occasions.ui.back_to_admin') : __('birthday.back_to_room') }}</a>
+  @if ($preview ?? false)
+    <span class="preview-badge" role="status" style="position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:30;padding:6px 14px;border-radius:999px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.35);color:#fff;font:600 12px 'Be Vietnam Pro',sans-serif;pointer-events:none">👁 {{ __('occasions.ui.preview_badge') }}</span>
+  @endif
   <x-occasion.audio :audio="$audio" melody="birthday" />
 
   <main data-birthday-page data-i18n="{{ json_encode(['wishes' => array_values($wishes), 'blown' => __('birthday.blown')], JSON_UNESCAPED_UNICODE) }}">
@@ -209,11 +225,17 @@
       <p class="wish" data-wish>{{ $wishes[0] ?? '' }}</p>
       <div class="actions">
         <button type="button" class="btn btn-primary" data-next-wish>✨ {{ __('birthday.next_wish') }}</button>
+        @if ($wall !== null)
+          <a class="btn btn-ghost" href="#event-wish-wall" data-wall-link>💬 {{ __('occasions.wall.open') }}</a>
+        @endif
       </div>
     </section>
 
     <p class="signature">{{ __('birthday.signature', ['room' => $room->name]) }}</p>
   </main>
+  @if ($wall !== null)
+    <x-occasion.wish-wall :room="$room" type="birthday" :wall="$wall" :celebrants="$celebrants" />
+  @endif
 
   <div class="toast" role="status" data-toast></div>
 
@@ -325,10 +347,11 @@
         toast.textContent = i18n.blown || '';
         toast.classList.add('is-visible');
         setTimeout(() => toast.classList.remove('is-visible'), 2600);
-        setTimeout(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: reduceMotion ? 'auto' : 'smooth' }), 2000);
+        setTimeout(() => document.querySelector('[data-wish]').closest('.card').scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' }), 2000);
       });
 
-      // Cycle through the wishes: every 3 seconds by itself, or on demand (which restarts the 3 seconds).
+      // Cycle through the wishes: by itself once a wish had time to be read (5 to 10 seconds, by its length), or on
+      // demand (which restarts the wait).
       const wishes = Array.isArray(i18n.wishes) ? i18n.wishes : [];
       const wish = document.querySelector('[data-wish]');
       let current = 0;
@@ -338,13 +361,14 @@
         if (wishes.length < 2) return;
         current = (current + 1) % wishes.length;
         wish.classList.add('is-fading');
-        setTimeout(() => { wish.textContent = wishes[current]; wish.classList.remove('is-fading'); }, 300);
+        setTimeout(() => { wish.textContent = wishes[current]; wish.classList.remove('is-fading'); restartWishTimer(); }, 900);
         const rect = nextWishButton.getBoundingClientRect();
         burst(60, rect.left + rect.width / 2, rect.top);
       };
       const restartWishTimer = () => {
-        clearInterval(wishTimer);
-        wishTimer = setInterval(() => { if (!document.hidden) showNextWish(); }, 3000);
+        clearTimeout(wishTimer);
+        const readMs = Math.min(10000, Math.max(5000, (wish.textContent || '').trim().length * 55));
+        wishTimer = setTimeout(() => { if (document.hidden) restartWishTimer(); else showNextWish(); }, readMs);
       };
       nextWishButton.addEventListener('click', () => {
         showNextWish();

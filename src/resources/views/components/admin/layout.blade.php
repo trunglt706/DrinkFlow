@@ -220,6 +220,28 @@
                             </div>
                         </a>
 
+                        <!-- Room fund ledger -->
+                        <a class="sidebar-nav-link relative group flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors {{ $active === 'fund' ? 'bg-emerald-50 text-primary ring-1 ring-emerald-100 font-semibold' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low' }}"
+                            href="{{ route('admin.fund.index', $room) }}" title="{{ __('room_fund.nav') }}" data-nav-fund>
+                            <span class="material-symbols-outlined text-[18px] shrink-0">savings</span>
+                            <span class="sidebar-text truncate">{{ __('room_fund.nav') }}</span>
+                            <div
+                                class="sidebar-tooltip pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-[#0b1c30] text-white text-xs font-semibold rounded-lg shadow-xl whitespace-nowrap z-50 opacity-0 group-hover:opacity-100 transition-opacity hidden">
+                                {{ __('room_fund.nav') }}
+                            </div>
+                        </a>
+
+                        <!-- Bank reconciliation -->
+                        <a class="sidebar-nav-link relative group flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors {{ $active === 'bank-sync' ? 'bg-emerald-50 text-primary ring-1 ring-emerald-100 font-semibold' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low' }}"
+                            href="{{ route('admin.bank-sync.index', $room) }}" title="{{ __('bank_sync.nav') }}" data-nav-bank-sync>
+                            <span class="material-symbols-outlined text-[18px] shrink-0">account_balance</span>
+                            <span class="sidebar-text truncate">{{ __('bank_sync.nav') }}</span>
+                            <div
+                                class="sidebar-tooltip pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-[#0b1c30] text-white text-xs font-semibold rounded-lg shadow-xl whitespace-nowrap z-50 opacity-0 group-hover:opacity-100 transition-opacity hidden">
+                                {{ __('bank_sync.nav') }}
+                            </div>
+                        </a>
+
                         <!-- Users -->
                         <a class="sidebar-nav-link relative group flex items-center justify-between gap-3 px-3 py-2 rounded-lg font-medium transition-colors {{ $active === 'users' ? 'bg-emerald-50 text-primary ring-1 ring-emerald-100 font-semibold' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low' }}"
                             href="{{ route('admin.room-users.page', $room) }}" title="{{ __('admin.users') }}">

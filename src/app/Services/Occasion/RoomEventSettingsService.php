@@ -8,6 +8,8 @@ use App\Actions\Room\SendRoomEventNotificationAction;
 use App\Enums\EventMusicMode;
 use App\Models\Room;
 use App\Models\RoomEventSetting;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Background music and sound effects of the room event pages (birthday and occasions), set by the room admin.
@@ -24,6 +26,13 @@ class RoomEventSettingsService
      * streams are signed, short-lived and reserved to their own player).
      */
     public const STREAMING_PAGE_HOSTS = ['zingmp3.vn', 'mp3.zing.vn', 'nhaccuatui.com', 'youtube.com', 'youtu.be', 'spotify.com', 'soundcloud.com', 'music.apple.com'];
+
+    /** Audio files an admin may upload (extensions), the largest file (kilobytes) and their folder on the public disk. */
+    public const MUSIC_FILE_TYPES = ['mp3', 'm4a', 'ogg', 'wav'];
+
+    public const MUSIC_FILE_MAX_KB = 8192;
+
+    public const MUSIC_FOLDER = 'event-music';
 
     /**
      * The streaming site of a link that is a web player page, or null for any other link.
@@ -47,7 +56,7 @@ class RoomEventSettingsService
      *
      * @param Room $room Room.
      * @param string $type `birthday` or a RoomOccasion value.
-     * @return array{music_mode: EventMusicMode, music_url: string|null, sound_effects: bool, wishes: list<string>|null}
+     * @return array{music_mode: EventMusicMode, music_url: string|null, music_file_url: string|null, music_name: string|null, sound_effects: bool, wishes: list<string>|null}
      */
     public function forEvent(Room $room, string $type): array
     {
@@ -57,7 +66,7 @@ class RoomEventSettingsService
     /**
      * Settings of every event page of a room, keyed by event type.
      *
-     * @return array<string, array{music_mode: EventMusicMode, music_url: string|null, sound_effects: bool, wishes: list<string>|null}>
+     * @return array<string, array{music_mode: EventMusicMode, music_url: string|null, music_file_url: string|null, music_name: string|null, sound_effects: bool, wishes: list<string>|null}>
      *         `wishes`: the room's own wishes, null when the default sample wishes are used.
      */
     public function all(Room $room): array
@@ -69,6 +78,8 @@ class RoomEventSettingsService
             $settings[$type] = $row === null ? self::defaults() : [
                 'music_mode' => $row->music_mode,
                 'music_url' => $row->music_mode === EventMusicMode::Custom ? $row->music_url : null,
+                'music_file_url' => $row->music_mode === EventMusicMode::Upload && $row->music_path !== null ? Storage::disk('public')->url($row->music_path) : null,
+                'music_name' => $row->music_mode === EventMusicMode::Upload ? $row->music_name : null,
                 'sound_effects' => $row->sound_effects,
                 'wishes' => $row->wishes === null ? null : array_values($row->wishes),
             ];
@@ -78,20 +89,51 @@ class RoomEventSettingsService
     }
 
     /**
-     * Save the settings of one event page.
+     * Save the settings of one event page. A new uploaded file replaces the previous one, and leaving the upload mode
+     * deletes the file, so the disk only keeps the music in use.
      *
      * @param Room $room Room.
      * @param string $type `birthday` or a RoomOccasion value.
      * @param EventMusicMode $mode Background music mode.
      * @param string|null $url Audio file link (custom mode only).
      * @param bool $soundEffects Whether the page plays its sound effects.
+     * @param UploadedFile|null $file New audio file (upload mode only); null keeps the current one.
+     *
+     * @throws \RuntimeException When the uploaded file cannot be written to the public disk.
      */
-    public function update(Room $room, string $type, EventMusicMode $mode, ?string $url, bool $soundEffects): void
+    public function update(Room $room, string $type, EventMusicMode $mode, ?string $url, bool $soundEffects, ?UploadedFile $file = null): void
     {
-        RoomEventSetting::query()->updateOrCreate(
-            ['room_id' => $room->id, 'event_type' => $type],
-            ['music_mode' => $mode, 'music_url' => $mode === EventMusicMode::Custom ? $url : null, 'sound_effects' => $soundEffects],
-        );
+        $setting = RoomEventSetting::query()->firstOrNew(['room_id' => $room->id, 'event_type' => $type]);
+        $oldPath = $setting->music_path;
+        $setting->fill(['music_mode' => $mode, 'music_url' => $mode === EventMusicMode::Custom ? $url : null, 'sound_effects' => $soundEffects]);
+
+        if ($mode !== EventMusicMode::Upload) {
+            $setting->fill(['music_path' => null, 'music_name' => null]);
+        } elseif ($file !== null) {
+            // Random name: the original name is only kept for display.
+            $name = bin2hex(random_bytes(16)).'.'.strtolower($file->getClientOriginalExtension());
+            $path = $file->storeAs(self::MUSIC_FOLDER.'/'.$room->id, $name, 'public');
+            if ($path === false) {
+                throw new \RuntimeException('The event music file could not be stored.');
+            }
+            $setting->fill(['music_path' => $path, 'music_name' => mb_substr($file->getClientOriginalName(), 0, 191)]);
+        }
+
+        $setting->save();
+        if ($oldPath !== null && $oldPath !== $setting->music_path) {
+            Storage::disk('public')->delete($oldPath);
+        }
+    }
+
+    /**
+     * Whether the event page already has an uploaded audio file (the upload mode then needs no new file).
+     *
+     * @param Room $room Room.
+     * @param string $type `birthday` or a RoomOccasion value.
+     */
+    public function hasMusicFile(Room $room, string $type): bool
+    {
+        return RoomEventSetting::query()->where('room_id', $room->id)->where('event_type', $type)->whereNotNull('music_path')->exists();
     }
 
     /**
@@ -136,10 +178,10 @@ class RoomEventSettingsService
     /**
      * Built-in melody, sound effects and the default sample wishes.
      *
-     * @return array{music_mode: EventMusicMode, music_url: null, sound_effects: bool, wishes: null}
+     * @return array{music_mode: EventMusicMode, music_url: null, music_file_url: null, music_name: null, sound_effects: bool, wishes: null}
      */
     public static function defaults(): array
     {
-        return ['music_mode' => EventMusicMode::Builtin, 'music_url' => null, 'sound_effects' => true, 'wishes' => null];
+        return ['music_mode' => EventMusicMode::Builtin, 'music_url' => null, 'music_file_url' => null, 'music_name' => null, 'sound_effects' => true, 'wishes' => null];
     }
 }

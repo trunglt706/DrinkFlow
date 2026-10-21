@@ -24,6 +24,7 @@ use App\Services\Order\ProxyOrderPolicy;
 use App\Enums\RoomUserStatus;
 use App\Services\Campaign\UserRoomCampaignService;
 use App\Services\Debt\DebtCreditService;
+use App\Services\Order\OrderItemRatingService;
 use App\Support\Helpers\FormatHelper;
 use App\Support\Privacy\PersonalDataMasker;
 use Illuminate\Contracts\View\View;
@@ -394,7 +395,7 @@ class CampaignController extends Controller
      * @param  \App\Services\Campaign\UserRoomCampaignService  $service  Service xử lý chiến dịch phòng
      * @return \Illuminate\Http\JsonResponse|\Illuminate\Contracts\View\View  Phản hồi JSON hoặc Giao diện View
      */
-    public function index(Request $request, UserRoomCampaignService $service): JsonResponse|View
+    public function index(Request $request, UserRoomCampaignService $service, OrderItemRatingService $ratings): JsonResponse|View
     {
         $room = $request->attributes->get('room');
         $roomUser = $request->attributes->get('room_user');
@@ -406,6 +407,10 @@ class CampaignController extends Controller
         }
 
         $data = $service->getCampaignViewData($room, $roomUser, $user);
+        // Average stars of each dish of the menu (ratings of the same dish in the room's earlier campaigns).
+        $data['itemRatings'] = ($data['activeCampaign'] ?? null) instanceof Campaign
+            ? $ratings->averagesForMenu($data['activeCampaign'], $data['activeCampaign']->items)
+            : [];
 
         return view('user.campaign', $data);
     }

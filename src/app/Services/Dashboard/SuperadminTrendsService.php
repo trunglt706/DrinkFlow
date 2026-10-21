@@ -16,8 +16,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Long-range superadmin analytics: monthly signup cohorts and their ordering retention, feedback
- * ratings, contact requests by topic, and infrastructure history from system_metric_snapshots.
+ * Long-range superadmin analytics: product metrics (active members, campaign participation, debt payment time),
+ * monthly signup cohorts and their ordering retention, feedback ratings, contact requests by topic, and
+ * infrastructure history from system_metric_snapshots.
  *
  * Month and day buckets are computed in PHP in the application timezone so the queries stay portable
  * between MySQL and SQLite.
@@ -41,11 +42,14 @@ class SuperadminTrendsService
     public const CACHE_TTL = 600;
     public const CACHE_KEY = 'superadmin.dashboard.trends';
 
+    public function __construct(private readonly ProductMetricsService $product) {}
+
     /**
      * Build (or read from cache) the trends payload.
      *
      * @param bool $fresh Bypass and refresh the cache.
-     * @return array<string, mixed> Payload with keys cohorts, feedback, contact_topics, system_history, generated_at.
+     * @return array<string, mixed> Payload with keys product (ProductMetricsService), cohorts, feedback, contact_topics,
+     *                              system_history, generated_at.
      */
     public function trends(bool $fresh = false): array
     {
@@ -65,6 +69,7 @@ class SuperadminTrendsService
     public function compute(CarbonImmutable $now): array
     {
         return [
+            'product' => $this->product->compute($now),
             'cohorts' => $this->cohorts($now),
             'feedback' => $this->feedback($now),
             'contact_topics' => $this->contactTopics($now),

@@ -63,12 +63,17 @@ Route::middleware(['room.ip', 'global.user', 'room.user', 'room.subscription'])-
     Route::post('/rooms/{room}/orders/{order}/confirm-payment', [\App\Http\Controllers\User\OrderController::class, 'confirmPayment'])->name('user.orders.confirm-payment');
     Route::get('/rooms/{room}/debts', [\App\Http\Controllers\User\DebtController::class, 'index'])->name('user.debts.index');
     Route::post('/rooms/{room}/debts/confirm-payment', [\App\Http\Controllers\User\DebtController::class, 'confirmPayment'])->name('user.debts.confirm-payment');
-    Route::get('/rooms/{room}/analytics', [\App\Http\Controllers\User\AnalyticsController::class, 'room'])->name('user.analytics.room');
+    Route::post('/rooms/{room}/debts/snooze-reminders', [\App\Http\Controllers\User\DebtController::class, 'snoozeReminders'])->middleware('throttle:10,1')->name('user.debts.snooze-reminders');
+    // Member rates an item of their received order (1–5 stars, short comment).
+    Route::post('/rooms/{room}/order-items/{item}/rating', [\App\Http\Controllers\User\OrderItemRatingController::class, 'store'])->whereNumber('item')->middleware(['json.only', 'throttle:30,1'])->name('user.order-items.rating');
+    Route::get('/rooms/{room}/analytics',[\App\Http\Controllers\User\AnalyticsController::class, 'room'])->name('user.analytics.room');
     Route::get('/rooms/{room}/socket-token', \App\Http\Controllers\User\SocketTokenController::class)->middleware('json.only')->name('user.socket-token');
     Route::get('/rooms/{room}/notifications', [\App\Http\Controllers\User\RoomNotificationController::class, 'index'])->name('user.rooms.notifications');
     Route::get('/rooms/{room}/profile', [\App\Http\Controllers\User\RoomProfileController::class, 'index'])->name('user.rooms.profile');
     // The viewer's TOP 1-3 sponsor medals of the current year, month by month.
     Route::get('/rooms/{room}/achievements', [\App\Http\Controllers\User\AchievementController::class, 'index'])->name('user.rooms.achievements');
+    // The viewer's year recap (story + shareable card): past years, and the current year during the recap season.
+    Route::get('/rooms/{room}/recap/{year}', [\App\Http\Controllers\User\YearRecapController::class, 'show'])->whereNumber('year')->middleware('throttle:60,1')->name('user.rooms.recap');
     Route::get('/rooms/{room}/guides', [\App\Http\Controllers\User\RoomGuideController::class, 'index'])->name('user.rooms.guides');
     Route::get('/rooms/{room}/guides/{slug}', [\App\Http\Controllers\User\RoomGuideController::class, 'show'])->name('user.rooms.guides.show');
     // Stand-alone birthday celebration page of the room: every member whose birthday is within 3 days.
@@ -76,6 +81,12 @@ Route::middleware(['room.ip', 'global.user', 'room.user', 'room.subscription'])-
     // Stand-alone occasion pages (/1-1, /tet, /8-3, /20-10, /19-11, /25-12), reachable while the occasion is shown.
     Route::get('/rooms/{room}/{occasion}', [\App\Http\Controllers\User\OccasionController::class, 'show'])
         ->where('occasion', \App\Enums\RoomOccasion::slugPattern())->middleware('throttle:60,1')->name('user.rooms.occasion');
+    // Wishes wall of the event pages: list, write (limited per member and occurrence), heart, delete one's own wish.
+    $eventWishType = implode('|', \App\Actions\Room\SendRoomEventNotificationAction::types());
+    Route::get('/rooms/{room}/events/{type}/wishes', [\App\Http\Controllers\User\EventWishController::class, 'index'])->where('type', $eventWishType)->middleware(['json.only', 'throttle:60,1'])->name('user.event-wishes.index');
+    Route::post('/rooms/{room}/events/{type}/wishes', [\App\Http\Controllers\User\EventWishController::class, 'store'])->where('type', $eventWishType)->middleware(['json.only', 'throttle:10,1'])->name('user.event-wishes.store');
+    Route::post('/rooms/{room}/event-wishes/{wish}/heart', [\App\Http\Controllers\User\EventWishController::class, 'heart'])->whereNumber('wish')->middleware(['json.only', 'throttle:60,1'])->name('user.event-wishes.heart');
+    Route::delete('/rooms/{room}/event-wishes/{wish}', [\App\Http\Controllers\User\EventWishController::class, 'destroy'])->whereNumber('wish')->middleware(['json.only', 'throttle:20,1'])->name('user.event-wishes.destroy');
     // Sponsor draw landing page (read-only); link token + campaign membership checked on every request.
     Route::get('/rooms/{room}/sponsor-draws/{token}', [\App\Http\Controllers\User\SponsorDrawController::class, 'show'])->where('token', '[A-Za-z0-9]{40,128}')->middleware('throttle:60,1')->name('user.sponsor-draws.show');
     Route::get('/rooms/{room}/sponsor-draws/{token}/state', [\App\Http\Controllers\User\SponsorDrawController::class, 'state'])->where('token', '[A-Za-z0-9]{40,128}')->middleware(['json.only', 'throttle:120,1'])->name('user.sponsor-draws.state');

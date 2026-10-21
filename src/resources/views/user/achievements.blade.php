@@ -32,6 +32,12 @@
           </p>
           <h1 class="mt-3 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">{{ __('achievements.title', ['year' => $year]) }}</h1>
           <p class="mt-1 text-sm text-slate-600">{{ __('achievements.subtitle', ['room' => $room->name]) }}</p>
+          @isset($recapYear)
+            <a href="{{ route('user.rooms.recap', [$room, $recapYear]) }}" data-recap-link
+               class="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#006948] px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-[#005137]">
+              <span class="material-symbols-outlined text-[16px]" aria-hidden="true">auto_awesome</span>{{ __('recap.achievements_link', ['year' => $recapYear]) }}
+            </a>
+          @endisset
         </div>
         <div class="flex items-center gap-4 sm:gap-6">
           <div class="flex items-center gap-3">

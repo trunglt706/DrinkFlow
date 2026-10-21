@@ -55,6 +55,12 @@ Schedule::command('drinkflow:notify-occasions')
     ->hourlyAt(5)
     ->withoutOverlapping();
 
+// Tiered debt reminders (1, 3 and 7 days after a debt is created) from 9:00 room time (hourly so every room timezone is
+// covered; each debt and stage is sent once, snoozed debts are skipped).
+Schedule::command('drinkflow:remind-debts')
+    ->hourlyAt(15)
+    ->withoutOverlapping();
+
 // Remind Agents a few days before their package period ends (once per period).
 Schedule::command('subscriptions:remind-renewals')
     ->dailyAt('08:00')
@@ -74,4 +80,10 @@ Schedule::command('billing:enforce-overdue')
 // Calculate last month's honors for active rooms on the first day of each month.
 Schedule::command('drinkflow:calculate-monthly-sponsors')
     ->monthlyOn(1, '00:15')
+    ->withoutOverlapping();
+
+// Year recaps of the members, computed in advance every night of the recap season (15 December - 31 January; the
+// command does nothing on the other days).
+Schedule::command('drinkflow:build-year-recaps')
+    ->dailyAt('02:30')
     ->withoutOverlapping();

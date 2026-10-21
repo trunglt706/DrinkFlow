@@ -54,6 +54,18 @@ Mỗi tháng trong năm là một ô:
 - Số liệu được cập nhật sau mỗi lần hệ thống thống kê (đầu tháng) hoặc khi Admin bấm **Thống kê lại**; trang có thể mất tối đa một ngày để hiển thị thay đổi khác.
 - Muốn có thêm huy chương? Hãy tham gia tài trợ cho các chiến dịch của phòng — chẳng hạn khi trúng [vòng quay nhà tài trợ](15-vong-quay-may-man.md).
 
+## 16.5. Tổng kết năm (DrinkFlow Wrapped)
+
+Từ **15/12** đến hết **31/1**, trang tổng quan của phòng hiện banner **Tổng kết năm của bạn đã sẵn sàng 🎉** (nếu trong năm bạn có đặt món). Trang tổng kết là một chuỗi màn hình tự chuyển (chạm bên phải / phím → để sang trang, chạm bên trái / phím ← để quay lại, nút ❚❚ để tạm dừng):
+
+- Số **ly** bạn đã uống, số đơn và số lần gom đơn, ngày ly đầu tiên của năm.
+- **Món ruột**, **quán quen** và **tháng “cháy” nhất**.
+- Số tiền đã chi và phần được tài trợ; số tiền bạn đã **tài trợ**, huy chương tháng và số lần **đặt dùm** đồng nghiệp (nếu có).
+- **Hạng** của bạn trong phòng theo số ly và tổng số ly của cả phòng.
+- **Thẻ tổng kết** kèm danh hiệu: bấm **Tải ảnh** để lưu ảnh, hoặc **Chia sẻ** (trên điện thoại) để gửi cho bạn bè.
+
+Tổng kết các năm trước luôn mở được từ nút **Xem tổng kết năm** ở đầu trang Thành tích. Số liệu được tính lại mỗi đêm trong mùa tổng kết; đơn bị hủy và chiến dịch bị hủy không được tính.
+
 ---
 
 ⬅️ [Trang trước: 15. Vòng quay may mắn](15-vong-quay-may-man.md) &nbsp;|&nbsp; [🏠 Mục lục](README.md)

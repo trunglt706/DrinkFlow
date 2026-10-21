@@ -1,4 +1,4 @@
-@props(['item'])
+@props(['item', 'rating' => null])
 
 {{-- Thẻ hiển thị một món trong đơn (tên, số lượng × đơn giá, thành tiền, size/đường/đá/topping, ghi chú). --}}
 <div class="bg-surface-container-low rounded-lg p-2.5 flex items-start gap-2.5">
@@ -81,6 +81,10 @@
             <div class="mt-1.5 flex flex-wrap items-center gap-x-1 text-[10px] leading-4 text-on-surface-variant">
                 {{ $slot }}
             </div>
+        @endif
+
+        @if($rating !== null)
+            <x-room.item-rating :rating="$rating" />
         @endif
     </div>
 </div>

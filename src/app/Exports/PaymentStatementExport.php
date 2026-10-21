@@ -6,9 +6,10 @@ namespace App\Exports;
 
 use App\Models\Order;
 use App\Support\Helpers\FormatHelper;
+use Generator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Maatwebsite\Excel\Concerns\FromQuery;
+use Maatwebsite\Excel\Concerns\FromGenerator;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
@@ -18,27 +19,32 @@ use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 
-class PaymentStatementExport extends DefaultValueBinder implements FromQuery, ShouldAutoSize, WithColumnFormatting, WithCustomValueBinder, WithHeadings, WithMapping
+class PaymentStatementExport extends DefaultValueBinder implements FromGenerator, ShouldAutoSize, WithColumnFormatting, WithCustomValueBinder, WithHeadings, WithMapping
 {
-    /** @var Builder<Order> */
-    private readonly Builder $orders;
+    /** Rows fetched per database round trip when streaming a query-backed export. */
+    private const CHUNK_SIZE = 500;
 
-    /** @var Collection<int, Order>|null */
-    private readonly ?Collection $sourceCollection;
-
-    /** @param Builder<Order>|Collection<int, Order> $orders */
-    public function __construct(Builder|Collection $orders)
+    /**
+     * @param Builder<Order>|Collection<int, Order> $orders Query streamed in chunks for real downloads, or an
+     *        in-memory collection exported as-is (no database access, e.g. previews and tests).
+     */
+    public function __construct(private readonly Builder|Collection $orders)
     {
-        $this->sourceCollection = $orders instanceof Collection ? $orders : null;
-        $this->orders = $orders instanceof Builder
-            ? $orders
-            : Order::query()->whereKey($orders->pluck('id')->filter()->all())->with(['room', 'campaign']);
     }
 
-    /** @return Builder<Order> */
-    public function query(): Builder
+    /**
+     * Yield the orders to export; query-backed exports are read lazily in chunks so large statements stay
+     * within memory limits.
+     *
+     * @return Generator<int, Order>
+     */
+    public function generator(): Generator
     {
-        return clone $this->orders;
+        $orders = $this->orders instanceof Builder ? (clone $this->orders)->lazy(self::CHUNK_SIZE) : $this->orders;
+
+        foreach ($orders as $order) {
+            yield $order;
+        }
     }
 
     /** @return array<int, string|float> */
@@ -57,15 +63,13 @@ class PaymentStatementExport extends DefaultValueBinder implements FromQuery, Sh
     }
 
     /**
-     * Retained for lightweight unit assertions; real downloads use chunked FromQuery processing.
+     * Mapped rows for lightweight assertions; real downloads stream through generator().
      *
      * @return array<int, array<int, string|float>>
      */
     public function array(): array
     {
-        $orders = $this->sourceCollection ?? $this->query()->get();
-
-        return $orders->map(fn (Order $order): array => $this->map($order))->all();
+        return array_map(fn (Order $order): array => $this->map($order), iterator_to_array($this->generator(), false));
     }
 
     /** @return array<int, string> */

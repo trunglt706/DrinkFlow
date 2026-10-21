@@ -97,8 +97,9 @@ class SecurityHeaders
             'font-src '.implode(' ', $fontSrc),
             'img-src '.implode(' ', $imgSrc),
             'connect-src '.implode(' ', $connectSrc),
-            // Background music of the room event pages may be an https audio link chosen by the room admin.
-            "media-src 'self' https:",
+            // Background music of the room event pages may be an https audio link chosen by the room admin; blob: lets
+            // the admin events page preview an audio file picked for upload before it is sent.
+            "media-src 'self' https: blob:",
             "frame-ancestors 'self'",
             "base-uri 'self'",
             "object-src 'none'",

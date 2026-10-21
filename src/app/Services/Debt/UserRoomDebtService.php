@@ -72,8 +72,9 @@ class UserRoomDebtService
         $paymentAccount = $this->accounts->forRoom($room);
         $vietqrData = null;
         $payerName = $roomUser->payerName();
-        // Pay-all transfer content is just the member's name; the member code is a fallback when no name exists.
-        $payAllContent = $this->vietQr->payerContent($payerName) ?: (string) $roomUser->user_code;
+        // Pay-all transfer content is the member's name plus a short member reference (TV{id}) that bank
+        // reconciliation matches to this member.
+        $payAllContent = $this->vietQr->payAllContent($payerName, (int) $roomUser->id);
         if ($paymentAccount && $totalPayableAmount > 0) {
             $transferContent = $payAllContent;
             $vietqrData = [

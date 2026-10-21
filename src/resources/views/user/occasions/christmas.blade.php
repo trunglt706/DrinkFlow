@@ -11,7 +11,7 @@
         }
     }
 @endphp
-<x-occasion.page :room="$room" :occasion="$occasion" :year="$year" :wishes="$wishes" :audio="$audio"
+<x-occasion.page :room="$room" :occasion="$occasion" :year="$year" :wishes="$wishes" :audio="$audio" :wall="$wall" :back-url="$backUrl ?? null" :preview="$preview ?? false"
   theme="--accent:#ef4444;--accent-2:#fde68a;--soft:#bbf7d0;--line:rgba(187,247,208,.22);--card-1:rgba(14,58,52,.93);--card-2:rgba(8,26,36,.92);--hint-1:rgba(20,90,70,.9);--hint-2:rgba(140,30,30,.85);--bokeh:220,240,255;--bg:linear-gradient(160deg,#071a2b,#0b3b3a 50%,#0a1424);--glow-1:rgba(253,230,138,.18);--glow-2:rgba(239,68,68,.18);--glow-3:rgba(56,189,248,.18);"
   :effects="['sounds' => [['bells', 0], ['chime', 300]], 'rain' => ['snow'], 'rainColors' => ['#ffffff', '#e0f2fe', '#f8fafc'], 'rainEvery' => 140, 'rainBeforeOpen' => true, 'burst' => ['star', 'snow', 'confetti'], 'burstColors' => ['#fde68a', '#fde047', '#ef4444', '#4ade80', '#ffffff']]">
   <x-slot:styles>

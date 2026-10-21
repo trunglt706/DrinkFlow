@@ -312,6 +312,44 @@ class VietQrService
         return strtoupper($this->sanitizeReference((string) $payerName));
     }
 
+    /** Prefix of the member reference closing a pay-all transfer content ("TV" + room member ID). */
+    public const MEMBER_REFERENCE_PREFIX = 'TV';
+
+    /**
+     * Build the pay-all transfer content "{NAME} TV{roomUserId}": the name tells the admin who paid, the member
+     * reference lets bank reconciliation match the transfer to one member even when two members share a name.
+     *
+     * @param  ?string  $payerName  Member name with or without Vietnamese diacritics.
+     * @param  int      $roomUserId Room member ID.
+     * @return string               Sanitized content (≤ 25 chars); the name is shortened, never the reference.
+     */
+    public function payAllContent(?string $payerName, int $roomUserId): string
+    {
+        $reference = self::MEMBER_REFERENCE_PREFIX.$roomUserId;
+        $name = rtrim(substr($this->payerContent($payerName), 0, max(0, 25 - strlen($reference) - 1)));
+
+        return $name === '' ? $reference : $name.' '.$reference;
+    }
+
+    /**
+     * Room member ID of the pay-all reference found in a bank transfer content, if any.
+     *
+     * Banks may drop the spaces or append their own text, so the reference is searched after the content is reduced to
+     * upper-case letters and digits; names never contain digits.
+     *
+     * @param  string  $content Bank transfer content.
+     * @return int|null         Room member ID, or null when the content has no member reference.
+     */
+    public function memberReferenceIn(string $content): ?int
+    {
+        $normalized = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', ' ', $this->removeAccents($content)));
+        if (preg_match_all('/'.self::MEMBER_REFERENCE_PREFIX.'(\d{1,10})(?!\d)/', $normalized, $matches) !== 1) {
+            return null;
+        }
+
+        return (int) $matches[1][0];
+    }
+
     /**
      * Sanitize a transfer reference / memo string for embedding in the QR payload.
      *

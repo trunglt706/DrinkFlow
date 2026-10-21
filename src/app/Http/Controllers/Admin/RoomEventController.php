@@ -6,13 +6,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Actions\Room\SendRoomEventNotificationAction;
 use App\Enums\EventMusicMode;
+use App\Enums\RoomOccasion;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ModerateRoomEventWishRequest;
 use App\Http\Requests\SendRoomEventNotificationRequest;
 use App\Http\Requests\UpdateRoomEventSettingsRequest;
 use App\Http\Requests\UpdateRoomEventWishesRequest;
 use App\Models\Room;
+use App\Services\Birthday\RoomBirthdayService;
 use App\Services\Occasion\RoomEventService;
 use App\Services\Occasion\RoomEventSettingsService;
+use App\Services\Occasion\RoomEventWishWallService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -30,18 +34,82 @@ class RoomEventController extends Controller
      * @param RoomEventService $events Room events.
      * @return View Events page.
      */
-    public function index(Room $room, RoomEventService $events, RoomEventSettingsService $settings): View
+    public function index(Room $room, RoomEventService $events, RoomEventSettingsService $settings, RoomEventWishWallService $wall): View
     {
         return view('admin.events.index', [
             'room' => $room,
             'events' => $events->upcoming($room),
             'today' => $events->today($room),
             'settings' => $settings->all($room),
+            'walls' => $wall->forAdmin($room),
         ]);
     }
 
     /**
-     * Save the background music and sound effects of one event page.
+     * Preview an event page as the members see it, whatever the date: the birthday page celebrates the members of
+     * the window, or a "Demo" celebrant when there is none. The wishes wall (members only) is left out.
+     *
+     * @param Room $room Room whose page is previewed.
+     * @param string $type `birthday` or a RoomOccasion value (constrained by the route).
+     * @param RoomEventService $events Room events.
+     * @param RoomEventSettingsService $settings Music, sound and wishes of the page.
+     * @param RoomBirthdayService $birthdays Birthday lookup.
+     * @return View Event page in preview mode.
+     */
+    public function preview(Room $room, string $type, RoomEventService $events, RoomEventSettingsService $settings, RoomBirthdayService $birthdays): View
+    {
+        $common = [
+            'room' => $room,
+            'audio' => $settings->forEvent($room, $type),
+            'wishes' => $settings->wishes($room, $type),
+            'wall' => null,
+            'backUrl' => route('admin.events.index', $room),
+            'preview' => true,
+        ];
+
+        if ($type === SendRoomEventNotificationAction::TYPE_BIRTHDAY) {
+            $celebrants = $birthdays->celebrants($room);
+
+            return view('user.birthday.show', $common + [
+                'celebrants' => $celebrants !== [] ? $celebrants : [$birthdays->demoCelebrant($room)],
+                'viewerCode' => '',
+            ]);
+        }
+
+        $occasion = RoomOccasion::from($type);
+
+        return view('user.occasions.'.str_replace('_', '-', $occasion->value), $common + [
+            'occasion' => $occasion,
+            'year' => $events->occurrence($occasion, $events->today($room))['date']->year,
+        ]);
+    }
+
+    /**
+     * Hide a member's wish of an event wishes wall, or show it again.
+     *
+     * @param ModerateRoomEventWishRequest $request Validated state.
+     * @param Room $room Room of the wish.
+     * @param int $wish Wish id.
+     * @param RoomEventWishWallService $wall Wishes wall.
+     * @return JsonResponse|RedirectResponse JSON for the page script, otherwise back to the events page.
+     */
+    public function moderateWish(ModerateRoomEventWishRequest $request, Room $room, int $wish, RoomEventWishWallService $wall): JsonResponse|RedirectResponse
+    {
+        $hidden = $request->boolean('hidden');
+        /** @var \App\Models\Admin $admin */
+        $admin = $request->user('admin');
+        $wall->setHidden($room, $admin, $wish, $hidden);
+        $message = __($hidden ? 'occasions.wall.admin_hidden' : 'occasions.wall.admin_shown');
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message, 'hidden' => $hidden]);
+        }
+
+        return redirect()->route('admin.events.index', $room)->with('status', $message);
+    }
+
+    /**
+     * Save the background music (built-in, link, uploaded file or none) and sound effects of one event page.
      *
      * @param UpdateRoomEventSettingsRequest $request Validated settings.
      * @param Room $room Room whose page is set.
@@ -57,6 +125,7 @@ class RoomEventController extends Controller
             EventMusicMode::from((string) $request->validated('music_mode')),
             $request->validated('music_url'),
             $request->boolean('sound_effects'),
+            $request->file('music_file'),
         );
 
         if ($request->expectsJson()) {
@@ -64,7 +133,13 @@ class RoomEventController extends Controller
 
             return response()->json([
                 'message' => __('occasions.admin.settings_saved'),
-                'settings' => ['music_mode' => $saved['music_mode']->value, 'music_url' => $saved['music_url'], 'sound_effects' => $saved['sound_effects']],
+                'settings' => [
+                    'music_mode' => $saved['music_mode']->value,
+                    'music_url' => $saved['music_url'],
+                    'music_file_url' => $saved['music_file_url'],
+                    'music_name' => $saved['music_name'],
+                    'sound_effects' => $saved['sound_effects'],
+                ],
             ]);
         }
 

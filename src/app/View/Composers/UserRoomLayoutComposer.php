@@ -7,7 +7,6 @@ namespace App\View\Composers;
 use App\Constants\AppLocale;
 use App\Enums\CampaignStatus;
 use App\Enums\DebtStatus;
-use App\Enums\OrderStatus;
 use App\Models\Debt;
 use App\Models\GlobalUser;
 use App\Models\Order;
@@ -75,14 +74,12 @@ class UserRoomLayoutComposer
             ] : null;
         }
 
-        // "Đơn hàng của tôi" only lists orders of the live campaign, so it is shown only when this
-        // member has a (non-cancelled) order in a live campaign of the room.
+        // "Đơn hàng của tôi" shows the live campaign's order and the history of earlier orders, so it
+        // is shown as soon as this member has any order in the room.
         $showMyOrdersTab = $room instanceof Room && $roomUser instanceof RoomUser
             && Order::query()
                 ->where('room_id', $room->id)
                 ->visibleToMember($roomUser)
-                ->inLiveCampaign()
-                ->where('status', '!=', OrderStatus::Cancelled->value)
                 ->exists();
 
         $unpaidDebtCount = (int) ($data['unpaidDebtCount'] ?? 0);

@@ -190,6 +190,16 @@
                             <span class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full bg-outline-variant transition-colors peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40 after:content-[''] after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
                         </label>
                     </div>
+                    <div class="flex items-center gap-4 pt-5 border-t border-outline-variant/50">
+                        <div class="min-w-0 flex-1">
+                            <label for="set-auto-debt-reminders" class="block cursor-pointer select-none text-xs font-semibold text-on-surface">{{ __('debt_reminder.setting_label') }}</label>
+                            <p class="mt-0.5 text-[11px] text-outline">{{ __('debt_reminder.setting_hint') }}</p>
+                        </div>
+                        <label class="relative inline-flex shrink-0 cursor-pointer">
+                            <input type="checkbox" id="set-auto-debt-reminders" {{ ($settings[\App\Services\Debt\DebtAutoReminderService::SETTING_KEY] ?? true) ? 'checked' : '' }} class="peer sr-only">
+                            <span class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full bg-outline-variant transition-colors peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40 after:content-[''] after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"></span>
+                        </label>
+                    </div>
                 </div>
             </section>
 
