@@ -326,9 +326,14 @@ class MonthlySponsorStatisticsTest extends TestCase
         ], $report['members']);
 
         $admin = $this->roomAdmin($room, 'report-admin@example.test');
-        $this->actingAs($admin, 'admin')->get('/admin/report-room/reports/analytics?report_tab=badges&badge_year=2025')->assertOk()
+        $html = $this->actingAs($admin, 'admin')->get('/admin/report-room/reports/analytics?report_tab=badges&badge_year=2025')->assertOk()
             ->assertSee('id="rtab-badges"', false)->assertSee('data-badge-months', false)->assertSee('12/2025')
-            ->assertDontSee('09/2026')->assertSee("switchReportTab?.('badges')", false);
+            ->assertSee("switchReportTab?.('badges')", false)->getContent();
+        // The 2025 podium table lists no 2026 month (the page's date filter shows dd/mm/yyyy dates of its own).
+        $badgeTable = substr($html, (int) strpos($html, 'data-badge-months'));
+        $badgeTable = substr($badgeTable, 0, (int) strpos($badgeTable, '</table>'));
+        $this->assertStringContainsString('12/2025', $badgeTable);
+        $this->assertStringNotContainsString('09/2026', $badgeTable);
         $this->actingAs($admin, 'admin')->get('/admin/report-room/reports/analytics?badge_year=abc')->assertOk()
             ->assertSee(__('sponsor_honors.report_title', ['year' => 2026]))->assertDontSee("switchReportTab?.('badges')", false);
     }

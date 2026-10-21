@@ -52,7 +52,7 @@ return [
     'share' => 'Chia sẻ',
     'share_text' => 'Năm :year của mình trên DrinkFlow: :cups ly, món ruột :item!',
     'downloaded' => 'Đã tải ảnh tổng kết',
-    'back' => 'Quay lại phòng',
+    'back' => 'Quay lại Thành tích',
     'replay' => 'Xem lại',
     'empty_title' => 'Năm :year bạn chưa đặt món nào trong phòng :room',
     'empty_desc' => 'Hãy tham gia các chiến dịch gom đơn để có tổng kết năm thật ấn tượng nhé!',
@@ -60,4 +60,8 @@ return [
     'banner_desc' => 'Xem lại số ly, món ruột, quán quen và chia sẻ thẻ tổng kết với cả phòng.',
     'banner_cta' => 'Xem ngay',
     'achievements_link' => 'Xem tổng kết năm :year',
+    'notify_title' => '🎉 Tổng kết năm :year của bạn đã sẵn sàng',
+    'notify_body' => 'Năm :year bạn đã thưởng thức :cups ly cùng phòng :room. Mở xem món ruột, quán quen và thẻ tổng kết của bạn nhé!',
+    'notify_channel' => '🎉 Tổng kết năm :year của phòng :room: cả phòng đã uống :cups ly cùng :members thành viên. Mỗi người hãy mở tổng kết của riêng mình và chia sẻ thẻ tổng kết nhé!',
+    'notify_link' => 'Xem tổng kết: :url',
 ];

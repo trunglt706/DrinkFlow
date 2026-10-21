@@ -51,7 +51,7 @@ return [
     'cancel' => 'キャンセル',
     'load_error' => '取引一覧を読み込めませんでした。もう一度お試しください。',
     'empty_description' => '「新しい取引を作成」から最初の入金を記録しましょう。',
-    'empty_filtered' => 'この種類の取引はありません。',
+    'empty_filtered' => '条件に合う取引はありません。',
     'validation' => [
         'amount_required' => '金額を入力してください。',
         'amount_positive' => '金額は 0 より大きくしてください。',
@@ -59,4 +59,14 @@ return [
         'amount_max' => '1 回の取引の上限は :max です。',
         'note_required' => 'この取引の内容を入力してください。',
     ],
+
+    'filter_member' => 'メンバー',
+    'filter_member_all' => '— すべてのメンバー —',
+    'filter_from' => '開始日',
+    'filter_to' => '終了日',
+    'filter_submit' => '絞り込み',
+    'filter_reset' => '条件をクリア',
+    'member_search' => 'メンバー名またはコードを入力…',
+    'member_no_match' => 'メンバーが見つかりません。',
+    'member_hint' => '名前を入力して検索できます。メンバーに紐づかない入金は空欄のままにしてください。',
 ];

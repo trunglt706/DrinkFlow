@@ -446,6 +446,15 @@ class RoomEventsTest extends TestCase
         Storage::disk('public')->assertMissing($first);
         Storage::disk('public')->assertExists($second);
 
+        // A file refused by PHP (e.g. over upload_max_filesize) gets an explicit message and is logged...
+        $refused = new UploadedFile(UploadedFile::fake()->create('big.mp3', 10)->getPathname(), 'big.mp3', 'audio/mpeg', UPLOAD_ERR_INI_SIZE, true);
+        \Illuminate\Support\Facades\Log::spy();
+        $this->actingAs($admin, 'admin')->putJson($save, ['type' => 'womens_day', 'music_mode' => 'upload', 'music_file' => $refused])
+            ->assertStatus(422)->assertJsonPath('errors.music_file.0', __('occasions.admin.music_file_upload_failed', ['size' => RoomEventSettingsService::musicFileMaxMb()]));
+        \Illuminate\Support\Facades\Log::shouldHaveReceived('warning')->withArgs(static fn (string $message, array $context): bool => $context['error_code'] === UPLOAD_ERR_INI_SIZE)->once();
+        // ...and ignored when another mode is chosen with it still in the picker.
+        $this->actingAs($admin, 'admin')->putJson($save, ['type' => 'christmas', 'music_mode' => 'builtin', 'music_file' => $refused])->assertOk();
+
         // Leaving the upload mode deletes the file.
         $this->actingAs($admin, 'admin')->putJson($save, ['type' => 'womens_day', 'music_mode' => 'builtin'])->assertOk()->assertJsonPath('settings.music_file_url', null);
         Storage::disk('public')->assertMissing($second);

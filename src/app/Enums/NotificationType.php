@@ -36,6 +36,7 @@ enum NotificationType: string
     case WomensDay = 'occasion.womens_day';
     case MensDay = 'occasion.mens_day';
     case Christmas = 'occasion.christmas';
+    case YearRecap = 'recap.year';
 
     /**
      * Notification type of an occasion greeting.

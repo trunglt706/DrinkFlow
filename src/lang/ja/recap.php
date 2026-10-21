@@ -52,7 +52,7 @@ return [
     'share' => '共有',
     'share_text' => 'DrinkFlow での :year 年：:cups 杯、定番は :item！',
     'downloaded' => 'まとめ画像を保存しました',
-    'back' => 'ルームに戻る',
+    'back' => '実績に戻る',
     'replay' => 'もう一度見る',
     'empty_title' => ':year 年は :room で注文がありませんでした',
     'empty_desc' => '共同注文に参加して、印象的な年間まとめを作りましょう！',
@@ -60,4 +60,8 @@ return [
     'banner_desc' => '杯数、定番ドリンク、お気に入りのお店をふり返り、まとめカードをルームのみんなと共有しましょう。',
     'banner_cta' => '今すぐ見る',
     'achievements_link' => ':year 年のまとめを見る',
+    'notify_title' => '🎉 :year 年のまとめができました',
+    'notify_body' => ':year 年は :room で :cups 杯を楽しみました。定番ドリンク、お気に入りのお店、まとめカードを見てみましょう！',
+    'notify_channel' => '🎉 :room の :year 年まとめ：メンバー :members 人で合計 :cups 杯。それぞれ自分のまとめを開いて、カードを共有しましょう！',
+    'notify_link' => 'まとめを見る：:url',
 ];

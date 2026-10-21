@@ -102,8 +102,8 @@
                     <input type="text" id="version-field-version" name="version" required maxlength="50" autocomplete="off" placeholder="{{ __('superadmin.versions.field_version_placeholder') }}" class="sa-field">
                 </div>
                 <div>
-                    <label for="version-field-release-date" class="sa-label">{{ __('superadmin.versions.field_release_date') }}</label>
-                    <input type="date" id="version-field-release-date" name="release_date" class="sa-field">
+                    <label for="version-field-release-date-display" class="sa-label">{{ __('superadmin.versions.field_release_date') }}</label>
+                    <x-date-input id="version-field-release-date" name="release_date" input-class="sa-field" />
                 </div>
             </div>
             <div>

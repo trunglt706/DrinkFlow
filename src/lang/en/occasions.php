@@ -78,6 +78,7 @@ return [
         'music_file_hint' => ':types, up to :size MB. Choose a new file to replace the one in use; switching to another mode deletes the uploaded file.',
         'music_file_required' => 'Choose a music file to upload.',
         'music_file_too_large' => 'The music file is larger than :size MB.',
+        'music_file_upload_failed' => 'The server did not receive the music file (it accepts files up to :size MB). Choose a smaller file or ask the system administrator to raise the upload limit.',
         'sound_effects' => 'Sound effects',
         'save' => 'Save',
         'preview' => 'Preview',

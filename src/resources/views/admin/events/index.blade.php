@@ -155,7 +155,7 @@
 
     {{-- Sound modals: background music and sound effects of each event page, saved in place, with a preview. --}}
     <div data-event-settings-section
-        data-i18n="{{ json_encode(['preview' => __('occasions.admin.preview'), 'stop' => __('occasions.admin.preview_stop'), 'previewError' => __('occasions.admin.preview_error'), 'needsUrl' => __('occasions.admin.preview_needs_url'), 'needsFile' => __('occasions.admin.music_file_required'), 'fileTooLarge' => __('occasions.admin.music_file_too_large', ['size' => intdiv(\App\Services\Occasion\RoomEventSettingsService::MUSIC_FILE_MAX_KB, 1024)]),'saveError' => __('occasions.admin.save_error'), 'saving' => __('occasions.admin.saving'), 'pageError' => __('occasions.admin.music_url_page', ['site' => '__SITE__']), 'streamingHosts' => \App\Services\Occasion\RoomEventSettingsService::STREAMING_PAGE_HOSTS], JSON_UNESCAPED_UNICODE) }}">
+        data-i18n="{{ json_encode(['preview' => __('occasions.admin.preview'), 'stop' => __('occasions.admin.preview_stop'), 'previewError' => __('occasions.admin.preview_error'), 'needsUrl' => __('occasions.admin.preview_needs_url'), 'needsFile' => __('occasions.admin.music_file_required'), 'fileTooLarge' => __('occasions.admin.music_file_too_large', ['size' => \App\Services\Occasion\RoomEventSettingsService::musicFileMaxMb()]),'saveError' => __('occasions.admin.save_error'), 'saving' => __('occasions.admin.saving'), 'pageError' => __('occasions.admin.music_url_page', ['site' => '__SITE__']), 'streamingHosts' => \App\Services\Occasion\RoomEventSettingsService::STREAMING_PAGE_HOSTS], JSON_UNESCAPED_UNICODE) }}">
         @foreach ($settings as $type => $setting)
             @php
                 $isCustom = $setting['music_mode'] === \App\Enums\EventMusicMode::Custom;
@@ -212,9 +212,9 @@
                                 <strong class="truncate font-semibold text-on-surface" data-music-file-name>{{ $setting['music_name'] }}</strong>
                             </p>
                             <input type="file" id="music-file-{{ $type }}" name="music_file" accept="{{ collect(\App\Services\Occasion\RoomEventSettingsService::MUSIC_FILE_TYPES)->map(fn (string $ext): string => '.'.$ext)->implode(',') }},audio/*"
-                                data-max-bytes="{{ \App\Services\Occasion\RoomEventSettingsService::MUSIC_FILE_MAX_KB * 1024 }}" aria-describedby="music-file-hint-{{ $type }}"
+                                data-max-bytes="{{ \App\Services\Occasion\RoomEventSettingsService::musicFileMaxKb() * 1024 }}" aria-describedby="music-file-hint-{{ $type }}"
                                 class="block w-full text-sm text-on-surface file:mr-3 file:h-9 file:cursor-pointer file:rounded-lg file:border-0 file:bg-surface-container file:px-3 file:text-xs file:font-semibold file:text-on-surface hover:file:bg-surface-container-high">
-                            <span id="music-file-hint-{{ $type }}" class="block text-[11px] text-outline">{{ __('occasions.admin.music_file_hint', ['types' => strtoupper(implode(', ', \App\Services\Occasion\RoomEventSettingsService::MUSIC_FILE_TYPES)), 'size' => intdiv(\App\Services\Occasion\RoomEventSettingsService::MUSIC_FILE_MAX_KB, 1024)]) }}</span>
+                            <span id="music-file-hint-{{ $type }}" class="block text-[11px] text-outline">{{ __('occasions.admin.music_file_hint', ['types' => strtoupper(implode(', ', \App\Services\Occasion\RoomEventSettingsService::MUSIC_FILE_TYPES)), 'size' => \App\Services\Occasion\RoomEventSettingsService::musicFileMaxMb()]) }}</span>
                         </div>
                         <label class="inline-flex items-center gap-2 text-sm font-medium text-on-surface">
                             <input type="hidden" name="sound_effects" value="0">
@@ -469,6 +469,8 @@
                     urlField.hidden = !custom;
                     urlInput.required = custom;
                     fileField.hidden = mode.value !== 'upload';
+                    // A file picked for the upload mode is dropped when another mode is chosen.
+                    if (mode.value !== 'upload') fileInput.value = '';
                     preview.hidden = mode.value === 'off';
                     if (playing && playing.form === form) stopPreview();
                     setStatus(form, '', true);
@@ -531,14 +533,20 @@
                     window.dfEventBusy(save, true, i18n.saving);
                     setStatus(form, '', true);
                     try {
+                        // The audio file is only sent with the upload mode.
+                        const body = new FormData(form);
+                        if (mode.value !== 'upload' || !fileInput.files[0]) body.delete('music_file');
                         const response = await fetch(form.action, {
                             method: 'POST',
-                            body: new FormData(form),
+                            body,
                             headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                             credentials: 'same-origin',
                         });
                         const data = await response.json().catch(() => ({}));
-                        if (response.ok) {
+                        if (response.status === 413) {
+                            // Refused by the web server / PHP before reaching the application.
+                            setStatus(form, i18n.fileTooLarge, false);
+                        } else if (response.ok) {
                             setStatus(form, '✓ ' + (data.message || ''), true);
                             // The saved file becomes the current one (the picker is emptied).
                             const saved = data.settings || {};

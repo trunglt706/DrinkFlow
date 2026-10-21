@@ -80,9 +80,11 @@
     .bars span.is-done i{width:100%}
     .bars span.is-active i{animation:fill var(--slide-ms,6000ms) linear forwards}
     .story.is-paused .bars span.is-active i{animation-play-state:paused}
-    .top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;font-size:13px;font-weight:600}
-    .top a,.icon-btn{color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);font:600 13px 'Be Vietnam Pro',sans-serif;cursor:pointer}
-    .icon-btn:focus-visible,.top a:focus-visible,.btn:focus-visible{outline:2px solid #fff;outline-offset:3px}
+    .top{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-height:34px;margin-top:12px;font-size:13px;font-weight:600}
+    /* Back to the achievements page: pinned to the left edge of the screen, outside the story column. */
+    .back{position:fixed;top:30px;left:16px;z-index:20}
+    .back,.icon-btn{color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);font:600 13px 'Be Vietnam Pro',sans-serif;cursor:pointer}
+    .icon-btn:focus-visible,.back:focus-visible,.btn:focus-visible{outline:2px solid #fff;outline-offset:3px}
     .stage{position:relative;flex:1;display:grid}
     .slide{grid-area:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:12px 4px;
       opacity:0;visibility:hidden;transform:translateY(14px);transition:opacity .9s cubic-bezier(.4,0,.2,1),transform 1s cubic-bezier(.22,1,.36,1),visibility 0s 1s}
@@ -122,10 +124,11 @@
 </head>
 <body data-theme="{{ $slides === [] ? 'summary' : 'intro' }}">
   <div class="bg" aria-hidden="true"></div>
+  <a class="back" href="{{ route('user.rooms.achievements', $room) }}" data-recap-back>← {{ __('recap.back') }}</a>
 
   @if ($recap === null)
     <main class="story">
-      <div class="top"><a href="{{ route('user.dashboard', $room) }}">← {{ __('recap.back') }}</a></div>
+      <div class="top"></div>
       <div class="empty" data-recap-empty>
         <span class="emoji" aria-hidden="true">🥤</span>
         <h1 class="mid">{{ __('recap.empty_title', $params) }}</h1>
@@ -142,7 +145,6 @@
         @endforeach
       </div>
       <div class="top">
-        <a href="{{ route('user.dashboard', $room) }}">← {{ __('recap.back') }}</a>
         <button type="button" class="icon-btn" data-recap-toggle aria-pressed="false" aria-label="{{ __('recap.pause') }}">❚❚</button>
       </div>
 

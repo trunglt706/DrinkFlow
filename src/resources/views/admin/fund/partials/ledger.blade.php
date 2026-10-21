@@ -12,7 +12,7 @@
 @endphp
 @if ($entries->isEmpty())
     <div class="p-4" data-fund-empty>
-        <x-admin.empty-state icon="account_balance_wallet" :title="__('room_fund.empty')" :description="$type ? __('room_fund.empty_filtered') : __('room_fund.empty_description')" />
+        <x-admin.empty-state icon="account_balance_wallet" :title="__('room_fund.empty')" :description="($filtered ?? false) ? __('room_fund.empty_filtered') : __('room_fund.empty_description')" />
     </div>
 @else
     <div class="overflow-x-auto">

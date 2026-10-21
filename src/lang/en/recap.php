@@ -52,7 +52,7 @@ return [
     'share' => 'Share',
     'share_text' => 'My :year on DrinkFlow: :cups cups, go-to drink :item!',
     'downloaded' => 'Recap image downloaded',
-    'back' => 'Back to room',
+    'back' => 'Back to achievements',
     'replay' => 'Replay',
     'empty_title' => 'You did not order in :room in :year',
     'empty_desc' => 'Join the group orders to get an impressive year recap!',
@@ -60,4 +60,8 @@ return [
     'banner_desc' => 'Look back at your cups, go-to drink and favourite shop, and share your recap card with the room.',
     'banner_cta' => 'See it now',
     'achievements_link' => 'See my :year recap',
+    'notify_title' => '🎉 Your :year recap is ready',
+    'notify_body' => 'In :year you enjoyed :cups cups with :room. Open it to see your go-to drink, favourite shop and recap card!',
+    'notify_channel' => '🎉 :room\'s :year recap: :members members drank :cups cups together. Everyone, open your own recap and share your card!',
+    'notify_link' => 'See the recap: :url',
 ];

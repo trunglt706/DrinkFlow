@@ -117,22 +117,40 @@ function initFundLedger() {
     if (!section) return;
     let i18n = {};
     try { i18n = JSON.parse(section.dataset.i18n || '{}'); } catch { i18n = {}; }
+    const form = section.querySelector('[data-fund-filter-form]');
+    const typeInput = form.querySelector('[data-fund-type-filter]');
+    const reset = form.querySelector('[data-fund-filter-reset]');
+    const filterError = form.querySelector('[data-fund-filter-error]');
     const ledger = section.querySelector('[data-fund-ledger]');
     const skeleton = section.querySelector('[data-fund-skeleton]');
-    const filters = [...section.querySelectorAll('[data-fund-filter]')];
+    const pills = [...section.querySelectorAll('[data-fund-filter]')];
     const exportLink = document.querySelector('[data-fund-export]');
     const activeClasses = ['bg-primary', 'text-on-primary'];
     const idleClasses = ['bg-surface-container', 'text-on-surface-variant', 'hover:bg-surface-container-high'];
     let controller = null;
 
-    const markFilter = (url) => {
-        const current = new URL(url, window.location.origin).searchParams.get('type') || '';
-        filters.forEach((link) => {
-            const active = link.dataset.fundFilter === current;
-            link.classList.remove(...(active ? idleClasses : activeClasses));
-            link.classList.add(...(active ? activeClasses : idleClasses));
-            if (active) link.setAttribute('aria-current', 'true'); else link.removeAttribute('aria-current');
+    // URL of the ledger with the filters of the form (blank filters left out).
+    const formUrl = () => {
+        const url = new URL(form.action, window.location.origin);
+        new FormData(form).forEach((value, key) => { if (String(value).trim() !== '') url.searchParams.set(key, value); });
+        return url.toString();
+    };
+    const syncForm = (url) => {
+        const params = new URL(url, window.location.origin).searchParams;
+        typeInput.value = params.get('type') || '';
+        pills.forEach((pill) => {
+            const active = pill.dataset.fundFilter === typeInput.value;
+            pill.classList.remove(...(active ? idleClasses : activeClasses));
+            pill.classList.add(...(active ? activeClasses : idleClasses));
+            if (active) pill.setAttribute('aria-current', 'true'); else pill.removeAttribute('aria-current');
         });
+        ['date_from', 'date_to'].forEach((name) => { form.elements[name].value = params.get(name) || ''; });
+        if (!params.get('member')) window.dispatchEvent(new CustomEvent('member-combobox-reset', { detail: 'member' }));
+        reset.hidden = ['type', 'member', 'date_from', 'date_to'].every((name) => !params.get(name));
+    };
+    const showError = (text) => {
+        filterError.textContent = text || '';
+        filterError.classList.toggle('hidden', !text);
     };
 
     const load = async (url, push = true) => {
@@ -140,15 +158,22 @@ function initFundLedger() {
         controller = new AbortController();
         ledger.setAttribute('aria-busy', 'true');
         ledger.replaceChildren(skeleton.content.cloneNode(true));
-        markFilter(url);
+        syncForm(url);
+        showError('');
         try {
             const response = await fetch(url, {
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 credentials: 'same-origin',
                 signal: controller.signal,
             });
+            const data = await response.json().catch(() => ({}));
+            if (response.status === 422) {
+                const first = data.errors ? (Object.values(data.errors)[0] || [])[0] : null;
+                showError(first || data.message);
+                ledger.innerHTML = '';
+                return;
+            }
             if (!response.ok) throw new Error(String(response.status));
-            const data = await response.json();
             ledger.innerHTML = data.html || '';
             if (exportLink && data.export_url) exportLink.href = data.export_url;
             if (push) window.history.pushState({ fundLedger: true }, '', url);
@@ -164,11 +189,22 @@ function initFundLedger() {
         }
     };
 
-    filters.forEach((link) => link.addEventListener('click', (event) => {
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        load(formUrl());
+    });
+    // A type pill keeps the other filters; choosing a member applies at once.
+    pills.forEach((pill) => pill.addEventListener('click', (event) => {
         if (event.metaKey || event.ctrlKey || event.shiftKey) return;
         event.preventDefault();
-        load(link.href);
+        typeInput.value = pill.dataset.fundFilter;
+        load(formUrl());
     }));
+    form.querySelector('input[name="member"]')?.addEventListener('change', () => load(formUrl()));
+    reset.addEventListener('click', (event) => {
+        event.preventDefault();
+        load(reset.href);
+    });
     // Pagination links come with each loaded table.
     ledger.addEventListener('click', (event) => {
         const link = event.target.closest('[data-fund-pagination] a[href]');

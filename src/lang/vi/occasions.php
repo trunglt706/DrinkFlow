@@ -78,6 +78,7 @@ return [
         'music_file_hint' => 'Định dạng :types, tối đa :size MB. Chọn tệp mới để thay tệp đang dùng; đổi sang chế độ khác sẽ xóa tệp đã tải lên.',
         'music_file_required' => 'Hãy chọn một tệp nhạc để tải lên.',
         'music_file_too_large' => 'Tệp nhạc vượt quá :size MB.',
+        'music_file_upload_failed' => 'Máy chủ không nhận được tệp nhạc (máy chủ chỉ cho phép tệp tối đa :size MB). Hãy chọn tệp nhỏ hơn hoặc nhờ quản trị hệ thống tăng giới hạn tải lên.',
         'sound_effects' => 'Hiệu ứng âm thanh',
         'save' => 'Lưu',
         'preview' => 'Nghe thử',

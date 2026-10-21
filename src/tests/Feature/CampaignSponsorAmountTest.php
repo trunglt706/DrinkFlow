@@ -113,6 +113,53 @@ class CampaignSponsorAmountTest extends TestCase
         $this->assertSame($displayed, $after['sponsorsList']->pluck('amount')->all());
     }
 
+    /**
+     * Production case: 2 sponsors at 50% of a 250,000 gross total showed 124,999 / 125,000 while the campaign
+     * was running (125,000 each once closed). The delivery fee split between the orders rounded each part, so
+     * the parts summed to 9,999 instead of 10,000 and the pool lost 1đ.
+     */
+    public function test_two_half_sponsors_of_an_even_total_get_equal_shares_before_and_after_close(): void
+    {
+        $campaign = Campaign::create([
+            'room_id' => $this->room->id,
+            'name' => 'Half and half',
+            'restaurant' => 'Cafe',
+            'status' => CampaignStatus::Active,
+            'sponsor_type' => Campaign::SPONSOR_TYPE_FULL,
+            'sponsor_allocations' => [
+                ['room_user_id' => $this->sponsorA->id, 'percentage' => 50],
+                ['room_user_id' => $this->sponsorB->id, 'percentage' => 50],
+            ],
+            // 3 equal orders: 10,000 / 3 = 3,333.33 per order.
+            'delivery_fee' => 10000,
+            'self_paid_price_basis' => Campaign::SELF_PAID_PRICE_BASIS_ORIGINAL,
+        ]);
+        $tea = CampaignItem::create(['campaign_id' => $campaign->id, 'name' => 'Tea', 'normalized_name' => 'TEA', 'base_price' => 80000, 'status' => 'active']);
+        foreach ([$this->member, $this->roomUser('Member 2'), $this->roomUser('Member 3')] as $member) {
+            app(CreateOrderAction::class)->execute($campaign, $member, ['items' => [['item_id' => $tea->id, 'quantity' => 1, 'is_self_paid' => false]]]);
+        }
+        $service = app(AdminCampaignDetailService::class);
+
+        // Running campaign: the admin campaign info page.
+        $running = $service->getCampaignViewData($this->room, $campaign->fresh());
+        $this->assertSame(250000, $running['grossTotal']);
+        $this->assertSame(250000, $running['sponsorSubsidy']);
+        $this->assertSame([125000, 125000], $running['sponsorsList']->pluck('amount')->all());
+        $admin = \App\Models\Admin::create(['name' => 'Room Admin', 'email' => 'sponsor-admin@example.test', 'password' => 'secret123', 'status' => 'active']);
+        $admin->rooms()->attach($this->room);
+        $html = $this->actingAs($admin, 'admin')->get(route('admin.campaigns.info', [$this->room->slug, $campaign->id]))->assertOk()->getContent();
+        $this->assertStringNotContainsString('124.999', $html);
+        $this->assertSame(2, substr_count($html, '125.000'));
+
+        // Closed campaign: the sponsor debts and the page show the same 125,000 each.
+        app(CloseCampaignAction::class)->execute($campaign);
+        $debts = Debt::query()->where('campaign_id', $campaign->id)->whereIn('room_user_id', [$this->sponsorA->id, $this->sponsorB->id])->orderBy('room_user_id')->pluck('remaining_amount')->map(static fn ($amount): int => (int) $amount)->all();
+        $this->assertSame([125000, 125000], $debts);
+        $closed = $service->getCampaignViewData($this->room, $campaign->fresh());
+        $this->assertSame(250000, $closed['sponsorSubsidy']);
+        $this->assertSame([125000, 125000], $closed['sponsorsList']->pluck('amount')->all());
+    }
+
     public function test_leaderboard_excludes_self_paid_lines(): void
     {
         $rows = app(SponsorLeaderboardService::class)->build($this->room)->keyBy('room_user_id');

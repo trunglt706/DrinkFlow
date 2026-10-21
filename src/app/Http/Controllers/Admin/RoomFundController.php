@@ -8,14 +8,15 @@ use App\Enums\RoomFundTransactionType;
 use App\Enums\RoomUserStatus;
 use App\Exports\RoomFundLedgerExport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ListRoomFundTransactionsRequest;
 use App\Http\Requests\StoreRoomFundTransactionRequest;
 use App\Models\Room;
 use App\Services\RoomFund\RoomFundService;
 use App\Support\Helpers\FormatHelper;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -26,32 +27,38 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class RoomFundController extends Controller
 {
     /**
-     * Fund balance, this month's totals and the ledger (newest first, optionally of one type).
+     * Fund balance, this month's totals and the ledger (newest first), filtered by type, member and date range.
      *
-     * @param Request $request Current request (`type` filter).
+     * @param ListRoomFundTransactionsRequest $request Validated ledger filters.
      * @param Room $room Room whose fund is shown.
      * @param RoomFundService $fund Fund ledger service.
-     * @return View|JsonResponse Fund page, or only the ledger table (JSON `html`) for the page script's filter and pagination.
+     * @return View|JsonResponse Fund page, or only the ledger table (JSON `html`) for the page script's filters and pagination.
      */
-    public function index(Request $request, Room $room, RoomFundService $fund): View|JsonResponse
+    public function index(ListRoomFundTransactionsRequest $request, Room $room, RoomFundService $fund): View|JsonResponse
     {
-        $type = RoomFundTransactionType::tryFrom((string) $request->query('type', ''));
-        $entries = $fund->history($room, $type)->paginate(30)->withQueryString();
+        $filters = $request->filters($room);
+        $entries = $fund->history($room, $filters['type'], $filters['member'], $filters['from'], $filters['to'])->paginate(30)->withQueryString();
 
         if ($request->expectsJson()) {
             return response()->json([
-                'html' => view('admin.fund.partials.ledger', ['room' => $room, 'entries' => $entries, 'type' => $type])->render(),
-                'export_url' => route('admin.fund.export', array_filter(['room' => $room, 'type' => $type?->value])),
+                'html' => view('admin.fund.partials.ledger', ['room' => $room, 'entries' => $entries, 'filtered' => $this->isFiltered($filters)])->render(),
+                'export_url' => route('admin.fund.export', ['room' => $room] + $this->filterQuery($filters)),
             ]);
         }
+
+        $members = $room->roomUsers()->orderBy('display_name')->get(['id', 'display_name', 'user_code', 'status']);
 
         return view('admin.fund.index', [
             'room' => $room,
             'balance' => $fund->balance($room),
             'monthTotals' => $fund->totals($room, now()->startOfMonth(), now()->addMonthNoOverflow()->startOfMonth()),
             'entries' => $entries,
-            'type' => $type,
-            'members' => $room->roomUsers()->where('status', RoomUserStatus::Active->value)->orderBy('display_name')->get(['id', 'display_name', 'user_code']),
+            'filters' => $filters,
+            'filtered' => $this->isFiltered($filters),
+            'exportQuery' => $this->filterQuery($filters),
+            // Deposits are recorded for active members; the ledger can be filtered by any member of the room.
+            'members' => $members->filter(static fn ($member): bool => $member->status === RoomUserStatus::Active)->values(),
+            'allMembers' => $members,
         ]);
     }
 
@@ -79,17 +86,44 @@ class RoomFundController extends Controller
     }
 
     /**
-     * Download the whole ledger (or one type of entry) as XLSX.
+     * Download the ledger (with the filters of the page) as XLSX.
      *
-     * @param Request $request Current request (`type` filter).
+     * @param ListRoomFundTransactionsRequest $request Validated ledger filters.
      * @param Room $room Room whose fund is exported.
      * @param RoomFundService $fund Fund ledger service.
      * @return BinaryFileResponse Spreadsheet attachment.
      */
-    public function export(Request $request, Room $room, RoomFundService $fund): BinaryFileResponse
+    public function export(ListRoomFundTransactionsRequest $request, Room $room, RoomFundService $fund): BinaryFileResponse
     {
-        $type = RoomFundTransactionType::tryFrom((string) $request->query('type', ''));
+        $filters = $request->filters($room);
 
-        return Excel::download(new RoomFundLedgerExport($fund->history($room, $type)), 'drinkflow-'.$room->slug.'-fund-'.now()->format('Y-m-d').'.xlsx');
+        return Excel::download(
+            new RoomFundLedgerExport($fund->history($room, $filters['type'], $filters['member'], $filters['from'], $filters['to'])),
+            'drinkflow-'.$room->slug.'-fund-'.now()->format('Y-m-d').'.xlsx',
+        );
+    }
+
+    /**
+     * @param array{type: RoomFundTransactionType|null, member: int|null, from: CarbonImmutable|null, to: CarbonImmutable|null} $filters
+     */
+    private function isFiltered(array $filters): bool
+    {
+        return $filters['type'] !== null || $filters['member'] !== null || $filters['from'] !== null || $filters['to'] !== null;
+    }
+
+    /**
+     * Query string of the active filters (export link).
+     *
+     * @param array{type: RoomFundTransactionType|null, member: int|null, from: CarbonImmutable|null, to: CarbonImmutable|null} $filters
+     * @return array<string, string|int>
+     */
+    private function filterQuery(array $filters): array
+    {
+        return array_filter([
+            'type' => $filters['type']?->value,
+            'member' => $filters['member'],
+            'date_from' => $filters['from']?->toDateString(),
+            'date_to' => $filters['to']?->toDateString(),
+        ], static fn (mixed $value): bool => $value !== null);
     }
 }

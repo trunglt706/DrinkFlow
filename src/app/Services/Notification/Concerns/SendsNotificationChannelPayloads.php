@@ -289,6 +289,7 @@ trait SendsNotificationChannelPayloads
             str_starts_with($event, 'security.') => '🔐',
             $event === 'notification.test' => '🧪',
             str_starts_with($event, 'birthday.') => '🎂',
+            str_starts_with($event, 'recap.') => '🎉',
             default => '🔔',
         };
     }

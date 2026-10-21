@@ -460,11 +460,11 @@
                             class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary">
                     </div>
                     <div>
-                        <label for="create-user-birthday" class="block text-xs font-semibold text-on-surface mb-1">
+                        <label for="create-user-birthday-display" class="block text-xs font-semibold text-on-surface mb-1">
                             {{ __('admin.user_birthday_label') }}
                         </label>
-                        <input type="date" id="create-user-birthday" name="birthday" min="1900-01-01" max="{{ now()->subDay()->toDateString() }}"
-                            class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary">
+                        <x-date-input id="create-user-birthday" name="birthday" min="1900-01-01" :max="now()->subDay()->toDateString()"
+                            input-class="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary" />
                     </div>
                 </div>
 

@@ -98,6 +98,32 @@ class RoomFundLedgerTest extends TestCase
             ->assertSee('Banh sinh nhat');
     }
 
+    public function test_ledger_is_filtered_by_member_and_date_range(): void
+    {
+        \Illuminate\Support\Carbon::setTestNow('2026-10-01 03:00:00');
+        $this->store(['type' => 'deposit', 'amount' => 100000, 'room_user_id' => $this->member->id, 'note' => 'Nap thang 10'])->assertSessionHasNoErrors();
+        \Illuminate\Support\Carbon::setTestNow('2026-10-15 03:00:00');
+        $this->store(['type' => 'deposit', 'amount' => 50000, 'note' => 'Nap le'])->assertSessionHasNoErrors();
+        $this->store(['type' => 'deposit', 'amount' => 70000, 'room_user_id' => $this->member->id, 'note' => 'Nap giua thang'])->assertSessionHasNoErrors();
+        \Illuminate\Support\Carbon::setTestNow();
+        $ledger = fn (array $query) => $this->actingAs($this->admin, 'admin')->getJson(route('admin.fund.index', ['room' => $this->room->slug] + $query));
+
+        $ledger(['member' => $this->member->id])->assertOk()
+            ->assertSee('Nap thang 10')->assertSee('Nap giua thang')->assertDontSee('Nap le')
+            ->assertJsonPath('export_url', route('admin.fund.export', ['room' => $this->room->slug, 'member' => $this->member->id]));
+        $ledger(['date_from' => '2026-10-10', 'date_to' => '2026-10-20'])->assertOk()->assertSee('Nap le')->assertSee('Nap giua thang')->assertDontSee('Nap thang 10');
+        $ledger(['member' => $this->member->id, 'date_to' => '2026-10-05', 'type' => 'deposit'])->assertOk()->assertSee('Nap thang 10')->assertDontSee('Nap giua thang');
+        $this->assertStringContainsString(__('room_fund.empty_filtered'), (string) $ledger(['date_from' => '2026-11-01'])->assertOk()->json('html'));
+
+        // A member of another room or a reversed range is refused.
+        $ledger(['member' => 999999])->assertStatus(422)->assertJsonValidationErrors('member');
+        $ledger(['date_from' => '2026-10-20', 'date_to' => '2026-10-10'])->assertStatus(422)->assertJsonValidationErrors('date_to');
+
+        // The page shows the searchable member pickers (filter and deposit modal).
+        $this->actingAs($this->admin, 'admin')->get(route('admin.fund.index', $this->room->slug))
+            ->assertOk()->assertSee('data-member-combobox="member"', false)->assertSee('data-member-combobox="room_user_id"', false)->assertSee('data-fund-filter-form', false);
+    }
+
     public function test_formatted_amounts_are_accepted_and_the_ledger_reloads_as_json(): void
     {
         // The modal sends digits only, but a formatted amount is still read correctly.

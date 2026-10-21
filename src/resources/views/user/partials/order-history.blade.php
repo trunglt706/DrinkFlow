@@ -33,11 +33,11 @@
         </label>
         <label>
             <span class="mb-1 block text-[11px] font-semibold text-slate-600">{{ __('room.orders.filter_from') }}</span>
-            <input type="date" name="date_from" value="{{ $historyFilters['date_from'] ?? '' }}" class="{{ $field }}">
+            <x-date-input name="date_from" :value="$historyFilters['date_from'] ?? null" :input-class="$field" />
         </label>
         <label>
             <span class="mb-1 block text-[11px] font-semibold text-slate-600">{{ __('room.orders.filter_to') }}</span>
-            <input type="date" name="date_to" value="{{ $historyFilters['date_to'] ?? '' }}" class="{{ $field }}">
+            <x-date-input name="date_to" :value="$historyFilters['date_to'] ?? null" :input-class="$field" />
         </label>
         <label>
             <span class="mb-1 block text-[11px] font-semibold text-slate-600">{{ __('room.orders.filter_type') }}</span>

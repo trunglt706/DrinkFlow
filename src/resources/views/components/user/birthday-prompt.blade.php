@@ -39,7 +39,8 @@
     const COOKIE = 'df_birthday_prompt_dismissed';
     const prompt = document.querySelector('[data-birthday-prompt]');
     // On the profile page, the link (or an arrival from it) puts the cursor in the birthday field.
-    const field = document.getElementById('contact-birthday');
+    // The visible part of the shared date input component is the one that can be scrolled to and focused.
+    const field = document.getElementById('contact-birthday-display') ?? document.getElementById('contact-birthday');
     const goToField = () => { field.scrollIntoView({ behavior: 'smooth', block: 'start' }); field.focus({ preventScroll: true }); };
     if (field && location.hash === '#contact-birthday') setTimeout(goToField, 50);
     if (field && prompt) {

@@ -114,7 +114,8 @@ class YearRecapTest extends TestCase
         $this->actingAs($lan->globalUser, 'web')->get(route('user.dashboard', $this->room->slug))
             ->assertOk()->assertSee('data-recap-banner', false)->assertSee(route('user.rooms.recap', [$this->room->slug, 2026]), false);
         $this->actingAs($lan->globalUser, 'web')->get(route('user.rooms.recap', [$this->room->slug, 2026]))
-            ->assertOk()->assertSee('data-recap-slide="summary"', false)->assertSee('Phúc Long')->assertSee(__('recap.titles.connoisseur'));
+            ->assertOk()->assertSee('data-recap-slide="summary"', false)->assertSee('Phúc Long')->assertSee(__('recap.titles.connoisseur'))
+            ->assertSee('href="'.route('user.rooms.achievements', $this->room->slug).'" data-recap-back', false);
         // Past years open at any time; a year without orders shows an empty state.
         $this->actingAs($lan->globalUser, 'web')->get(route('user.rooms.recap', [$this->room->slug, 2025]))->assertOk()->assertSee('Highlands');
         $this->actingAs($lan->globalUser, 'web')->get(route('user.rooms.recap', [$this->room->slug, 2023]))->assertOk()->assertSee('data-recap-empty', false);
@@ -132,6 +133,50 @@ class YearRecapTest extends TestCase
         // In January the previous year is in season.
         Carbon::setTestNow('2027-01-10 10:00:00');
         $this->assertSame(2026, app(YearRecapService::class)->seasonYear($this->room));
+    }
+
+    public function test_year_recap_is_announced_once_the_new_year_has_started(): void
+    {
+        $lan = $this->member('Lan');
+        $minh = $this->member('Minh');
+        $this->member('Idle');
+        $this->order($lan, '2026-06-10 03:00:00', 'Phúc Long', ['Trà sữa' => 2]);
+        $this->order($minh, '2026-07-10 03:00:00', 'Highlands', ['Freeze' => 3]);
+        $sent = [];
+        $this->mock(\App\Services\Notification\RoomNotificationChannelDispatcher::class, function ($mock) use (&$sent): void {
+            $mock->shouldReceive('dispatch')->andReturnUsing(function (Room $room, array $payload) use (&$sent): int {
+                $sent[] = $payload;
+
+                return 2;
+            });
+        });
+        \Illuminate\Support\Facades\Event::fake([\App\Events\UserNotificationCreated::class]);
+
+        // Still the old year, then 1 January before 9:00 room time (Asia/Ho_Chi_Minh): nothing yet.
+        $this->artisan('drinkflow:send-year-recaps')->assertSuccessful();
+        Carbon::setTestNow('2026-12-31 20:00:00'); // 03:00 on 1/1 room time
+        $this->artisan('drinkflow:send-year-recaps')->assertSuccessful();
+        $this->assertSame([], $sent);
+
+        Carbon::setTestNow('2027-01-01 02:30:00'); // 09:30 room time
+        $this->artisan('drinkflow:send-year-recaps')->assertSuccessful();
+        $this->artisan('drinkflow:send-year-recaps')->assertSuccessful();
+
+        // One channel message for the room, one in-app (socket) notification per member who ordered.
+        $this->assertCount(1, $sent);
+        $this->assertSame('recap.year', $sent[0]['event']);
+        $this->assertSame(route('user.rooms.recap', [$this->room, 2026]), $sent[0]['url']);
+        $this->assertStringContainsString('5', $sent[0]['message']);
+        $notifications = \App\Models\UserNotification::query()->where('type', 'recap.year')->get();
+        $this->assertEqualsCanonicalizing([$lan->id, $minh->id], $notifications->pluck('room_user_id')->all());
+        $this->assertSame(route('user.rooms.recap', [$this->room, 2026]), $notifications->first()->link);
+        \Illuminate\Support\Facades\Event::assertDispatchedTimes(\App\Events\UserNotificationCreated::class, 2);
+        $this->assertSame(2, MemberYearRecap::query()->where('year', 2026)->count());
+        $this->assertDatabaseHas('room_year_recap_notifications', ['room_id' => $this->room->id, 'year' => 2026, 'member_count' => 2, 'channel_count' => 2]);
+
+        // A room without orders that year is not announced.
+        $empty = Room::create(['name' => 'Quiet', 'slug' => 'quiet-room', 'status' => 'active', 'timezone' => 'Asia/Ho_Chi_Minh']);
+        $this->assertFalse(app(\App\Services\Reporting\YearRecapNotificationService::class)->notifyRoom($empty));
     }
 
     public function test_recap_is_only_for_members_of_the_room(): void

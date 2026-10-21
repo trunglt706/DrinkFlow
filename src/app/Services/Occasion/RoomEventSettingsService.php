@@ -32,6 +32,27 @@ class RoomEventSettingsService
 
     public const MUSIC_FILE_MAX_KB = 8192;
 
+    /**
+     * Largest audio file accepted (kilobytes): MUSIC_FILE_MAX_KB, lowered to what this server's PHP accepts
+     * (upload_max_filesize / post_max_size), since a larger file never reaches the application.
+     */
+    public static function musicFileMaxKb(): int
+    {
+        $serverKb = intdiv((int) min(PHP_INT_MAX, UploadedFile::getMaxFilesize()), 1024);
+
+        return max(1, min(self::MUSIC_FILE_MAX_KB, $serverKb));
+    }
+
+    /**
+     * musicFileMaxKb() in megabytes, for messages (one decimal under 10 MB).
+     */
+    public static function musicFileMaxMb(): string
+    {
+        $mb = self::musicFileMaxKb() / 1024.0;
+
+        return $mb >= 10 || floor($mb) === $mb ? (string) (int) floor($mb) : number_format($mb, 1, '.', '');
+    }
+
     public const MUSIC_FOLDER = 'event-music';
 
     /**

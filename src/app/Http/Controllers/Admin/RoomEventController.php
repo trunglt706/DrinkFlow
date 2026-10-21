@@ -125,7 +125,8 @@ class RoomEventController extends Controller
             EventMusicMode::from((string) $request->validated('music_mode')),
             $request->validated('music_url'),
             $request->boolean('sound_effects'),
-            $request->file('music_file'),
+            // Validated only in the upload mode (excluded otherwise).
+            $request->validated('music_file'),
         );
 
         if ($request->expectsJson()) {

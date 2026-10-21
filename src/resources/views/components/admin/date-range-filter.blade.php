@@ -74,11 +74,14 @@
             <div class="grid grid-cols-2 gap-2">
                 <div>
                     <label class="block text-[10px] font-mono text-outline mb-0.5">{{ __('admin.start_date') }}</label>
-                    <input type="date" class="date-from-input w-full px-2 py-1.5 text-xs bg-surface border border-outline-variant rounded-lg text-on-surface focus:ring-1 focus:ring-primary focus:border-primary" value="{{ $dateFrom }}" />
+                    {{-- Shared date input: the hidden yyyy-mm-dd value keeps the class read by ui-enhancements.js. --}}
+                    <x-date-input :value="$dateFrom" value-class="date-from-input" :label="__('admin.start_date')"
+                        input-class="w-full px-2 py-1.5 text-xs bg-surface border border-outline-variant rounded-lg text-on-surface focus:ring-1 focus:ring-primary focus:border-primary" />
                 </div>
                 <div>
                     <label class="block text-[10px] font-mono text-outline mb-0.5">{{ __('admin.end_date') }}</label>
-                    <input type="date" class="date-to-input w-full px-2 py-1.5 text-xs bg-surface border border-outline-variant rounded-lg text-on-surface focus:ring-1 focus:ring-primary focus:border-primary" value="{{ $dateTo }}" />
+                    <x-date-input :value="$dateTo" value-class="date-to-input" :label="__('admin.end_date')"
+                        input-class="w-full px-2 py-1.5 text-xs bg-surface border border-outline-variant rounded-lg text-on-surface focus:ring-1 focus:ring-primary focus:border-primary" />
                 </div>
             </div>
             <div class="pt-1 flex items-center justify-end gap-2">

@@ -78,6 +78,7 @@ return [
         'music_file_hint' => ':types、最大 :size MB。新しいファイルを選ぶと現在のファイルを置き換えます。他のモードに切り替えるとアップロードしたファイルは削除されます。',
         'music_file_required' => 'アップロードする音楽ファイルを選んでください。',
         'music_file_too_large' => '音楽ファイルが :size MB を超えています。',
+        'music_file_upload_failed' => 'サーバーが音楽ファイルを受け取れませんでした（サーバーの上限は :size MB です）。小さいファイルを選ぶか、システム管理者にアップロード上限の引き上げを依頼してください。',
         'sound_effects' => '効果音',
         'save' => '保存',
         'preview' => '試聴',

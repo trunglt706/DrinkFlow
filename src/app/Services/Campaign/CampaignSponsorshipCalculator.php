@@ -64,12 +64,16 @@ class CampaignSponsorshipCalculator
         $deliveryFee = (int) ($campaign->delivery_fee ?? 0);
         $discount = (int) ($campaign->discount ?? 0);
 
+        // Fee and discount split by subtotal so the parts add up exactly (3 x 3,333.33 must give 10,000, not 9,999).
+        $weights = $orders->map(static fn (Order $order): int => (int) $order->subtotal)->all();
+        $feeParts = self::distribute($deliveryFee, $weights);
+        $discountParts = self::distribute($discount, $weights);
+
         $result = ['orders' => [], 'self_paid_by_user' => [], 'pool' => 0, 'subtotal' => 0, 'fee' => 0, 'discount' => 0];
-        foreach ($orders as $order) {
+        foreach ($orders as $index => $order) {
             $orderSubtotal = (int) $order->subtotal;
-            $orderRatio = $grossSubtotal > 0 ? ($orderSubtotal / $grossSubtotal) : 0;
-            $orderFee = (int) round($deliveryFee * $orderRatio);
-            $orderDiscount = (int) round($discount * $orderRatio);
+            $orderFee = $feeParts[$index] ?? 0;
+            $orderDiscount = $discountParts[$index] ?? 0;
 
             [$selfPaidSubtotal, $sponsorableSubtotal] = $this->splitSelfPaidSubtotal($order);
             [$selfPaidFee, $selfPaidDiscount, $sponsorFee, $sponsorDiscount] = $this->splitFeeAndDiscount(
@@ -90,6 +94,41 @@ class CampaignSponsorshipCalculator
         }
 
         return $result;
+    }
+
+    /**
+     * Split an amount in proportion to weights, in whole đồng, so the parts add up to the amount exactly
+     * (largest remainder: the parts with the biggest fractions get the leftover đồng, first ones on ties).
+     *
+     * @param int $amount Amount to split.
+     * @param array<int, int> $weights Weights (e.g. order subtotals), keyed like the result.
+     * @return array<int, int> Parts keyed like the weights; all zero when the weights sum to zero.
+     */
+    public static function distribute(int $amount, array $weights): array
+    {
+        $total = array_sum($weights);
+        if ($total <= 0 || $amount === 0) {
+            return array_map(static fn (): int => 0, $weights);
+        }
+
+        $parts = [];
+        $fractions = [];
+        foreach ($weights as $key => $weight) {
+            $exact = $amount * $weight / $total;
+            $parts[$key] = (int) floor($exact);
+            $fractions[$key] = $exact - $parts[$key];
+        }
+        $left = $amount - array_sum($parts);
+        arsort($fractions);
+        foreach (array_keys($fractions) as $key) {
+            if ($left <= 0) {
+                break;
+            }
+            $parts[$key]++;
+            $left--;
+        }
+
+        return $parts;
     }
 
     /**

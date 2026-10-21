@@ -87,3 +87,9 @@ Schedule::command('drinkflow:calculate-monthly-sponsors')
 Schedule::command('drinkflow:build-year-recaps')
     ->dailyAt('02:30')
     ->withoutOverlapping();
+
+// Year recap announcement (in-app + socket + room channels) once the new year has started: from 9:00 room time on
+// 1 January (hourly so every room timezone is covered; a missed run catches up during January; once per room and year).
+Schedule::command('drinkflow:send-year-recaps')
+    ->hourlyAt(25)
+    ->withoutOverlapping();

@@ -51,7 +51,7 @@ return [
     'cancel' => 'Cancel',
     'load_error' => 'The transactions could not be loaded, please try again.',
     'empty_description' => 'Click "New transaction" to record the first deposit.',
-    'empty_filtered' => 'There is no transaction of this type.',
+    'empty_filtered' => 'No transaction matches the filters.',
     'validation' => [
         'amount_required' => 'Please enter the amount.',
         'amount_positive' => 'The amount must be greater than 0.',
@@ -59,4 +59,14 @@ return [
         'amount_max' => 'A transaction is at most :max.',
         'note_required' => 'Please enter the description of this transaction.',
     ],
+
+    'filter_member' => 'Member',
+    'filter_member_all' => '— All members —',
+    'filter_from' => 'From',
+    'filter_to' => 'To',
+    'filter_submit' => 'Filter',
+    'filter_reset' => 'Clear filters',
+    'member_search' => 'Type a member name or code…',
+    'member_no_match' => 'No member found.',
+    'member_hint' => 'Type a name to search; leave empty when the deposit is not from a member.',
 ];

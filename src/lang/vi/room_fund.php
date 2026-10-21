@@ -51,7 +51,7 @@ return [
     'cancel' => 'Hủy',
     'load_error' => 'Không tải được danh sách giao dịch, vui lòng thử lại.',
     'empty_description' => 'Bấm "Tạo mới giao dịch" để ghi khoản nạp quỹ đầu tiên.',
-    'empty_filtered' => 'Không có giao dịch nào thuộc loại này.',
+    'empty_filtered' => 'Không có giao dịch nào khớp với bộ lọc.',
     'validation' => [
         'amount_required' => 'Vui lòng nhập số tiền.',
         'amount_positive' => 'Số tiền phải lớn hơn 0.',
@@ -59,4 +59,14 @@ return [
         'amount_max' => 'Số tiền tối đa cho một giao dịch là :max.',
         'note_required' => 'Vui lòng nhập nội dung cho giao dịch này.',
     ],
+
+    'filter_member' => 'Thành viên',
+    'filter_member_all' => '— Tất cả thành viên —',
+    'filter_from' => 'Từ ngày',
+    'filter_to' => 'Đến ngày',
+    'filter_submit' => 'Lọc',
+    'filter_reset' => 'Xóa lọc',
+    'member_search' => 'Gõ tên hoặc mã thành viên…',
+    'member_no_match' => 'Không tìm thấy thành viên.',
+    'member_hint' => 'Gõ tên để tìm nhanh; để trống nếu khoản nạp không gắn với thành viên nào.',
 ];

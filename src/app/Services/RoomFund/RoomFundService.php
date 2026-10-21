@@ -12,6 +12,7 @@ use App\Models\Room;
 use App\Models\RoomFundTransaction;
 use App\Services\Audit\AuditService;
 use App\Support\Helpers\FormatHelper;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -62,17 +63,23 @@ class RoomFundService
     }
 
     /**
-     * Ledger entries of the room, newest first, optionally of one type.
+     * Ledger entries of the room, newest first, optionally of one type, one member and a date range.
      *
      * @param Room $room Room whose ledger is listed.
      * @param RoomFundTransactionType|null $type Only this kind of entry.
+     * @param int|null $roomUserId Only the entries of this member (deposits, debts paid with the fund).
+     * @param CarbonImmutable|null $from First day (room timezone), inclusive.
+     * @param CarbonImmutable|null $to Last day (room timezone), inclusive.
      * @return Builder<RoomFundTransaction>
      */
-    public function history(Room $room, ?RoomFundTransactionType $type = null): Builder
+    public function history(Room $room, ?RoomFundTransactionType $type = null, ?int $roomUserId = null, ?CarbonImmutable $from = null, ?CarbonImmutable $to = null): Builder
     {
         return RoomFundTransaction::query()
             ->where('room_id', $room->id)
             ->when($type !== null, static fn (Builder $query) => $query->where('type', $type->value))
+            ->when($roomUserId !== null, static fn (Builder $query) => $query->where('room_user_id', $roomUserId))
+            ->when($from !== null, static fn (Builder $query) => $query->where('created_at', '>=', $from->startOfDay()->utc()))
+            ->when($to !== null, static fn (Builder $query) => $query->where('created_at', '<', $to->addDay()->startOfDay()->utc()))
             ->with(['roomUser', 'debt.campaign', 'creator'])
             ->orderByDesc('id');
     }

@@ -378,6 +378,7 @@ class NotificationPresentationService
             str_starts_with($type, 'order.') => 'check_circle',
             str_starts_with($type, 'payment.'), str_starts_with($type, 'debt.') => 'payments',
             str_starts_with($type, 'security.'), $type === NotificationType::DeviceNew->value => 'security',
+            $type === NotificationType::YearRecap->value => 'auto_awesome',
             default => 'notifications',
         };
     }

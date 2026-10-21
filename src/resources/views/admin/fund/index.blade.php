@@ -12,7 +12,7 @@
                 <p class="mt-1 max-w-3xl text-xs text-outline">{{ __('room_fund.description') }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-2 self-start">
-                <a href="{{ route('admin.fund.export', array_filter(['room' => $room, 'type' => $type?->value])) }}" data-fund-export
+                <a href="{{ route('admin.fund.export', ['room' => $room] + $exportQuery) }}" data-fund-export
                     class="inline-flex items-center gap-2 rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container-low">
                     <span class="material-symbols-outlined text-[18px]" aria-hidden="true">download</span>{{ __('room_fund.export') }}
                 </a>
@@ -48,13 +48,41 @@
         {{-- Ledger: the type filter and the pagination reload only the table (skeleton while loading). --}}
         <section class="rounded-xl border border-outline-variant bg-surface-container-lowest overflow-hidden" data-fund-ledger-section
             data-i18n="{{ json_encode(['loadError' => __('room_fund.load_error')], JSON_UNESCAPED_UNICODE) }}">
-            <nav class="flex flex-wrap gap-2 border-b border-outline-variant/60 p-3" aria-label="{{ __('room_fund.filter_label') }}">
-                <a href="{{ route('admin.fund.index', $room) }}" data-fund-filter="" @if ($type === null) aria-current="true" @endif class="{{ $filterClass($type === null) }}">{{ __('room_fund.filter_all') }}</a>
-                @foreach ($types as $case)
-                    <a href="{{ route('admin.fund.index', ['room' => $room, 'type' => $case->value]) }}" data-fund-filter="{{ $case->value }}" @if ($type === $case) aria-current="true" @endif
-                        class="{{ $filterClass($type === $case) }}">{{ __('room_fund.types.'.$case->value) }}</a>
-                @endforeach
-            </nav>
+            {{-- Filters: type (pills), member and date range; applied in place (AJAX), kept in the URL and the export link. --}}
+            <form method="GET" action="{{ route('admin.fund.index', $room) }}" class="space-y-3 border-b border-outline-variant/60 p-3" data-fund-filter-form>
+                <input type="hidden" name="type" value="{{ $filters['type']?->value }}" data-fund-type-filter>
+                <nav class="flex flex-wrap gap-2" aria-label="{{ __('room_fund.filter_label') }}">
+                    <a href="{{ route('admin.fund.index', $room) }}" data-fund-filter="" @if ($filters['type'] === null) aria-current="true" @endif class="{{ $filterClass($filters['type'] === null) }}">{{ __('room_fund.filter_all') }}</a>
+                    @foreach ($types as $case)
+                        <a href="{{ route('admin.fund.index', ['room' => $room, 'type' => $case->value]) }}" data-fund-filter="{{ $case->value }}" @if ($filters['type'] === $case) aria-current="true" @endif
+                            class="{{ $filterClass($filters['type'] === $case) }}">{{ __('room_fund.types.'.$case->value) }}</a>
+                    @endforeach
+                </nav>
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+                    <label class="block space-y-1">
+                        <span class="block text-[11px] font-semibold text-on-surface-variant">{{ __('room_fund.filter_member') }}</span>
+                        <x-admin.member-combobox id="fund-filter-member" name="member" :members="$allMembers" :selected="$filters['member']" :empty-label="__('room_fund.filter_member_all')" />
+                    </label>
+                    <label class="block space-y-1">
+                        <span class="block text-[11px] font-semibold text-on-surface-variant">{{ __('room_fund.filter_from') }}</span>
+                        <x-date-input name="date_from" :value="$filters['from']?->toDateString()" input-class="h-10 w-full rounded-lg border border-outline-variant bg-surface px-3 text-xs" />
+                    </label>
+                    <label class="block space-y-1">
+                        <span class="block text-[11px] font-semibold text-on-surface-variant">{{ __('room_fund.filter_to') }}</span>
+                        <x-date-input name="date_to" :value="$filters['to']?->toDateString()" input-class="h-10 w-full rounded-lg border border-outline-variant bg-surface px-3 text-xs" />
+                    </label>
+                    <div class="flex items-end gap-2">
+                        <button type="submit" class="inline-flex h-10 items-center gap-1 rounded-lg bg-primary px-4 text-xs font-bold text-on-primary hover:bg-primary/90 cursor-pointer">
+                            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">filter_alt</span>{{ __('room_fund.filter_submit') }}
+                        </button>
+                        <a href="{{ route('admin.fund.index', $room) }}" data-fund-filter-reset @unless ($filtered) hidden @endunless
+                            class="inline-flex h-10 items-center gap-1 rounded-lg border border-outline-variant px-3 text-xs font-semibold text-on-surface hover:bg-surface-container">
+                            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">restart_alt</span>{{ __('room_fund.filter_reset') }}
+                        </a>
+                    </div>
+                </div>
+                <p class="hidden text-xs font-semibold text-red-600" role="alert" data-fund-filter-error></p>
+            </form>
             <div data-fund-ledger aria-live="polite" aria-busy="false">
                 @include('admin.fund.partials.ledger')
             </div>
@@ -112,12 +140,9 @@
                 </div>
                 <div class="space-y-1.5" x-show="type === 'deposit'">
                     <label for="fund-member" class="block text-xs font-semibold text-on-surface">{{ __('room_fund.field_member') }}</label>
-                    <select id="fund-member" name="room_user_id" :disabled="type !== 'deposit'" class="h-10 w-full rounded-lg border border-outline-variant bg-surface px-3 text-xs">
-                        <option value="">{{ __('room_fund.member_none') }}</option>
-                        @foreach ($members as $member)
-                            <option value="{{ $member->id }}" @selected((string) old('room_user_id') === (string) $member->id)>{{ $member->display_name }} ({{ $member->user_code }})</option>
-                        @endforeach
-                    </select>
+                    <x-admin.member-combobox id="fund-member" name="room_user_id" :members="$members" :selected="old('room_user_id')"
+                        :empty-label="__('room_fund.member_none')" disabled="type !== 'deposit'" />
+                    <p class="text-[11px] text-outline">{{ __('room_fund.member_hint') }}</p>
                 </div>
                 <div class="space-y-1.5">
                     <label for="fund-note" class="block text-xs font-semibold text-on-surface">
