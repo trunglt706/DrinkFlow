@@ -79,13 +79,16 @@ class SecurityHeaders
         $scriptSrc = array_filter([
             "'self'", "'unsafe-inline'", "'unsafe-eval'",
             'https://cdn.jsdelivr.net', 'https://cdn.tailwindcss.com',
+            // Cloudflare Web Analytics beacon, injected by Cloudflare in front of production.
+            'https://static.cloudflareinsights.com',
             $realtimeOrigin,
             ...$viteDevOrigins,
         ]);
         // Locally, let DevTools fetch source maps (*.js.map) of the CDN scripts above. Kept out of other
         // environments: jsDelivr serves arbitrary npm/GitHub content, so it must not be a connect target there.
         $devToolsOrigins = app()->isLocal() ? ['https://cdn.jsdelivr.net'] : [];
-        $connectSrc = array_filter(["'self'", $realtimeOrigin, $realtimeWsOrigin, ...$viteDevOrigins, ...$viteDevWsOrigins, ...$devToolsOrigins]);
+        // cloudflareinsights.com receives the Web Analytics beacon's measurements.
+        $connectSrc = array_filter(["'self'", $realtimeOrigin, $realtimeWsOrigin, 'https://cloudflareinsights.com', ...$viteDevOrigins, ...$viteDevWsOrigins, ...$devToolsOrigins]);
         $styleSrc = array_filter(["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.tailwindcss.com', ...$viteDevOrigins]);
         $fontSrc = ["'self'", 'https://fonts.gstatic.com', 'data:'];
         $imgSrc = ["'self'", 'data:', 'https:'];

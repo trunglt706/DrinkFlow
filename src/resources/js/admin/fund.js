@@ -193,14 +193,13 @@ function initFundLedger() {
         event.preventDefault();
         load(formUrl());
     });
-    // A type pill keeps the other filters; choosing a member applies at once.
+    // A type pill keeps the other filters; the member and dates only apply with the "Filter" button.
     pills.forEach((pill) => pill.addEventListener('click', (event) => {
         if (event.metaKey || event.ctrlKey || event.shiftKey) return;
         event.preventDefault();
         typeInput.value = pill.dataset.fundFilter;
         load(formUrl());
     }));
-    form.querySelector('input[name="member"]')?.addEventListener('change', () => load(formUrl()));
     reset.addEventListener('click', (event) => {
         event.preventDefault();
         load(reset.href);

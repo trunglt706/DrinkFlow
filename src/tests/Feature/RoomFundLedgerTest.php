@@ -121,7 +121,7 @@ class RoomFundLedgerTest extends TestCase
 
         // The page shows the searchable member pickers (filter and deposit modal).
         $this->actingAs($this->admin, 'admin')->get(route('admin.fund.index', $this->room->slug))
-            ->assertOk()->assertSee('data-member-combobox="member"', false)->assertSee('data-member-combobox="room_user_id"', false)->assertSee('data-fund-filter-form', false);
+            ->assertOk()->assertSee($this->member->globalUser->email)->assertSee('data-member-combobox="member"', false)->assertSee('data-member-combobox="room_user_id"', false)->assertSee('data-fund-filter-form', false);
     }
 
     public function test_formatted_amounts_are_accepted_and_the_ledger_reloads_as_json(): void

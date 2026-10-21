@@ -1,13 +1,14 @@
 @props(['name', 'members', 'selected' => null, 'placeholder' => null, 'emptyLabel' => null, 'id' => null, 'disabled' => null])
 
-{{-- Ô chọn thành viên có tìm kiếm (Alpine): gõ để lọc theo tên / mã, chọn bằng chuột hoặc phím ↑ ↓ Enter, Esc để đóng.
+{{-- Ô chọn thành viên có tìm kiếm (Alpine): hiện tên và email, gõ để lọc theo tên / email / mã, chọn bằng chuột hoặc phím ↑ ↓ Enter, Esc để đóng.
      Giá trị gửi đi nằm trong input ẩn `name` (id thành viên, rỗng = không chọn). `disabled`: biểu thức Alpine. --}}
 @php
+    // Name and email of each member (searchable without accents), the member code as a fallback.
     $options = collect($members)->map(static fn ($member): array => [
         'id' => (string) $member->id,
-        'label' => (string) ($member->display_name ?: $member->user_code),
-        'hint' => (string) $member->user_code,
-        'search' => \Illuminate\Support\Str::lower(\Illuminate\Support\Str::ascii($member->display_name.' '.$member->user_code)),
+        'label' => (string) ($member->display_name ?: $member->globalUser?->name ?: $member->user_code),
+        'hint' => (string) ($member->globalUser?->email ?: $member->user_code),
+        'search' => \Illuminate\Support\Str::lower(\Illuminate\Support\Str::ascii($member->display_name.' '.$member->globalUser?->name.' '.$member->globalUser?->email.' '.$member->user_code)),
     ])->values();
     $inputId = $id ?? 'member-combobox-'.\Illuminate\Support\Str::random(6);
 @endphp
@@ -24,9 +25,16 @@
             const list = term === '' ? this.options : this.options.filter((option) => option.search.includes(term));
             return list.slice(0, 50);
         },
-        get selectedLabel() { return this.options.find((option) => option.id === this.value)?.label ?? ''; },
+        get selectedLabel() { const option = this.options.find((item) => item.id === this.value); return option ? `${option.label} – ${option.hint}` : ''; },
         show() { this.open = true; this.query = ''; this.active = 0; },
-        choose(option) { this.value = option ? option.id : ''; this.open = false; this.query = ''; this.$refs.hidden.dispatchEvent(new Event('change', { bubbles: true })); },
+        choose(option) {
+            this.value = option ? option.id : '';
+            // Written at once (the :value binding only applies on the next tick) so a reader of the form gets it.
+            this.$refs.hidden.value = this.value;
+            this.open = false;
+            this.query = '';
+            this.$refs.hidden.dispatchEvent(new Event('change', { bubbles: true }));
+        },
         move(step) { const count = this.filtered.length + (this.emptyLabel ? 1 : 0); if (count) this.active = (this.active + step + count) % count; },
         pick() { if (this.emptyLabel && this.active === 0) { this.choose(null); return; } const option = this.filtered[this.active - (this.emptyLabel ? 1 : 0)]; if (option) this.choose(option); },
     }"
@@ -49,9 +57,9 @@
         @endif
         <template x-for="(option, index) in filtered" :key="option.id">
             <li role="option" :aria-selected="value === option.id ? 'true' : 'false'" @mousedown.prevent="choose(option)" @mouseenter="active = index + (emptyLabel ? 1 : 0)"
-                :class="active === index + (emptyLabel ? 1 : 0) ? 'bg-surface-container' : ''" class="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-on-surface">
+                :class="active === index + (emptyLabel ? 1 : 0) ? 'bg-surface-container' : ''" class="flex cursor-pointer flex-col px-3 py-1.5 text-on-surface">
                 <span class="truncate font-semibold" x-text="option.label"></span>
-                <span class="shrink-0 font-mono text-[10px] text-outline" x-text="option.hint"></span>
+                <span class="truncate text-[11px] text-outline" x-text="option.hint"></span>
             </li>
         </template>
         <li x-show="filtered.length === 0" class="px-3 py-2 text-outline">{{ __('room_fund.member_no_match') }}</li>

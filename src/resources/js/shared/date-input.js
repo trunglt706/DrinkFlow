@@ -10,11 +10,9 @@ const CSS = `
 .df-date{position:relative;display:block}
 .df-date-display{cursor:pointer}
 .df-date-icon{position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;font-size:18px;opacity:.55}
-.df-date-pop{position:absolute;z-index:80;top:calc(100% + 6px);left:0;width:272px;padding:10px;border-radius:14px;background:#fff;color:#0f172a;
+.df-date-pop{position:fixed;z-index:1000;top:0;left:0;width:272px;padding:10px;border-radius:14px;background:#fff;color:#0f172a;
   border:1px solid rgba(15,23,42,.12);box-shadow:0 18px 40px -12px rgba(15,23,42,.35);font:500 13px/1.2 system-ui,-apple-system,'Segoe UI',sans-serif}
 .df-date-pop[hidden]{display:none}
-.df-date-pop.is-up{top:auto;bottom:calc(100% + 6px)}
-.df-date-pop.is-right{left:auto;right:0}
 .df-date-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px}
 .df-date-head strong{font-size:13px;font-weight:700}
 .df-date-head select{border:1px solid rgba(15,23,42,.15);border-radius:8px;padding:3px 6px;font:600 12px system-ui,sans-serif;background:#fff;color:inherit}
@@ -98,10 +96,22 @@ function setup(root) {
     };
     const outOfRange = (date) => (min && date < min) || (max && date > max);
 
+    // The calendar floats on the page (fixed, in <body>) so no scrolling or overflow-hidden container can cut it.
+    const place = () => {
+        if (!pop || pop.hidden) return;
+        const rect = field.getBoundingClientRect();
+        const height = pop.offsetHeight;
+        const below = window.innerHeight - rect.bottom;
+        const top = below < height + 12 && rect.top > height + 12 ? rect.top - height - 6 : rect.bottom + 6;
+        pop.style.top = `${Math.max(8, top)}px`;
+        pop.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - pop.offsetWidth - 8))}px`;
+    };
     const close = () => {
         if (!pop) return;
         pop.hidden = true;
         field.setAttribute('aria-expanded', 'false');
+        window.removeEventListener('scroll', place, true);
+        window.removeEventListener('resize', place);
     };
     const draw = () => {
         const selected = raw();
@@ -184,16 +194,18 @@ function setup(root) {
             pop.setAttribute('role', 'dialog');
             pop.setAttribute('aria-label', i18n.dialog || '');
             pop.addEventListener('mousedown', (event) => { if (event.target.tagName !== 'SELECT') event.preventDefault(); });
-            root.append(pop);
+            // In <body>, outside the field: leaving its month / year selects closes it too.
+            pop.addEventListener('focusout', (event) => { if (event.relatedTarget && !inside(event.relatedTarget)) close(); });
+            document.body.append(pop);
         }
         view = fromIso(raw()) || (max && new Date() > max ? new Date(max) : new Date());
         draw();
         pop.hidden = false;
         field.setAttribute('aria-expanded', 'true');
-        // Open upwards / to the left when there is no room below / on the right.
-        const rect = root.getBoundingClientRect();
-        pop.classList.toggle('is-up', rect.bottom + 330 > window.innerHeight && rect.top > 330);
-        pop.classList.toggle('is-right', rect.left + 272 > window.innerWidth - 8);
+        // Below the field, or above it when there is no room below; follows the page when it scrolls.
+        place();
+        window.addEventListener('scroll', place, true);
+        window.addEventListener('resize', place);
     };
 
     // Typed dates are read when the field is left or Enter is pressed.
@@ -218,10 +230,11 @@ function setup(root) {
         if (event.key === 'ArrowDown' && (!pop || pop.hidden)) { event.preventDefault(); open(); }
     });
     field.addEventListener('blur', () => { if (field.value !== display(raw())) readTyped(); });
-    document.addEventListener('mousedown', (event) => { if (!root.contains(event.target)) close(); });
+    const inside = (node) => root.contains(node) || Boolean(pop?.contains(node));
+    document.addEventListener('mousedown', (event) => { if (!inside(event.target)) close(); });
     // form.reset() restores the hidden value without the setter: redraw once it is done.
     root.closest('form')?.addEventListener('reset', () => setTimeout(() => { render(); setError(''); }));
-    root.addEventListener('focusout', (event) => { if (!root.contains(event.relatedTarget) && event.relatedTarget) close(); });
+    root.addEventListener('focusout', (event) => { if (event.relatedTarget && !inside(event.relatedTarget)) close(); });
     render();
 }
 

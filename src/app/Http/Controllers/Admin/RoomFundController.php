@@ -46,7 +46,8 @@ class RoomFundController extends Controller
             ]);
         }
 
-        $members = $room->roomUsers()->orderBy('display_name')->get(['id', 'display_name', 'user_code', 'status']);
+        // Name and email of each member for the searchable pickers.
+        $members = $room->roomUsers()->with('globalUser:id,name,email')->orderBy('display_name')->get(['id', 'global_user_id', 'display_name', 'user_code', 'status']);
 
         return view('admin.fund.index', [
             'room' => $room,

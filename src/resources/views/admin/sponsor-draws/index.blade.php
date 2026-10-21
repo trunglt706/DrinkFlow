@@ -28,24 +28,23 @@
                 <table class="w-full text-sm">
                     <thead class="bg-surface-container-low text-[11px] uppercase tracking-wider text-outline">
                         <tr>
-                            <th class="px-5 py-3 text-left">#</th>
+                            <th class="w-px whitespace-nowrap px-4 py-3 text-left">#</th>
                             <th class="px-5 py-3 text-left">{{ __('sponsor_draw.admin.col_type') }}</th>
                             <th class="px-5 py-3 text-left">{{ __('sponsor_draw.fields.target_campaign') }}</th>
                             <th class="px-5 py-3 text-right">{{ __('sponsor_draw.admin.col_progress') }}</th>
                             <th class="px-5 py-3 text-left">{{ __('validation.attributes.status') }}</th>
                             <th class="px-5 py-3 text-left">{{ __('sponsor_draw.admin.col_link') }}</th>
-                            <th class="px-5 py-3 text-left">{{ __('sponsor_draw.admin.col_created') }}</th>
+                            <th class="min-w-[13rem] whitespace-nowrap px-5 py-3 text-left">{{ __('sponsor_draw.admin.col_created') }}</th>
                             <th class="px-5 py-3"></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-outline-variant/60">
                         @forelse ($sessions as $session)
                             <tr>
-                                <td class="px-5 py-3 font-mono text-outline">{{ $session->id }}</td>
+                                <td class="w-px whitespace-nowrap px-4 py-3 font-mono text-outline">{{ $session->id }}</td>
                                 <td class="px-5 py-3">
-                                    <span class="inline-flex items-center gap-1.5 font-semibold">
-                                        <span class="material-symbols-outlined !text-[16px] text-primary" aria-hidden="true">{{ $session->type === \App\Enums\SponsorDrawType::Shops ? 'storefront' : 'volunteer_activism' }}</span>{{ __('sponsor_draw.types.'.$session->type->value) }}
-                                    </span>
+                                    {{-- Type as a badge: shops in sky blue, sponsors in emerald. --}}
+                                    <span data-draw-type="{{ $session->type->value }}" class="inline-flex whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-semibold {{ $session->type === \App\Enums\SponsorDrawType::Shops ? 'border-sky-200 bg-sky-50 text-sky-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800' }}">{{ __('sponsor_draw.types.'.$session->type->value) }}</span>
                                     {{-- Sessions created before draft settings came from a campaign. --}}
                                     @if ($session->campaign)<small class="block text-outline">{{ $session->campaign->name }}</small>@endif
                                 </td>
@@ -53,7 +52,7 @@
                                 <td class="px-5 py-3 text-right font-mono">{{ $session->status === \App\Enums\SponsorDrawStatus::Draft ? '—' : $session->results_count.'/'.$session->target_winner_count }}</td>
                                 <td class="px-5 py-3"><span class="rounded-full bg-surface-container px-2 py-0.5 text-[11px] font-semibold">{{ __('sponsor_draw.js.status.'.$session->status->value) }}</span></td>
                                 <td class="px-5 py-3 text-xs">{{ $session->status === \App\Enums\SponsorDrawStatus::Draft ? '—' : ($session->linkIsValid() ? __('sponsor_draw.admin.link_until', ['time' => $session->localTime($session->link_expires_at, 'H:i d/m')]) : __('sponsor_draw.admin.link_expired')) }}</td>
-                                <td class="px-5 py-3 text-xs text-outline">{{ $session->localTime($session->created_at, 'd/m/Y H:i') }} · {{ $session->createdBy?->name }}</td>
+                                <td class="whitespace-nowrap px-5 py-3 text-xs text-outline">{{ $session->localTime($session->created_at, 'd/m/Y H:i') }}<small class="block">{{ $session->createdBy?->name }}</small></td>
                                 <td class="px-5 py-3 text-right"><a href="{{ route('admin.sponsor-draws.show', [$room, $session]) }}" class="text-xs font-semibold text-primary hover:underline">{{ __('sponsor_draw.admin.open') }}</a></td>
                             </tr>
                         @empty

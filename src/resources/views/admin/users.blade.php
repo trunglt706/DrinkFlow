@@ -122,13 +122,13 @@
     <!-- Users Table Ledger -->
     <div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-xs">
         <div class="overflow-x-auto">
-            {{-- Fixed-width side columns; the member column takes the remaining space. --}}
+            {{-- Fixed-width side columns; the member column takes the remaining space (badges kept narrow). --}}
             <table data-skeleton="table"
                 class="table-colgroup w-full min-w-[72rem] table-fixed text-left text-xs border-collapse">
                 <colgroup>
                     <col class="w-12">
                     <col>
-                    <col class="w-32">
+                    <col class="w-20">
                     <col class="w-36">
                     <col class="w-32">
                     <col class="w-40">
