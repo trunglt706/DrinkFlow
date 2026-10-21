@@ -14,6 +14,7 @@ use App\Models\GlobalUser;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Room;
+use App\Models\RoomUser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -184,12 +185,12 @@ class RoomOrdersLayoutTest extends TestCase
     }
 
     /**
-     * "My Orders" only lists the live campaign's orders: the tab is hidden and the page redirects
-     * to the dashboard when the room has no live campaign.
+     * "My Orders" shows the live campaign's order at the top and the earlier orders in a history
+     * list: the page and its tab stay available without a live campaign.
      *
      * @return void
      */
-    public function test_my_orders_only_shows_live_campaign_orders(): void
+    public function test_my_orders_shows_the_live_order_and_the_history(): void
     {
         $user = GlobalUser::create(['name' => 'Live Only', 'email' => 'live-only@example.com', 'status' => 'active']);
         $room = Room::create(['name' => 'Live Room', 'slug' => 'live-only-room', 'code' => 'LIVE', 'status' => 'active']);
@@ -203,13 +204,19 @@ class RoomOrdersLayoutTest extends TestCase
         ]);
         OrderItem::create(['order_id' => $closedOrder->id, 'item_name' => 'Old Drink', 'unit_price' => 20000, 'quantity' => 1, 'line_subtotal' => 20000]);
 
-        // No live campaign: tab hidden, page redirects to the dashboard.
-        $this->actingAs($user, 'web')->get(route('user.dashboard', $room->slug))->assertOk()->assertDontSee($myOrdersTab, false);
-        $this->actingAs($user, 'web')->get(route('user.orders.index', $room->slug))->assertRedirect(route('user.dashboard', $room->slug));
+        // No live campaign: the tab and the page show only the history (no invitation to order).
+        $this->actingAs($user, 'web')->get(route('user.dashboard', $room->slug))->assertOk()->assertSee($myOrdersTab, false);
+        $this->actingAs($user, 'web')->get(route('user.orders.index', $room->slug))
+            ->assertOk()
+            ->assertDontSee('data-orders-current-empty', false)
+            ->assertDontSee(__('room.dashboard.enter_campaign'))
+            ->assertSee('data-order-history-row="'.$closedOrder->code.'"', false)
+            ->assertSee('data-order-history-copy', false);
 
-        // Live campaign without an order from this member: tab still hidden.
+        // Live campaign without an order from this member: the history is still there.
         $liveCampaign = Campaign::create(['room_id' => $room->id, 'name' => 'Live Campaign', 'restaurant' => 'Cafe', 'status' => CampaignStatus::Active]);
-        $this->actingAs($user, 'web')->get(route('user.dashboard', $room->slug))->assertOk()->assertDontSee($myOrdersTab, false);
+        $this->actingAs($user, 'web')->get(route('user.orders.index', $room->slug))
+            ->assertOk()->assertSee(__('room.orders.no_current_order_title'))->assertSee('data-order-history-row="'.$closedOrder->code.'"', false);
 
         $liveOrder = Order::create([
             'room_id' => $room->id, 'campaign_id' => $liveCampaign->id, 'room_user_id' => $roomUser->id,
@@ -218,9 +225,64 @@ class RoomOrdersLayoutTest extends TestCase
         OrderItem::create(['order_id' => $liveOrder->id, 'item_name' => 'Live Drink', 'unit_price' => 30000, 'quantity' => 1, 'line_subtotal' => 30000]);
 
         $this->actingAs($user, 'web')->get(route('user.dashboard', $room->slug))->assertOk()->assertSee($myOrdersTab, false);
+        // The live order is at the top (with its items) and is not repeated in the history.
         $this->actingAs($user, 'web')->get(route('user.orders.index', $room->slug))
             ->assertOk()
             ->assertSee('Live Drink')
-            ->assertDontSee('Old Drink');
+            ->assertDontSee('Old Drink')
+            ->assertSee('data-order-history-row="'.$closedOrder->code.'"', false)
+            ->assertDontSee('data-order-history-row="'.$liveOrder->code.'"', false);
+    }
+
+    /**
+     * The history filters by code, dates, self / proxy and status, 10 orders per page.
+     *
+     * @return void
+     */
+    public function test_my_orders_history_is_filtered_and_paginated(): void
+    {
+        $user = GlobalUser::create(['name' => 'History', 'email' => 'history@example.com', 'status' => 'active']);
+        $friendUser = GlobalUser::create(['name' => 'Friend', 'email' => 'friend-history@example.com', 'status' => 'active']);
+        $room = Room::create(['name' => 'History Room', 'slug' => 'history-room', 'code' => 'HIST', 'status' => 'active', 'timezone' => 'UTC']);
+        $roomUser = app(JoinRoomAction::class)->execute($user, $room, 'Chrome', 'history-hash');
+        $friend = app(JoinRoomAction::class)->execute($friendUser, $room, 'Chrome', 'friend-history-hash');
+        $campaign = Campaign::create(['room_id' => $room->id, 'name' => 'Past', 'restaurant' => 'Cafe', 'status' => CampaignStatus::Closed]);
+        $sequence = 0;
+        $make = function (RoomUser $member, OrderStatus $status, string $date, ?Order $parent = null) use ($room, $campaign, &$sequence): Order {
+            // Explicit codes: the generated ones count today's orders, which the back-dated rows would repeat.
+            $order = Order::create([
+                'code' => sprintf('HIST-%03d', ++$sequence),
+                'room_id' => $room->id, 'campaign_id' => $campaign->id, 'room_user_id' => $member->id, 'parent_id' => $parent?->id,
+                'subtotal' => 10000, 'final_amount' => 10000, 'status' => $status,
+            ]);
+            $order->forceFill(['created_at' => $date.' 10:00:00'])->save();
+
+            return $order;
+        };
+
+        $orders = [];
+        for ($i = 1; $i <= 11; $i++) {
+            $orders[] = $make($roomUser, OrderStatus::Completed, sprintf('2026-09-%02d', $i));
+        }
+        $cancelled = $make($roomUser, OrderStatus::Cancelled, '2026-10-01');
+        $proxy = $make($friend, OrderStatus::Completed, '2026-10-02', $orders[0]);
+        $strangerOrder = $make($friend, OrderStatus::Completed, '2026-10-03');
+        $page = fn (array $query = []) => $this->actingAs($user, 'web')->get(route('user.orders.index', ['room' => $room->slug] + $query))->assertOk();
+        $row = static fn (Order $order): string => 'data-order-history-row="'.$order->code.'"';
+
+        // 13 visible orders (the friend's own order is not), newest first, 10 per page.
+        $page()->assertSee($row($proxy), false)->assertSee($row($cancelled), false)->assertDontSee($row($strangerOrder), false)
+            ->assertSee('history_page=2', false)->assertDontSee($row($orders[0]), false);
+        $page(['history_page' => 2])->assertSee($row($orders[0]), false);
+
+        $page(['code' => $orders[3]->code])->assertSee($row($orders[3]), false)->assertDontSee($row($orders[4]), false);
+        $page(['date_from' => '2026-09-05', 'date_to' => '2026-09-06'])
+            ->assertSee($row($orders[4]), false)->assertSee($row($orders[5]), false)->assertDontSee($row($orders[3]), false)->assertDontSee($row($orders[6]), false);
+        $page(['type' => 'proxy'])->assertSee($row($proxy), false)->assertSee(__('room.orders.history_proxy_for', ['name' => 'Friend']))->assertDontSee($row($orders[1]), false);
+        $page(['type' => 'self', 'status' => 'cancelled'])->assertSee($row($cancelled), false)->assertDontSee($row($orders[1]), false)->assertDontSee($row($proxy), false);
+        $page(['code' => 'NO-SUCH-CODE'])->assertSee(__('room.orders.history_empty_filtered'));
+
+        // Invalid filters are refused.
+        $this->actingAs($user, 'web')->get(route('user.orders.index', ['room' => $room->slug, 'status' => 'lost', 'type' => 'other']))->assertSessionHasErrors(['status', 'type']);
     }
 }

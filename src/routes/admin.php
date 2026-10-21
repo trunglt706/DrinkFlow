@@ -123,6 +123,10 @@ Route::middleware(['auth:admin', 'admin.room', 'room.subscription'])
     Route::post('/events/send', [\App\Http\Controllers\Admin\RoomEventController::class, 'send'])->middleware('throttle:20,1')->name('admin.events.send');
     Route::put('/events/settings', [\App\Http\Controllers\Admin\RoomEventController::class, 'settings'])->middleware('throttle:30,1')->name('admin.events.settings');
     Route::put('/events/wishes', [\App\Http\Controllers\Admin\RoomEventController::class, 'wishes'])->middleware('throttle:30,1')->name('admin.events.wishes');
+    // Preview of an event page as members see it (any date; no wishes wall, nothing is sent).
+    Route::get('/events/{type}/preview', [\App\Http\Controllers\Admin\RoomEventController::class, 'preview'])
+        ->where('type', implode('|', \App\Actions\Room\SendRoomEventNotificationAction::types()))->middleware('throttle:60,1')->name('admin.events.preview');
+    Route::put('/events/wall/{wish}',[\App\Http\Controllers\Admin\RoomEventController::class, 'moderateWish'])->whereNumber('wish')->middleware('throttle:60,1')->name('admin.events.wall.moderate');
     // Room fund ledger (append-only): balance, history, deposits / expenses / adjustments and export.
     Route::get('/fund', [\App\Http\Controllers\Admin\RoomFundController::class, 'index'])->name('admin.fund.index');
     Route::post('/fund/transactions', [\App\Http\Controllers\Admin\RoomFundController::class, 'store'])->middleware('throttle:30,1')->name('admin.fund.store');

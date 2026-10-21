@@ -7,9 +7,11 @@ namespace App\Http\Requests;
 use App\Actions\Room\SendRoomEventNotificationAction;
 use App\Enums\EventMusicMode;
 use App\Http\Requests\Concerns\AuthorizesUserAndAdmin;
+use App\Models\Room;
 use App\Services\Occasion\RoomEventSettingsService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\File;
 
 /**
  * Admin sets the background music and sound effects of one room event page.
@@ -24,7 +26,8 @@ class UpdateRoomEventSettingsRequest extends FormRequest
     }
 
     /**
-     * Only an https link is accepted (played by the browser of every member, never fetched by the server).
+     * Only an https link is accepted (played by the browser of every member, never fetched by the server). The upload
+     * mode needs an audio file unless the page already has one.
      *
      * @return array<string, array<int, mixed>>
      */
@@ -42,6 +45,11 @@ class UpdateRoomEventSettingsRequest extends FormRequest
                     }
                 },
             ],
+            'music_file' => [
+                Rule::requiredIf(fn (): bool => $this->input('music_mode') === EventMusicMode::Upload->value && ! $this->hasMusicFile()),
+                'nullable',
+                File::types(RoomEventSettingsService::MUSIC_FILE_TYPES)->max(RoomEventSettingsService::MUSIC_FILE_MAX_KB),
+            ],
             'sound_effects' => ['nullable', 'boolean'],
         ];
     }
@@ -51,6 +59,17 @@ class UpdateRoomEventSettingsRequest extends FormRequest
      */
     public function attributes(): array
     {
-        return ['music_url' => __('occasions.admin.music_url')];
+        return ['music_url' => __('occasions.admin.music_url'), 'music_file' => __('occasions.admin.music_file')];
+    }
+
+    /**
+     * Whether the event page being set already has an uploaded audio file.
+     */
+    private function hasMusicFile(): bool
+    {
+        $room = $this->route('room');
+        $type = $this->input('type');
+
+        return $room instanceof Room && is_string($type) && app(RoomEventSettingsService::class)->hasMusicFile($room, $type);
     }
 }

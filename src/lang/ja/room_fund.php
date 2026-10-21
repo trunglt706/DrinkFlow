@@ -43,4 +43,20 @@ return [
     'insufficient' => 'ルーム基金の残高が不足しています（残高：:balance）。',
     'invalid_amount' => '金額は0以外にしてください。',
     'invalid_type' => '取引の種類が不正です。',
+
+    'new_transaction' => '新しい取引を作成',
+    'required_hint' => '必須項目',
+    'amount_placeholder' => '例：500.000',
+    'close' => '閉じる',
+    'cancel' => 'キャンセル',
+    'load_error' => '取引一覧を読み込めませんでした。もう一度お試しください。',
+    'empty_description' => '「新しい取引を作成」から最初の入金を記録しましょう。',
+    'empty_filtered' => 'この種類の取引はありません。',
+    'validation' => [
+        'amount_required' => '金額を入力してください。',
+        'amount_positive' => '金額は 0 より大きくしてください。',
+        'amount_non_zero' => '調整額は 0 以外にしてください。',
+        'amount_max' => '1 回の取引の上限は :max です。',
+        'note_required' => 'この取引の内容を入力してください。',
+    ],
 ];

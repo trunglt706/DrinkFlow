@@ -1,14 +1,17 @@
 {{-- Sound of a room event page: synthesised sound effects (Web Audio, no files) and background music, either the
-     built-in melody of the event (public domain tunes, synthesised) or an https audio link set by the room admin.
+     built-in melody of the event (public domain tunes, synthesised), an https audio link set by the room admin or an
+     audio file the room admin uploaded.
      Nothing plays before a click (browser autoplay rules): the page calls window.EventAudio.start() from its click
      handler, then EventAudio.play('<effect>'). A floating button mutes / unmutes; the choice is kept per viewer. --}}
 @props(['audio', 'melody'])
 @php
-    /** @var array{music_mode: \App\Enums\EventMusicMode, music_url: string|null, sound_effects: bool} $audio */
+    /** @var array{music_mode: \App\Enums\EventMusicMode, music_url: string|null, music_file_url: string|null, sound_effects: bool} $audio */
     $mode = $audio['music_mode']->value;
+    // An uploaded file plays like an admin link (same player, same fallback to the built-in melody).
+    $fileUrl = $mode === \App\Enums\EventMusicMode::Upload->value ? ($audio['music_file_url'] ?? null) : null;
     $config = [
-        'music' => $mode,
-        'url' => $mode === \App\Enums\EventMusicMode::Custom->value ? $audio['music_url'] : null,
+        'music' => $fileUrl !== null ? \App\Enums\EventMusicMode::Custom->value : $mode,
+        'url' => $fileUrl ?? ($mode === \App\Enums\EventMusicMode::Custom->value ? $audio['music_url'] : null),
         'effects' => (bool) $audio['sound_effects'],
         'melody' => $melody,
         'labels' => ['on' => __('occasions.ui.sound_on'), 'off' => __('occasions.ui.sound_off')],

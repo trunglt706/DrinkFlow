@@ -91,6 +91,47 @@ class SuperadminDashboardTrendsTest extends TestCase
             ->assertJsonStructure(['data' => ['cohorts', 'feedback' => ['monthly', 'distribution'], 'contact_topics', 'system_history' => ['points'], 'generated_at']]);
     }
 
+    public function test_product_metrics_count_active_members_participation_and_debt_payment_time(): void
+    {
+        $members = [$this->member('2026-01-01'), $this->member('2026-01-01'), $this->member('2026-01-01'), $this->member('2026-01-01')];
+
+        // A room page visit records the member once per day.
+        $this->actingAs($members[0]->globalUser, 'web')->get(route('user.dashboard', $this->room->slug))->assertOk();
+        $this->actingAs($members[0]->globalUser, 'web')->get(route('user.dashboard', $this->room->slug))->assertOk();
+        $this->assertDatabaseCount('daily_active_members', 1);
+        $this->assertDatabaseHas('daily_active_members', ['activity_date' => '2026-09-28', 'global_user_id' => $members[0]->global_user_id]);
+        foreach ([['2026-09-27', 1], ['2026-09-25', 1], ['2026-09-10', 2], ['2026-08-01', 3]] as [$date, $index]) {
+            \Illuminate\Support\Facades\DB::table('daily_active_members')->insert(['activity_date' => $date, 'room_id' => $this->room->id, 'global_user_id' => $members[$index]->global_user_id]);
+        }
+
+        // Campaign closed 5 days ago: 2 of the 4 members ordered (one twice); an older campaign is ignored.
+        $this->campaign->forceFill(['closed_at' => '2026-09-23 12:00:00'])->save();
+        $this->order($members[0], '2026-09-22 10:00:00');
+        $this->order($members[1], '2026-09-22 10:00:00');
+        $this->order($members[2], '2026-09-22 10:00:00', OrderStatus::Cancelled);
+
+        // Debts paid after 24 and 72 hours (average 48 h, median 48 h).
+        foreach ([24, 72] as $i => $hours) {
+            $debt = \App\Models\Debt::create([
+                'room_id' => $this->room->id, 'campaign_id' => $this->campaign->id, 'room_user_id' => $members[$i]->id,
+                'original_amount' => 10000, 'paid_amount' => 10000, 'remaining_amount' => 0, 'status' => \App\Enums\DebtStatus::Paid,
+            ]);
+            $debt->forceFill(['created_at' => '2026-09-20 00:00:00'])->save();
+            $debt->payments()->create(['payment_method' => \App\Enums\PaymentMethod::Transfer->value, 'amount' => 10000, 'paid_at' => CarbonImmutable::parse('2026-09-20 00:00:00')->addHours($hours)]);
+        }
+
+        $product = app(SuperadminTrendsService::class)->compute(CarbonImmutable::now())['product'];
+
+        $this->assertSame([1, 2, 3], [$product['dau'], $product['wau'], $product['mau']]);
+        $this->assertCount(30, $product['daily']);
+        $this->assertSame(['date' => '2026-09-28', 'users' => 1], end($product['daily']));
+        $this->assertSame(round((1 + 1 + 1 + 1) / 30 / 3 * 100, 1), $product['stickiness']);
+        $this->assertSame(['campaigns' => 1, 'rate' => 50.0], $product['participation']);
+        $this->assertSame(['debts' => 2, 'average_hours' => 48.0, 'median_hours' => 48.0], $product['debt_payment']);
+
+        $this->actingAs($this->root, 'superadmin')->get(route('superadmin.dashboard'))->assertOk()->assertSee('data-product-metrics', false);
+    }
+
     public function test_cohorts_measure_ordering_retention_by_months_since_signup(): void
     {
         // July cohort: two members; one orders in July and again in September, one never orders.

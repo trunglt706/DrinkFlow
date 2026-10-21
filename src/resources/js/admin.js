@@ -14,6 +14,7 @@ import { campaignCreateComponent } from './admin/campaign-create';
 import { initCloseCampaignModal } from './admin/close-campaign-modal';
 import { initAdminDashboard } from './admin/dashboard';
 import { initAdminDebts } from './admin/debts';
+import { initAdminFund } from './admin/fund';
 import { initAdminNotifications } from './admin/notifications';
 import { initAdminOrders } from './admin/orders';
 import { initAdminOrderOnBehalf } from './admin/order-on-behalf';
@@ -78,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initCloseCampaignModal();
     initAdminDashboard();
     initAdminDebts();
+    initAdminFund();
     initAdminNotifications();
     initAdminOrders();
     initAdminOrderOnBehalf();

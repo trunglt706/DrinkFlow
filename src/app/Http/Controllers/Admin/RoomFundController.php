@@ -13,6 +13,7 @@ use App\Models\Room;
 use App\Services\RoomFund\RoomFundService;
 use App\Support\Helpers\FormatHelper;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -30,17 +31,25 @@ class RoomFundController extends Controller
      * @param Request $request Current request (`type` filter).
      * @param Room $room Room whose fund is shown.
      * @param RoomFundService $fund Fund ledger service.
-     * @return View Fund page.
+     * @return View|JsonResponse Fund page, or only the ledger table (JSON `html`) for the page script's filter and pagination.
      */
-    public function index(Request $request, Room $room, RoomFundService $fund): View
+    public function index(Request $request, Room $room, RoomFundService $fund): View|JsonResponse
     {
         $type = RoomFundTransactionType::tryFrom((string) $request->query('type', ''));
+        $entries = $fund->history($room, $type)->paginate(30)->withQueryString();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'html' => view('admin.fund.partials.ledger', ['room' => $room, 'entries' => $entries, 'type' => $type])->render(),
+                'export_url' => route('admin.fund.export', array_filter(['room' => $room, 'type' => $type?->value])),
+            ]);
+        }
 
         return view('admin.fund.index', [
             'room' => $room,
             'balance' => $fund->balance($room),
             'monthTotals' => $fund->totals($room, now()->startOfMonth(), now()->addMonthNoOverflow()->startOfMonth()),
-            'entries' => $fund->history($room, $type)->paginate(30)->withQueryString(),
+            'entries' => $entries,
             'type' => $type,
             'members' => $room->roomUsers()->where('status', RoomUserStatus::Active->value)->orderBy('display_name')->get(['id', 'display_name', 'user_code']),
         ]);

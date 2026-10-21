@@ -1,4 +1,4 @@
-@props(['text', 'align' => 'center'])
+@props(['text', 'align' => 'center', 'resetMs' => 1500])
 
 @php
     // Căn tooltip theo vị trí nút để không tràn ra ngoài màn hình (right: nút sát mép phải, left: sát mép trái).
@@ -9,7 +9,7 @@
     };
 @endphp
 
-{{-- Nút sao chép nội dung vào clipboard, hiển thị tooltip khi hover và đổi thông báo sau khi sao chép. --}}
+{{-- Nút sao chép nội dung vào clipboard, hiển thị tooltip khi hover; sau khi sao chép icon thành dấu check rồi trở lại sau $resetMs ms. --}}
 <span x-data="{
         copied: false,
         timer: null,
@@ -29,7 +29,7 @@
             }
             this.copied = true;
             clearTimeout(this.timer);
-            this.timer = setTimeout(() => this.copied = false, 1500);
+            this.timer = setTimeout(() => this.copied = false, {{ (int) $resetMs }});
         }
     }"
       {{ $attributes->merge(['class' => 'group/copy relative inline-flex']) }}>

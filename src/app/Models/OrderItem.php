@@ -37,4 +37,14 @@ class OrderItem extends Model
     {
         return $this->belongsTo(CampaignItem::class);
     }
+
+    /**
+     * Ratings given to this item (by the member who received it).
+     *
+     * @return HasMany<OrderItemRating, $this>
+     */
+    public function ratings(): HasMany
+    {
+        return $this->hasMany(OrderItemRating::class);
+    }
 }

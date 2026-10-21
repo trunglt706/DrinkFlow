@@ -221,14 +221,16 @@
         @endif
 
         @if(!$activeOrder && $orders->isEmpty())
+            {{-- Nothing ordered in the live campaign: invite to order. Without a live campaign only the history below is shown. --}}
+            @if($hasLiveCampaign ?? true)
             <div
                 class="bg-white border border-slate-200/80 rounded-xl p-6 sm:p-7 text-center shadow-2xs flex flex-col items-center justify-center">
                 <div
                     class="w-9 h-9 rounded-lg bg-emerald-50 text-[#006948] border border-emerald-100 flex items-center justify-center mb-2">
                     <span class="material-symbols-outlined text-[18px]">receipt_long</span>
                 </div>
-                <h3 class="text-xs sm:text-sm font-bold text-slate-800 tracking-tight mb-1">
-                    {{ __('room.orders.no_orders_title') }}
+                <h3 class="text-xs sm:text-sm font-bold text-slate-800 tracking-tight mb-1" data-orders-current-empty>
+                    {{ __('room.orders.no_current_order_title') }}
                 </h3>
                 <p class="text-[11px] sm:text-xs text-slate-500 max-w-sm mb-3.5 leading-relaxed">
                     {{ __('room.orders.no_orders_desc') }}
@@ -239,6 +241,7 @@
                     <span>{{ __('room.dashboard.enter_campaign') }}</span>
                 </a>
             </div>
+            @endif
         @else
             <!-- Active / Most Recent Order Tracking Header -->
             @if($activeOrder)
@@ -450,7 +453,7 @@
                             <!-- Items List -->
                             <div class="flex flex-col gap-3">
                                 @forelse($activeOrder->items as $item)
-                                    <x-room.order-item-card :item="$item" />
+                                    <x-room.order-item-card :item="$item" :rating="$itemRatings[$item->id] ?? null" />
                                 @empty
                                     <div class="p-4 text-center text-on-surface-variant font-body-sm">
                                         {{ __('room.orders.empty_items') }}
@@ -713,6 +716,10 @@
             @endif
 
         @endif
+
+        @isset($historyOrders)
+            @include('user.partials.order-history', ['historyOrders' => $historyOrders, 'historyFilters' => $historyFilters ?? []])
+        @endisset
 
         @if($activeOrder)
             <!-- VietQR Modal -->

@@ -43,4 +43,20 @@ return [
     'insufficient' => 'Quỹ phòng không đủ số dư (hiện còn :balance).',
     'invalid_amount' => 'Số tiền phải khác 0.',
     'invalid_type' => 'Loại giao dịch không hợp lệ.',
+
+    'new_transaction' => 'Tạo mới giao dịch',
+    'required_hint' => 'Trường bắt buộc',
+    'amount_placeholder' => 'Ví dụ: 500.000',
+    'close' => 'Đóng',
+    'cancel' => 'Hủy',
+    'load_error' => 'Không tải được danh sách giao dịch, vui lòng thử lại.',
+    'empty_description' => 'Bấm "Tạo mới giao dịch" để ghi khoản nạp quỹ đầu tiên.',
+    'empty_filtered' => 'Không có giao dịch nào thuộc loại này.',
+    'validation' => [
+        'amount_required' => 'Vui lòng nhập số tiền.',
+        'amount_positive' => 'Số tiền phải lớn hơn 0.',
+        'amount_non_zero' => 'Số tiền điều chỉnh phải khác 0.',
+        'amount_max' => 'Số tiền tối đa cho một giao dịch là :max.',
+        'note_required' => 'Vui lòng nhập nội dung cho giao dịch này.',
+    ],
 ];

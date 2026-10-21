@@ -91,6 +91,16 @@
                                 </td>
                                 <td class="px-5 py-3">
                                     <div class="flex items-center justify-end gap-2">
+                                        {{-- The event page as members see it, opened in a new tab (any date). --}}
+                                        @php
+                                            $previewTooltip = __('occasions.admin.preview_page_tooltip', ['event' => $eventName($type)]);
+                                        @endphp
+                                        <a href="{{ route('admin.events.preview', [$room, $type]) }}" target="_blank" rel="noopener" data-room-event-preview="{{ $type }}"
+                                            data-tooltip="{{ $previewTooltip }}" aria-label="{{ $previewTooltip }}"
+                                            class="h-9 inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-outline-variant bg-surface-container-lowest px-2.5 text-xs font-semibold text-on-surface hover:bg-surface-container cursor-pointer no-underline">
+                                            <span class="material-symbols-outlined !text-[16px]" aria-hidden="true">visibility</span>
+                                            <span class="hidden xl:inline">{{ __('occasions.admin.preview_page') }}</span>
+                                        </a>
                                         {{-- Settings of the event page (modals below); a dot marks a page the admin customized. --}}
                                         @foreach ([['music', 'music_note', 'configure_music', $musicCustomized], ['wishes', 'format_quote', 'configure_wishes', $wishesCustomized]] as [$kind, $icon, $label, $customized])
                                             @php
@@ -106,6 +116,18 @@
                                                 @endif
                                             </button>
                                         @endforeach
+                                        {{-- Wishes members sent on the page while it is shown (moderation modal below). --}}
+                                        @isset($walls[$type])
+                                            @php
+                                                $wallTooltip = __('occasions.wall.admin_tooltip', ['event' => $eventName($type)]);
+                                            @endphp
+                                            <button type="button" data-event-modal-open="wall-{{ $type }}" aria-haspopup="dialog" data-tooltip="{{ $wallTooltip }}" aria-label="{{ $wallTooltip }}"
+                                                class="h-9 inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-outline-variant bg-surface-container-lowest px-2.5 text-xs font-semibold text-on-surface hover:bg-surface-container cursor-pointer">
+                                                <span class="material-symbols-outlined !text-[16px]" aria-hidden="true">forum</span>
+                                                <span class="hidden xl:inline">{{ __('occasions.wall.admin_open') }}</span>
+                                                <span class="inline-flex min-w-[20px] items-center justify-center rounded-full bg-surface-container px-1.5 text-[11px] font-bold" data-wall-admin-count>{{ count($walls[$type]) }}</span>
+                                            </button>
+                                        @endisset
                                         @if ($event['can_send'])
                                             @php
                                                 $resend = $event['sent_at'] !== null;
@@ -133,11 +155,12 @@
 
     {{-- Sound modals: background music and sound effects of each event page, saved in place, with a preview. --}}
     <div data-event-settings-section
-        data-i18n="{{ json_encode(['preview' => __('occasions.admin.preview'), 'stop' => __('occasions.admin.preview_stop'), 'previewError' => __('occasions.admin.preview_error'), 'needsUrl' => __('occasions.admin.preview_needs_url'), 'saveError' => __('occasions.admin.save_error'), 'saving' => __('occasions.admin.saving'), 'pageError' => __('occasions.admin.music_url_page', ['site' => '__SITE__']), 'streamingHosts' => \App\Services\Occasion\RoomEventSettingsService::STREAMING_PAGE_HOSTS], JSON_UNESCAPED_UNICODE) }}">
+        data-i18n="{{ json_encode(['preview' => __('occasions.admin.preview'), 'stop' => __('occasions.admin.preview_stop'), 'previewError' => __('occasions.admin.preview_error'), 'needsUrl' => __('occasions.admin.preview_needs_url'), 'needsFile' => __('occasions.admin.music_file_required'), 'fileTooLarge' => __('occasions.admin.music_file_too_large', ['size' => intdiv(\App\Services\Occasion\RoomEventSettingsService::MUSIC_FILE_MAX_KB, 1024)]),'saveError' => __('occasions.admin.save_error'), 'saving' => __('occasions.admin.saving'), 'pageError' => __('occasions.admin.music_url_page', ['site' => '__SITE__']), 'streamingHosts' => \App\Services\Occasion\RoomEventSettingsService::STREAMING_PAGE_HOSTS], JSON_UNESCAPED_UNICODE) }}">
         @foreach ($settings as $type => $setting)
             @php
                 $isCustom = $setting['music_mode'] === \App\Enums\EventMusicMode::Custom;
                 $isOff = $setting['music_mode'] === \App\Enums\EventMusicMode::Off;
+                $isUpload = $setting['music_mode'] === \App\Enums\EventMusicMode::Upload;
             @endphp
             <div class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs" data-event-modal="music-{{ $type }}"
                 role="dialog" aria-modal="true" aria-labelledby="music-modal-{{ $type }}-title">
@@ -153,7 +176,7 @@
                             <span class="material-symbols-outlined !text-[20px]" aria-hidden="true">close</span>
                         </button>
                     </div>
-                    <form method="POST" action="{{ route('admin.events.settings', $room) }}" data-event-settings="{{ $type }}" class="space-y-4 px-5 py-4">
+                    <form method="POST" action="{{ route('admin.events.settings', $room) }}" data-event-settings="{{ $type }}" enctype="multipart/form-data" class="space-y-4 px-5 py-4">
                         @csrf
                         @method('PUT')
                         <input type="hidden" name="type" value="{{ $type }}">
@@ -166,6 +189,7 @@
                                         {{ match ($mode) {
                                             \App\Enums\EventMusicMode::Builtin => __('occasions.admin.music_builtin', ['melody' => __('occasions.melodies.'.$type)]),
                                             \App\Enums\EventMusicMode::Custom => __('occasions.admin.music_custom'),
+                                            \App\Enums\EventMusicMode::Upload => __('occasions.admin.music_upload'),
                                             \App\Enums\EventMusicMode::Off => __('occasions.admin.music_off'),
                                         } }}
                                     </option>
@@ -179,6 +203,19 @@
                                 @if ($isCustom) required @endif aria-describedby="music-url-hint-{{ $type }}" class="h-10 w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 text-sm text-on-surface">
                             <span id="music-url-hint-{{ $type }}" class="block text-[11px] text-outline">{{ __('occasions.admin.music_url_hint') }}</span>
                         </label>
+                        {{-- Uploaded file: only with "uploaded music file"; required until the page has one. --}}
+                        <div class="space-y-1.5" data-music-file-field data-music-file-url="{{ $setting['music_file_url'] }}" @if (! $isUpload) hidden @endif>
+                            <label for="music-file-{{ $type }}" class="block text-xs font-semibold text-on-surface">{{ __('occasions.admin.music_file') }}</label>
+                            <p class="flex items-center gap-1.5 text-xs text-on-surface-variant" data-music-file-current @if ($setting['music_name'] === null) hidden @endif>
+                                <span class="material-symbols-outlined !text-[16px] text-primary" aria-hidden="true">audio_file</span>
+                                <span>{{ __('occasions.admin.music_file_current') }}</span>
+                                <strong class="truncate font-semibold text-on-surface" data-music-file-name>{{ $setting['music_name'] }}</strong>
+                            </p>
+                            <input type="file" id="music-file-{{ $type }}" name="music_file" accept="{{ collect(\App\Services\Occasion\RoomEventSettingsService::MUSIC_FILE_TYPES)->map(fn (string $ext): string => '.'.$ext)->implode(',') }},audio/*"
+                                data-max-bytes="{{ \App\Services\Occasion\RoomEventSettingsService::MUSIC_FILE_MAX_KB * 1024 }}" aria-describedby="music-file-hint-{{ $type }}"
+                                class="block w-full text-sm text-on-surface file:mr-3 file:h-9 file:cursor-pointer file:rounded-lg file:border-0 file:bg-surface-container file:px-3 file:text-xs file:font-semibold file:text-on-surface hover:file:bg-surface-container-high">
+                            <span id="music-file-hint-{{ $type }}" class="block text-[11px] text-outline">{{ __('occasions.admin.music_file_hint', ['types' => strtoupper(implode(', ', \App\Services\Occasion\RoomEventSettingsService::MUSIC_FILE_TYPES)), 'size' => intdiv(\App\Services\Occasion\RoomEventSettingsService::MUSIC_FILE_MAX_KB, 1024)]) }}</span>
+                        </div>
                         <label class="inline-flex items-center gap-2 text-sm font-medium text-on-surface">
                             <input type="hidden" name="sound_effects" value="0">
                             <input type="checkbox" name="sound_effects" value="1" @checked($setting['sound_effects']) class="rounded border-outline-variant text-primary">
@@ -280,6 +317,59 @@
         @endforeach
     </div>
 
+    {{-- Wishes wall modals: members' wishes of the events shown now; the admin hides (or shows again) a wish in place. --}}
+    <div data-event-wall-section
+        data-i18n="{{ json_encode(['hide' => __('occasions.wall.admin_hide'), 'show' => __('occasions.wall.admin_show'), 'saveError' => __('occasions.admin.save_error')], JSON_UNESCAPED_UNICODE) }}">
+        @foreach ($walls as $type => $wallWishes)
+            <div class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs" data-event-modal="wall-{{ $type }}"
+                role="dialog" aria-modal="true" aria-labelledby="wall-modal-{{ $type }}-title">
+                <div class="flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-surface-container-lowest shadow-2xl">
+                    <div class="flex items-start justify-between gap-3 border-b border-outline-variant px-5 py-4">
+                        <div>
+                            <h2 id="wall-modal-{{ $type }}-title" class="flex items-center gap-2 text-base font-bold text-on-surface">
+                                <span class="material-symbols-outlined !text-[20px] text-primary" aria-hidden="true">forum</span>{{ __('occasions.wall.admin_title') }}
+                            </h2>
+                            <p class="mt-0.5 text-sm text-on-surface-variant">{{ $eventEmoji($type) }} {{ $eventName($type) }}</p>
+                        </div>
+                        <button type="button" data-event-modal-close aria-label="{{ __('occasions.admin.close') }}" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container cursor-pointer">
+                            <span class="material-symbols-outlined !text-[20px]" aria-hidden="true">close</span>
+                        </button>
+                    </div>
+                    <p class="border-b border-outline-variant px-5 py-3 text-xs text-outline">{{ __('occasions.wall.admin_description') }}</p>
+                    <ul class="min-h-0 flex-1 divide-y divide-outline-variant/60 overflow-y-auto px-5" data-wall-admin-list>
+                        @forelse ($wallWishes as $wish)
+                            <li class="flex items-start gap-3 py-3 {{ $wish['hidden'] ? 'opacity-60' : '' }}" data-wall-admin-wish="{{ $wish['id'] }}">
+                                <div class="min-w-0 flex-1">
+                                    <p class="flex flex-wrap items-baseline gap-x-2 text-xs text-outline">
+                                        <strong class="text-sm text-on-surface">{{ $wish['author'] }}</strong>
+                                        @if ($wish['recipient'] !== null)
+                                            <span>{{ __('occasions.wall.to', ['name' => $wish['recipient']]) }}</span>
+                                        @endif
+                                        <span>{{ $wish['time'] }}</span>
+                                        <span>♥ {{ __('occasions.wall.admin_hearts', ['count' => $wish['hearts']]) }}</span>
+                                        <span class="rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-700" data-wall-admin-badge @unless ($wish['hidden']) hidden @endunless>{{ __('occasions.wall.admin_hidden_badge') }}</span>
+                                    </p>
+                                    <p class="mt-1 whitespace-pre-line break-words text-sm text-on-surface">{{ $wish['message'] }}</p>
+                                </div>
+                                <form method="POST" action="{{ route('admin.events.wall.moderate', [$room, $wish['id']]) }}" data-wall-admin-form class="shrink-0">
+                                    @csrf
+                                    @method('PUT')
+                                    <input type="hidden" name="hidden" value="{{ $wish['hidden'] ? '0' : '1' }}">
+                                    <button type="submit" data-wall-admin-toggle class="h-8 inline-flex items-center gap-1 rounded-lg border border-outline-variant px-2.5 text-xs font-semibold text-on-surface hover:bg-surface-container cursor-pointer disabled:opacity-60">
+                                        <span class="material-symbols-outlined !text-[16px]" aria-hidden="true">{{ $wish['hidden'] ? 'visibility' : 'visibility_off' }}</span><span>{{ __($wish['hidden'] ? 'occasions.wall.admin_show' : 'occasions.wall.admin_hide') }}</span>
+                                    </button>
+                                </form>
+                            </li>
+                        @empty
+                            <li class="py-6 text-center text-sm text-outline">{{ __('occasions.wall.admin_empty') }}</li>
+                        @endforelse
+                    </ul>
+                    <p class="border-t border-outline-variant px-5 py-3 text-xs font-semibold" role="status" aria-live="polite" data-wall-admin-status></p>
+                </div>
+            </div>
+        @endforeach
+    </div>
+
     <x-occasion.audio-engine />
     <script>
         // Submit loading of the save buttons: spinner + "Saving…", restored once the request is done.
@@ -364,17 +454,21 @@
                 const mode = form.querySelector('[data-music-mode]');
                 const urlField = form.querySelector('[data-music-url-field]');
                 const urlInput = urlField.querySelector('input');
+                const fileField = form.querySelector('[data-music-file-field]');
+                const fileInput = fileField.querySelector('input[type=file]');
                 const preview = form.querySelector('[data-music-preview]');
                 const save = form.querySelector('[data-settings-save]');
 
                 // Closing the modal stops its preview.
                 form.closest('[data-event-modal]').addEventListener('event-modal:close', () => { if (playing && playing.form === form) stopPreview(); });
 
-                // Only "own music link" shows (and requires) the link; "no music" has nothing to preview.
+                // Only "own music link" shows (and requires) the link, only "uploaded file" shows the file picker;
+                // "no music" has nothing to preview.
                 mode.addEventListener('change', () => {
                     const custom = mode.value === 'custom';
                     urlField.hidden = !custom;
                     urlInput.required = custom;
+                    fileField.hidden = mode.value !== 'upload';
                     preview.hidden = mode.value === 'off';
                     if (playing && playing.form === form) stopPreview();
                     setStatus(form, '', true);
@@ -396,6 +490,15 @@
                         audio.volume = 0.6;
                         audio.addEventListener('error', () => { setStatus(form, i18n.previewError, false); stopPreview(); }, { once: true });
                         audio.play().catch(() => { setStatus(form, i18n.previewError, false); stopPreview(); });
+                    } else if (mode.value === 'upload') {
+                        // The file just picked (not saved yet), otherwise the saved one.
+                        const picked = fileInput.files[0];
+                        const source = picked ? URL.createObjectURL(picked) : fileField.dataset.musicFileUrl;
+                        if (!source) { setStatus(form, i18n.needsFile, false); fileInput.focus(); return; }
+                        audio = new Audio(source);
+                        audio.volume = 0.6;
+                        audio.addEventListener('error', () => { setStatus(form, i18n.previewError, false); stopPreview(); }, { once: true });
+                        audio.play().catch(() => { setStatus(form, i18n.previewError, false); stopPreview(); });
                     } else {
                         engine.startMelody(type);
                     }
@@ -405,9 +508,26 @@
                     setStatus(form, '', true);
                 });
 
+                // A file over the size limit is refused before it is sent.
+                fileInput.addEventListener('change', () => {
+                    if (playing && playing.form === form) stopPreview();
+                    const picked = fileInput.files[0];
+                    if (picked && picked.size > Number(fileInput.dataset.maxBytes)) {
+                        fileInput.value = '';
+                        setStatus(form, i18n.fileTooLarge, false);
+                    } else {
+                        setStatus(form, '', true);
+                    }
+                });
+
                 // Saved in place: the page is not reloaded.
                 form.addEventListener('submit', async (event) => {
                     event.preventDefault();
+                    if (mode.value === 'upload' && !fileInput.files[0] && !fileField.dataset.musicFileUrl) {
+                        setStatus(form, i18n.needsFile, false);
+                        fileInput.focus();
+                        return;
+                    }
                     window.dfEventBusy(save, true, i18n.saving);
                     setStatus(form, '', true);
                     try {
@@ -420,6 +540,12 @@
                         const data = await response.json().catch(() => ({}));
                         if (response.ok) {
                             setStatus(form, '✓ ' + (data.message || ''), true);
+                            // The saved file becomes the current one (the picker is emptied).
+                            const saved = data.settings || {};
+                            fileField.dataset.musicFileUrl = saved.music_file_url || '';
+                            form.querySelector('[data-music-file-name]').textContent = saved.music_name || '';
+                            form.querySelector('[data-music-file-current]').hidden = !saved.music_name;
+                            fileInput.value = '';
                         } else {
                             const first = data.errors ? (Object.values(data.errors)[0] || [])[0] : null;
                             setStatus(form, first || data.message || i18n.saveError, false);
@@ -516,6 +642,47 @@
                     }
                 });
                 renumber();
+            });
+        })();
+
+        (() => {
+            const section = document.querySelector('[data-event-wall-section]');
+            if (!section) return;
+            let i18n = {};
+            try { i18n = JSON.parse(section.dataset.i18n || '{}'); } catch { i18n = {}; }
+
+            // Hide / show a wish in place: the form's next state flips after each save.
+            section.querySelectorAll('[data-wall-admin-form]').forEach((form) => {
+                const item = form.closest('[data-wall-admin-wish]');
+                const status = form.closest('[data-event-modal]').querySelector('[data-wall-admin-status]');
+                const button = form.querySelector('[data-wall-admin-toggle]');
+                form.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    button.disabled = true;
+                    try {
+                        const response = await fetch(form.action, {
+                            method: 'POST',
+                            body: new FormData(form),
+                            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                            credentials: 'same-origin',
+                        });
+                        const data = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(data.message || i18n.saveError);
+                        const hidden = Boolean(data.hidden);
+                        form.querySelector('input[name=hidden]').value = hidden ? '0' : '1';
+                        button.querySelector('.material-symbols-outlined').textContent = hidden ? 'visibility' : 'visibility_off';
+                        button.lastElementChild.textContent = hidden ? i18n.show : i18n.hide;
+                        item.classList.toggle('opacity-60', hidden);
+                        item.querySelector('[data-wall-admin-badge]').hidden = !hidden;
+                        status.className = 'border-t border-outline-variant px-5 py-3 text-xs font-semibold text-emerald-700';
+                        status.textContent = '✓ ' + (data.message || '');
+                    } catch (error) {
+                        status.className = 'border-t border-outline-variant px-5 py-3 text-xs font-semibold text-red-600';
+                        status.textContent = error.message || i18n.saveError;
+                    } finally {
+                        button.disabled = false;
+                    }
+                });
             });
         })();
     </script>

@@ -81,3 +81,9 @@ Schedule::command('billing:enforce-overdue')
 Schedule::command('drinkflow:calculate-monthly-sponsors')
     ->monthlyOn(1, '00:15')
     ->withoutOverlapping();
+
+// Year recaps of the members, computed in advance every night of the recap season (15 December - 31 January; the
+// command does nothing on the other days).
+Schedule::command('drinkflow:build-year-recaps')
+    ->dailyAt('02:30')
+    ->withoutOverlapping();

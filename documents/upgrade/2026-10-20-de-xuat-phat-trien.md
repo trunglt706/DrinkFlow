@@ -94,3 +94,21 @@
 - Người duyệt:
 - Ngày duyệt:
 - Ý kiến chung:
+
+---
+
+## 8. Tiến độ triển khai các mục đã duyệt
+
+| # | Hạng mục | Trạng thái | Ghi chú |
+|---|---|---|---|
+| T2 | Sửa `PaymentStatementExportTest` + CI | ✅ Xong | Commit `867e769` |
+| 4 | Nhắc nợ theo bậc + tạm hoãn | ✅ Xong | Commit `576a83a` |
+| 2 | Tự đối soát chuyển khoản (SePay) | ✅ Xong | Commit `27ff7d1` |
+| 11 | Sổ quỹ phòng | ✅ Xong | Commit `27ff7d1`; 21/10: form ghi giao dịch chuyển vào modal (validate phía trình duyệt, định dạng tiền), bảng tải AJAX có skeleton / empty state |
+| T3 | Admin tải nhạc lên cho trang sự kiện | ✅ Xong | MP3/M4A/OGG/WAV ≤ 8 MB, lưu disk `public` (`event-music/{room}`); cần `upload_max_filesize`/`post_max_size` ≥ 8M trên server |
+| 8 | Tường lời chúc trên trang sự kiện | ✅ Xong | Gửi (≤ 280 ký tự, ≤ 5 lời/sự kiện), thả tim, tự xoá; admin ẩn/hiện; sinh nhật gửi tới từng người |
+| 7 | Đánh giá món sau khi nhận | ✅ Xong | 1–5 sao (đổi được tới khi gửi nhận xét) + nhận xét gửi một lần rồi khoá; điểm TB theo (quán, tên món) trên menu; thẻ "chờ đánh giá" ở dashboard phòng |
+| 10 | Tổng kết năm | ✅ Xong | `/rooms/{room}/recap/{year}` dạng story + thẻ tổng kết tải ảnh / chia sẻ; tính sẵn mỗi đêm 15/12–31/1 (`drinkflow:build-year-recaps`, bảng `member_year_recaps`); banner dashboard trong mùa, link ở trang Thành tích |
+| T4 | Số liệu sản phẩm (DAU/MAU…) | ✅ Xong | Bảng `daily_active_members` (ghi 1 lần/ngày/thành viên khi mở trang phòng); tab Xu hướng của dashboard superadmin: DAU/WAU/MAU, DAU/MAU, tỉ lệ tham gia chiến dịch (30 ngày), thời gian trả nợ TB / trung vị (90 ngày) |
+
+Bổ sung ngoài đề xuất (21/10): nút **Xem trước** trang sự kiện cho admin; trang sự kiện co giãn vừa một màn hình desktop, lời chúc đổi chậm hơn (5–10 giây theo độ dài) với hiệu ứng chuyển mượt; trang **Đơn hàng của tôi** luôn mở được, có **Lịch sử đơn hàng** (lọc mã / ngày / tự đặt – đặt dùm / trạng thái, 10 đơn/trang, copy mã đơn).

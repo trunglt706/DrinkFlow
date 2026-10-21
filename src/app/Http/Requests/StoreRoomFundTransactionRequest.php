@@ -32,6 +32,21 @@ class StoreRoomFundTransactionRequest extends FormRequest
     }
 
     /**
+     * The amount field is typed with thousands separators ("1.500.000", "-20.000"): only the digits and a leading
+     * minus sign are kept.
+     */
+    protected function prepareForValidation(): void
+    {
+        $amount = $this->input('amount');
+        if (is_string($amount) && trim($amount) !== '') {
+            $digits = preg_replace('/\D+/', '', $amount);
+            if ($digits !== '') {
+                $this->merge(['amount' => (str_starts_with(ltrim($amount), '-') ? '-' : '').$digits]);
+            }
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, array<int, mixed>>

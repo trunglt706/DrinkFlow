@@ -753,6 +753,15 @@
                   @endif
                 </div>
                 <h3 class="text-xs font-bold text-slate-900 leading-snug truncate">{{ $item->name }}</h3>
+                @if($dishRating = $itemRatings[$item->id] ?? null)
+                  {{-- Average stars the room gave this dish in earlier campaigns. --}}
+                  <p class="mt-0.5 flex items-center gap-0.5 text-[11px] font-semibold text-amber-600" data-item-average="{{ $item->id }}"
+                     title="{{ __('room.rating.average_title', ['average' => number_format($dishRating['average'], 1), 'count' => $dishRating['count']]) }}">
+                    <span class="material-symbols-outlined text-[14px]" style="font-variation-settings:'FILL' 1" aria-hidden="true">star</span>
+                    <span>{{ number_format($dishRating['average'], 1) }}</span>
+                    <span class="font-normal text-slate-400">({{ trans_choice('room.rating.count', $dishRating['count'], ['count' => $dishRating['count']]) }})</span>
+                  </p>
+                @endif
                 <p class="text-[11px] text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">{{ $item->description ?? __('room.campaign.default_drink_desc') }}</p>
               </div>
 

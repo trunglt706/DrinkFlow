@@ -98,6 +98,27 @@ class RoomFundLedgerTest extends TestCase
             ->assertSee('Banh sinh nhat');
     }
 
+    public function test_formatted_amounts_are_accepted_and_the_ledger_reloads_as_json(): void
+    {
+        // The modal sends digits only, but a formatted amount is still read correctly.
+        $this->store(['type' => 'deposit', 'amount' => '1.500.000'])->assertSessionHasNoErrors();
+        $this->store(['type' => 'adjustment', 'amount' => '-20.000', 'note' => 'Sua'])->assertSessionHasNoErrors();
+        $this->store(['type' => 'expense', 'amount' => 'abc', 'note' => 'X'])->assertSessionHasErrors('amount');
+        $this->assertSame(1480000, $this->balance());
+
+        // The type filter returns only the table, with the export link of that type.
+        $this->actingAs($this->admin, 'admin')->getJson(route('admin.fund.index', ['room' => $this->room->slug, 'type' => 'adjustment']))
+            ->assertOk()
+            ->assertJsonPath('export_url', route('admin.fund.export', ['room' => $this->room->slug, 'type' => 'adjustment']))
+            ->assertSee('data-fund-entry=\"adjustment\"', false)
+            ->assertDontSee('data-fund-entry=\"deposit\"', false);
+        $this->actingAs($this->admin, 'admin')->getJson(route('admin.fund.index', ['room' => $this->room->slug, 'type' => 'expense']))
+            ->assertOk()->assertSee('data-fund-empty', false);
+
+        $this->actingAs($this->admin, 'admin')->get(route('admin.fund.index', $this->room->slug))
+            ->assertOk()->assertSee('data-fund-modal-open', false)->assertSee('data-fund-skeleton', false);
+    }
+
     public function test_balance_never_goes_below_zero_and_input_is_validated(): void
     {
         $this->store(['type' => 'deposit', 'amount' => 30000]);

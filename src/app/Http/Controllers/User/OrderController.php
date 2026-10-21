@@ -8,6 +8,7 @@ use App\Actions\Order\CreateOrderAction;
 use App\Actions\Order\CreateProxyOrdersAction;
 use App\Enums\OrderStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ListMemberOrdersRequest;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Campaign;
@@ -28,26 +29,20 @@ use Illuminate\Validation\ValidationException;
 class OrderController extends Controller
 {
     /**
-     * Display a paginated list of the user's orders in the room's live campaign, or JSON response
-     * for API requests. Without a live campaign the page redirects back to the room dashboard.
+     * "My orders": the member's order in the room's live campaign at the top (as before), and below it the history
+     * of their earlier orders with filters and pagination — shown even when no campaign is open. JSON requests get
+     * the live campaign orders.
      *
-     * @param Request $request Current HTTP request.
+     * @param ListMemberOrdersRequest $request Current request with the history filters.
      * @param MemberOrderPageService $orderPage Builds the shared list/order-page view data.
-     * @return JsonResponse|View|RedirectResponse View response, JSON payload or redirect to the dashboard.
+     * @return JsonResponse|View View response or JSON payload.
      */
-    public function index(Request $request, MemberOrderPageService $orderPage): JsonResponse|View|RedirectResponse
+    public function index(ListMemberOrdersRequest $request, MemberOrderPageService $orderPage): JsonResponse|View
     {
         /** @var Room $room */
         $room = $request->attributes->get('room');
         /** @var RoomUser $roomUser */
         $roomUser = $request->attributes->get('room_user');
-
-        if (! $request->expectsJson() && ! $orderPage->roomHasLiveCampaign($room)) {
-            // Keep flash messages (e.g. payment confirmation) for the dashboard.
-            $request->session()->reflash();
-
-            return redirect()->route('user.dashboard', $room->slug);
-        }
 
         if ($request->expectsJson()) {
             $orders = $orderPage->paginatedOrders($room, $roomUser);
@@ -56,7 +51,13 @@ class OrderController extends Controller
             return response()->json(['data' => $orders]);
         }
 
-        return view('user.orders', $orderPage->build($room, $roomUser));
+        $filters = $request->filters();
+
+        return view('user.orders', $orderPage->build($room, $roomUser) + [
+            'hasLiveCampaign' => $orderPage->roomHasLiveCampaign($room),
+            'historyOrders' => $orderPage->history($room, $roomUser, $filters),
+            'historyFilters' => $filters,
+        ]);
     }
 
     /**

@@ -43,4 +43,20 @@ return [
     'insufficient' => 'The room fund does not have enough money (balance: :balance).',
     'invalid_amount' => 'The amount must not be zero.',
     'invalid_type' => 'Invalid entry type.',
+
+    'new_transaction' => 'New transaction',
+    'required_hint' => 'Required field',
+    'amount_placeholder' => 'e.g. 500,000',
+    'close' => 'Close',
+    'cancel' => 'Cancel',
+    'load_error' => 'The transactions could not be loaded, please try again.',
+    'empty_description' => 'Click "New transaction" to record the first deposit.',
+    'empty_filtered' => 'There is no transaction of this type.',
+    'validation' => [
+        'amount_required' => 'Please enter the amount.',
+        'amount_positive' => 'The amount must be greater than 0.',
+        'amount_non_zero' => 'An adjustment amount cannot be 0.',
+        'amount_max' => 'A transaction is at most :max.',
+        'note_required' => 'Please enter the description of this transaction.',
+    ],
 ];

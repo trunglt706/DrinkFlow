@@ -680,6 +680,28 @@ function renderInfra(root, history, i18n) {
     });
 }
 
+/** Product metrics: active members (day / week / month), stickiness, campaign participation, debt payment time, DAU chart. */
+function renderProduct(root, product, i18n) {
+    const percent = value => (value === null ? i18n.not_measured : `${number(value, 1)}%`);
+    root.querySelector('#sa-product-dau').textContent = number(product.dau);
+    root.querySelector('#sa-product-wau').textContent = number(product.wau);
+    root.querySelector('#sa-product-mau').textContent = number(product.mau);
+    root.querySelector('#sa-product-stickiness').textContent = percent(product.stickiness);
+    root.querySelector('#sa-product-participation').textContent = product.participation.rate === null
+        ? i18n.not_measured
+        : `${percent(product.participation.rate)} · ${trans(i18n.product_campaigns, { count: number(product.participation.campaigns) })}`;
+    const hours = product.debt_payment.average_hours;
+    root.querySelector('#sa-product-debt').textContent = hours === null
+        ? i18n.not_measured
+        : (hours >= 48 ? trans(i18n.product_days, { count: number(hours / 24, 1) }) : trans(i18n.product_hours, { count: number(hours, 1) }))
+            + (product.debt_payment.median_hours === null ? '' : ` · ${trans(i18n.product_median, { value: number(product.debt_payment.median_hours / 24, 1) })}`);
+
+    const chart = root.querySelector('#sa-product-chart');
+    renderLineChart(chart, product.daily.map(day => ({ axis: shortDay(day.date), title: longDay(day.date), value: day.users })), {
+        format: value => number(value), integer: true, height: SMALL_CHART_HEIGHT,
+    });
+}
+
 /** Parse a JSON data-* attribute, falling back to an empty object (the page still renders numbers). */
 const parseData = (element, key) => {
     try {
@@ -713,6 +735,7 @@ export function initSuperadminDashboard() {
     const drawTrend = () => data && renderTrend(chart, data.daily, metric, i18n, data.period_days);
     const drawSecurity = () => insights && renderSecurityChart(securityChart, insights.security.daily, i18n, insightThresholds.security_days);
     const drawInfra = () => trends && renderInfra(root, trends.system_history, i18n);
+    const drawProduct = () => trends?.product && renderProduct(root, trends.product, i18n);
 
     const showError = (element, error) => {
         element.textContent = `${i18n.load_failed || ''} ${error.message}`.trim();
@@ -754,6 +777,7 @@ export function initSuperadminDashboard() {
         trendsNotice.classList.remove('is-visible');
         try {
             ({ data: trends } = await dfApi(`${root.dataset.trendsUrl}${fresh ? '?fresh=1' : ''}`));
+            drawProduct();
             renderCohorts(root.querySelector('#sa-cohort-body'), trends.cohorts, i18n, trends.cohorts.length);
             renderFeedback(root.querySelector('#sa-feedback'), trends.feedback, i18n, trends.feedback.monthly.length);
             renderContactTopics(root.querySelector('#sa-contact-topics'), trends.contact_topics, contactTopics, i18n, insightThresholds.contact_days);
@@ -791,9 +815,10 @@ export function initSuperadminDashboard() {
         widths.set(entry.target, width);
         if (entry.target === chart) drawTrend();
         else if (entry.target === securityChart) drawSecurity();
+        else if (entry.target.id === 'sa-product-chart') drawProduct();
         else drawInfra();
     }));
-    [chart, securityChart, ...root.querySelectorAll('[data-infra-chart]')].forEach(element => {
+    [chart, securityChart, root.querySelector('#sa-product-chart'), ...root.querySelectorAll('[data-infra-chart]')].filter(Boolean).forEach(element => {
         widths.set(element, element.clientWidth);
         observer.observe(element);
     });

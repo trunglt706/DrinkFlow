@@ -14,6 +14,7 @@ import { initRoomHeader } from './room/header';
 import { initRoomDashboardCharts } from './room/dashboard-charts';
 import { initGroupedImageLightbox, initGuideLightbox } from './shared/image-lightbox';
 import { initSponsorDrawStage } from './sponsor-draw/stage';
+import { initItemRatings } from './room/item-rating';
 
 document.addEventListener('DOMContentLoaded', () => {
     initSponsorDrawStage();
@@ -28,4 +29,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initRoomDashboardCharts();
     initGuideLightbox();
     initGroupedImageLightbox();
+    initItemRatings();
 });

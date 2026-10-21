@@ -85,6 +85,17 @@ Vào **9:00 sáng** của ngày sự kiện (sinh nhật hoặc ngày lễ; Tế
 
 Thành viên khác chỉ thấy **ngày và tháng** sinh của bạn để gửi lời chúc, không thấy năm sinh.
 
+## 14.7. Tường lời chúc
+
+Ở cuối mỗi trang chúc mừng (bấm **💬 Tường lời chúc** để tới nhanh) bạn có thể tự viết lời chúc cho cả phòng:
+
+1. Trên trang sinh nhật, chọn **người nhận** nếu có nhiều người cùng dịp sinh nhật.
+2. Nhập lời chúc (tối đa **280** ký tự) và bấm **Gửi lời chúc**. Mỗi người gửi tối đa **5** lời chúc cho một sự kiện.
+3. Bấm **🤍** để thả tim cho lời chúc bạn thích (bấm lần nữa để bỏ tim).
+4. Lời chúc của bạn có nút **Xóa** — bấm hai lần để xoá.
+
+Tường tự cập nhật lời chúc mới của mọi người khoảng 30 giây một lần. Admin phòng có thể ẩn lời chúc không phù hợp.
+
 ---
 
 ⬅️ [Trang trước: 13. Món trả riêng (không dùng tài trợ)](13-mon-tra-rieng.md) &nbsp;|&nbsp; [🏠 Mục lục](README.md) &nbsp;|&nbsp; [Trang sau: 15. Vòng quay may mắn ➡️](15-vong-quay-may-man.md)

@@ -56,11 +56,12 @@ Bấm nút **🎵 Âm thanh** trên dòng sự kiện để mở hộp thoại c
 1. **Nhạc nền**:
    - **Giai điệu có sẵn** (mặc định): giai điệu cổ điển không còn bản quyền, phát trực tiếp trong trình duyệt (Auld Lang Syne, Jingle Bells, Happy Birthday, Für Elise, Canon, Ode to Joy; Tết dùng giai điệu ngũ cung riêng).
    - **Link nhạc riêng**: dán link **https** trỏ thẳng tới file nhạc **.mp3/.ogg** mà phòng có quyền sử dụng. Link trang nghe nhạc như **Zing MP3, YouTube, Spotify, NhacCuaTui** không phát được và sẽ bị từ chối.
+   - **Tệp nhạc tải lên**: chọn file nhạc trên máy (**MP3, M4A, OGG, WAV**, tối đa **8 MB**) để lưu trên máy chủ của DrinkFlow — cách chắc chắn phát được, không phụ thuộc trang nhạc bên ngoài. Chọn file mới sẽ thay file đang dùng; chuyển sang chế độ khác sẽ xoá file đã tải lên.
    - **Tắt nhạc**.
 2. **Hiệu ứng âm thanh**: bật/tắt các tiếng động khi thành viên mở trang (bật nắp sâm panh, mở bao lì xì, chuông…).
-3. Bấm **Nghe thử** để nghe nhạc đang chọn (tự dừng sau 20 giây), rồi bấm **Lưu** — cấu hình được lưu ngay, không tải lại trang.
+3. Bấm **Nghe thử** để nghe nhạc đang chọn — kể cả file vừa chọn nhưng chưa lưu (tự dừng sau 20 giây), rồi bấm **Lưu** — cấu hình được lưu ngay, không tải lại trang.
 
-> Các bài hát có bản quyền (ví dụ "Happy New Year" của ABBA) không được nhúng sẵn. Nếu muốn dùng, phòng cần có file nhạc hợp lệ và đặt ở nơi cho phép tải trực tiếp.
+> Các bài hát có bản quyền (ví dụ "Happy New Year" của ABBA) không được nhúng sẵn. Nếu muốn dùng, phòng cần có file nhạc hợp lệ rồi tải lên bằng **Tệp nhạc tải lên** (hoặc đặt ở nơi cho phép tải trực tiếp và dùng **Link nhạc riêng**).
 
 ## 12.5. Quản lý lời chúc
 
@@ -71,6 +72,14 @@ Bấm nút **❝ Lời chúc** trên dòng sự kiện để mở hộp thoại 
 - Với **sinh nhật**, viết `:name` để chèn tên người sinh nhật vào lời chúc.
 - Bấm **Lưu lời chúc**: từ lúc này mọi thành viên thấy đúng danh sách bạn nhập (không đổi theo ngôn ngữ).
 - Bấm **Khôi phục lời chúc mẫu** để xoá danh sách riêng và quay về lời chúc mẫu.
+
+## 12.6. Kiểm duyệt tường lời chúc của thành viên
+
+Trong thời gian sự kiện đang hiển thị, thành viên có thể tự viết lời chúc lên **Tường lời chúc** ở cuối trang chúc mừng và thả tim cho lời chúc của nhau. Trên dòng sự kiện đang diễn ra, nút **💬 Lời chúc của thành viên** (kèm số lời chúc) mở danh sách lời chúc của lần diễn ra này:
+
+- Bấm **Ẩn** để gỡ lời chúc không phù hợp khỏi tường — thành viên không còn thấy và không thả tim được nữa. Lời chúc bị ẩn vẫn nằm trong danh sách (mờ đi, nhãn **Đã ẩn**) để bạn **Hiện lại** khi cần.
+- Mỗi thành viên gửi tối đa **5** lời chúc cho một sự kiện, mỗi lời tối đa **280** ký tự; thành viên tự xoá được lời chúc của mình.
+- Mỗi năm tường lời chúc bắt đầu lại từ đầu; với sinh nhật, lời chúc được gửi tới từng người có sinh nhật.
 
 ---
 

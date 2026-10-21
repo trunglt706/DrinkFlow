@@ -49,6 +49,22 @@ Nếu đơn còn ở trạng thái **"Chờ thanh toán"**, bạn có thể:
 
 > Nếu đơn được tài trợ 100% hoặc miễn phí, hệ thống sẽ ghi rõ **"Đơn hàng không phát sinh chi phí"** — bạn không cần chuyển khoản.
 
+## 4.3. Đánh giá món đã nhận
+
+Khi đơn của bạn chuyển sang **Đang giao** hoặc **Hoàn thành**, mỗi món trong đơn có thêm dòng **Đánh giá món**:
+
+1. Bấm vào số **sao** (1–5) — đánh giá được lưu ngay.
+2. Bạn có thể đổi số sao cho tới khi gửi nhận xét.
+3. Viết **nhận xét ngắn** (tối đa 200 ký tự) rồi bấm **Gửi nhận xét**. Nhận xét chỉ gửi được **một lần**: sau khi gửi, nhận xét hiện dạng chữ kèm **thời gian gửi** và đánh giá của món đó không thể chỉnh sửa nữa.
+
+Các món bạn vừa nhận (7 ngày gần nhất) mà chưa đánh giá cũng hiện ở thẻ **Đánh giá món bạn vừa nhận** trên trang tổng quan của phòng. Điểm trung bình của mỗi món (cùng quán, cùng tên món) hiện cạnh tên món ở trang đặt món, ví dụ **★ 4.5 (12 lượt)**, giúp cả phòng chọn món ngon.
+
+## 4.4. Lịch sử đơn hàng
+
+Trang **Đơn hàng của tôi** luôn mở được, kể cả khi phòng không có chiến dịch nào đang mở. Phía trên vẫn là đơn bạn đang đặt trong chiến dịch đang mở; khi không có chiến dịch nào mở, trang chỉ hiển thị phần lịch sử. Phía dưới là **Lịch sử đơn hàng** gồm các đơn bạn đã đặt trước đây (kể cả đơn đặt dùm người khác hoặc được người khác đặt dùm), 10 đơn mỗi trang.
+
+Bạn có thể lọc theo **mã đơn**, **khoảng ngày đặt**, **người đặt** (Tự đặt / Đặt dùm) và **trạng thái**, rồi bấm **Tìm kiếm**; bấm **Xóa lọc** để xem lại toàn bộ. Bấm biểu tượng **sao chép** cạnh mã đơn để copy mã (biểu tượng chuyển thành dấu ✓ trong 2 giây); bấm **Xem đơn** để mở chi tiết một đơn.
+
 ---
 
 ⬅️ [Trang trước: 3. Đặt món trong chiến dịch gom đơn](03-dat-mon-chien-dich.md) &nbsp;|&nbsp; [🏠 Mục lục](README.md) &nbsp;|&nbsp; [Trang sau: 5. Thanh toán & Công nợ ➡️](05-thanh-toan-cong-no.md)
