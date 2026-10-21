@@ -66,7 +66,7 @@ return [
     'filter_to' => 'To',
     'filter_submit' => 'Filter',
     'filter_reset' => 'Clear filters',
-    'member_search' => 'Type a member name or code…',
+    'member_search' => 'Type a member name or email…',
     'member_no_match' => 'No member found.',
     'member_hint' => 'Type a name to search; leave empty when the deposit is not from a member.',
 ];

@@ -66,7 +66,7 @@ return [
     'filter_to' => 'Đến ngày',
     'filter_submit' => 'Lọc',
     'filter_reset' => 'Xóa lọc',
-    'member_search' => 'Gõ tên hoặc mã thành viên…',
+    'member_search' => 'Gõ tên hoặc email thành viên…',
     'member_no_match' => 'Không tìm thấy thành viên.',
     'member_hint' => 'Gõ tên để tìm nhanh; để trống nếu khoản nạp không gắn với thành viên nào.',
 ];

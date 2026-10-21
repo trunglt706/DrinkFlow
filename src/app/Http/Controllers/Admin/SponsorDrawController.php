@@ -21,15 +21,16 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
- * Draws of a room (/admin/{room}/sponsor-draws): create a draft, save its settings (sponsors or shops), share its
- * link, draw the turns, confirm and notify, and review past sessions. The admin.room middleware has checked access to the room.
+ * Draws of a room (/admin/{room}/sponsor-draws): create a session from its settings (sponsors or shops), change them
+ * before the first turn, share its link, draw the turns, confirm and notify, and review past sessions. The admin.room middleware has checked access to the room.
  */
 class SponsorDrawController extends Controller
 {
     public function __construct(private readonly SponsorDrawService $draws) {}
 
     /**
-     * Sessions of the room; a new one is created from the "New session" button.
+     * Sessions of the room; the "New session" button opens the settings dialog and the session is only created
+     * once they are saved.
      */
     public function index(Room $room): View
     {
@@ -39,19 +40,26 @@ class SponsorDrawController extends Controller
                 ->with(['campaign:id,name', 'targetCampaign:id,name', 'createdBy:id,name'])->withCount('results')
                 ->latest('id')->paginate(\App\Constants\Pagination::ADMIN_PER_PAGE)
                 ->through(fn (SponsorDrawSession $session): SponsorDrawSession => $session->setRelation('room', $room)),
+            ...$this->settingsOptions($room),
         ]);
     }
 
     /**
-     * Create a draft session and open its draw page with the settings dialog.
+     * Create a session with the settings of the dialog (list frozen, link issued) and open its draw page.
      */
-    public function store(ManageSponsorDrawRequest $request, Room $room): RedirectResponse
+    public function store(ConfigureSponsorDrawRequest $request, Room $room): RedirectResponse
     {
-        $session = $this->draws->createDraft($room, $this->admin($request));
+        ['session' => $session] = $this->draws->create(
+            $room,
+            $this->admin($request),
+            $request->type(),
+            (int) ($request->validated('target_winner_count') ?? 1),
+            $this->targetCampaign($request),
+            $request->shopNames(),
+        );
 
         return redirect()->route('admin.sponsor-draws.show', [$room, $session])
-            ->with('status', __('sponsor_draw.flash.draft_created'))
-            ->with('open_settings', true);
+            ->with('status', __('sponsor_draw.flash.created'));
     }
 
     /**
@@ -60,13 +68,12 @@ class SponsorDrawController extends Controller
     public function settings(ConfigureSponsorDrawRequest $request, Room $room, SponsorDrawSession $sponsorDraw): RedirectResponse
     {
         $this->ensureRoom($room, $sponsorDraw);
-        $targetId = $request->validated('target_campaign_id');
         $this->draws->configure(
             $sponsorDraw,
             $this->admin($request),
             $request->type(),
             (int) ($request->validated('target_winner_count') ?? 1),
-            $targetId !== null ? Campaign::query()->findOrFail((int) $targetId) : null,
+            $this->targetCampaign($request),
             $request->shopNames(),
         );
 
@@ -90,16 +97,10 @@ class SponsorDrawController extends Controller
             'linkUrl' => $token !== null ? route('user.sponsor-draws.show', [$room, $token]) : null,
             // Settings stay editable until the first turn is drawn.
             'canConfigure' => $sponsorDraw->status->canConfigure() && ! $hasResults,
-            'targetCampaigns' => Campaign::query()->where('room_id', $room->id)
-                ->whereIn('status', [CampaignStatus::Draft->value, CampaignStatus::Scheduled->value, CampaignStatus::Active->value])
-                ->latest('id')->get(['id', 'name', 'status']),
-            'shopSuggestions' => $this->draws->shopSuggestions($room),
-            'eligibleMembers' => $this->draws->eligibleMembersQuery($room)->count(),
+            ...$this->settingsOptions($room),
             'currentShops' => $sponsorDraw->type === \App\Enums\SponsorDrawType::Shops
                 ? $sponsorDraw->eligibleUsers()->orderBy('position')->pluck('display_name_snapshot')->all()
                 : [],
-            'maxWinners' => (int) config('sponsor_draw.max_winners', 50),
-            'maxShops' => (int) config('sponsor_draw.max_shops', 100),
         ]);
     }
 
@@ -237,6 +238,34 @@ class SponsorDrawController extends Controller
     private function ensureRoom(Room $room, SponsorDrawSession $session): void
     {
         abort_unless((int) $session->room_id === (int) $room->id, 404);
+    }
+
+    /**
+     * Choices of the settings dialog (admin/sponsor-draws/_settings-modal), on the list and on the draw page.
+     *
+     * @return array{targetCampaigns: \Illuminate\Support\Collection<int, Campaign>, shopSuggestions: list<string>, eligibleMembers: int, maxWinners: int, maxShops: int}
+     */
+    private function settingsOptions(Room $room): array
+    {
+        return [
+            'targetCampaigns' => Campaign::query()->where('room_id', $room->id)
+                ->whereIn('status', [CampaignStatus::Draft->value, CampaignStatus::Scheduled->value, CampaignStatus::Active->value])
+                ->latest('id')->get(['id', 'name', 'status']),
+            'shopSuggestions' => $this->draws->shopSuggestions($room),
+            'eligibleMembers' => $this->draws->eligibleMembersQuery($room)->count(),
+            'maxWinners' => (int) config('sponsor_draw.max_winners', 50),
+            'maxShops' => (int) config('sponsor_draw.max_shops', 100),
+        ];
+    }
+
+    /**
+     * Campaign chosen to receive the sponsors (its room and status are checked by SponsorDrawService).
+     */
+    private function targetCampaign(ConfigureSponsorDrawRequest $request): ?Campaign
+    {
+        $targetId = $request->validated('target_campaign_id');
+
+        return $targetId !== null ? Campaign::query()->findOrFail((int) $targetId) : null;
     }
 
     private function admin(Request $request): Admin

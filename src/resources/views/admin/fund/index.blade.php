@@ -46,7 +46,8 @@
         </section>
 
         {{-- Ledger: the type filter and the pagination reload only the table (skeleton while loading). --}}
-        <section class="rounded-xl border border-outline-variant bg-surface-container-lowest overflow-hidden" data-fund-ledger-section
+        {{-- No overflow-hidden here: the member and date pickers of the filters must open over the page. --}}
+        <section class="rounded-xl border border-outline-variant bg-surface-container-lowest" data-fund-ledger-section
             data-i18n="{{ json_encode(['loadError' => __('room_fund.load_error')], JSON_UNESCAPED_UNICODE) }}">
             {{-- Filters: type (pills), member and date range; applied in place (AJAX), kept in the URL and the export link. --}}
             <form method="GET" action="{{ route('admin.fund.index', $room) }}" class="space-y-3 border-b border-outline-variant/60 p-3" data-fund-filter-form>
@@ -83,7 +84,7 @@
                 </div>
                 <p class="hidden text-xs font-semibold text-red-600" role="alert" data-fund-filter-error></p>
             </form>
-            <div data-fund-ledger aria-live="polite" aria-busy="false">
+            <div class="overflow-hidden rounded-b-xl" data-fund-ledger aria-live="polite" aria-busy="false">
                 @include('admin.fund.partials.ledger')
             </div>
             <template data-fund-skeleton>

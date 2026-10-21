@@ -127,26 +127,33 @@ class SponsorDrawTest extends TestCase
         $this->actingAs($this->admin, 'admin')->postJson(route('admin.sponsor-draws.draw', [$this->room, $draft]))->assertStatus(422);
     }
 
-    public function test_new_session_opens_the_draw_page_with_its_settings_then_sponsor_settings_freeze_it(): void
+    public function test_new_session_asks_for_its_settings_first_then_is_created_frozen(): void
     {
         $target = Campaign::create(['room_id' => $this->room->id, 'name' => 'Next week', 'restaurant' => 'Y', 'status' => CampaignStatus::Draft]);
 
-        // The list only offers "New session": the draft opens on the draw page with the settings dialog.
+        // "New session" opens the settings dialog on the list (closed until clicked); nothing is created yet.
         $this->actingAs($this->admin, 'admin')->get(route('admin.sponsor-draws.index', $this->room))
-            ->assertOk()->assertSee('data-sponsor-draw-create', false)->assertDontSee('name="campaign_id"', false);
-        $response = $this->actingAs($this->admin, 'admin')->post(route('admin.sponsor-draws.store', $this->room));
-        $session = SponsorDrawSession::query()->sole();
-        $response->assertRedirect(route('admin.sponsor-draws.show', [$this->room, $session]))->assertSessionHas('open_settings', true);
-        $this->assertSame(SponsorDrawStatus::Draft, $session->status);
-        $this->assertNull($session->link_expires_at);
-        $this->actingAs($this->admin, 'admin')->withSession(['open_settings' => true])->get(route('admin.sponsor-draws.show', [$this->room, $session]))
-            ->assertOk()->assertSee('data-sponsor-draw-draft', false)->assertSee('data-sd-settings-modal', false)
-            ->assertSee('settingsOpen: true', false)->assertDontSee('data-sd-draw>', false);
+            ->assertOk()->assertSee('data-sponsor-draw-create', false)->assertSee('data-sd-settings-modal', false)
+            ->assertSee('settingsOpen: false', false)->assertSee(route('admin.sponsor-draws.store', $this->room), false)
+            ->assertSee('Next week')->assertDontSee('name="campaign_id"', false);
+        $this->assertSame(0, SponsorDrawSession::query()->count());
 
-        $this->actingAs($this->admin, 'admin')->put(route('admin.sponsor-draws.settings', [$this->room, $session]), [
+        // Refused settings reopen the dialog and create no session (not even a draft).
+        $this->actingAs($this->admin, 'admin')->from(route('admin.sponsor-draws.index', $this->room))
+            ->post(route('admin.sponsor-draws.store', $this->room), ['type' => 'sponsors', 'target_winner_count' => 0])
+            ->assertRedirect(route('admin.sponsor-draws.index', $this->room))->assertSessionHasErrors('target_winner_count');
+        $this->actingAs($this->admin, 'admin')->from(route('admin.sponsor-draws.index', $this->room))
+            ->post(route('admin.sponsor-draws.store', $this->room), ['type' => 'shops', 'new_shops' => 'Only one'])
+            ->assertSessionHasErrors('shops');
+        $this->assertSame(0, SponsorDrawSession::query()->count());
+        $this->actingAs($this->admin, 'admin')->withSession(['errors' => (new \Illuminate\Support\ViewErrorBag())->put('default', new \Illuminate\Support\MessageBag(['shops' => 'x']))])
+            ->get(route('admin.sponsor-draws.index', $this->room))->assertOk()->assertSee('settingsOpen: true', false);
+
+        $response = $this->actingAs($this->admin, 'admin')->post(route('admin.sponsor-draws.store', $this->room), [
             'type' => 'sponsors', 'target_winner_count' => 2, 'target_campaign_id' => $target->id,
-        ])->assertRedirect(route('admin.sponsor-draws.show', [$this->room, $session]));
-        $session->refresh();
+        ]);
+        $session = SponsorDrawSession::query()->sole();
+        $response->assertRedirect(route('admin.sponsor-draws.show', [$this->room, $session]))->assertSessionHas('status', __('sponsor_draw.flash.created'));
         $this->assertSame(SponsorDrawStatus::Ready, $session->status);
         $this->assertSame(2, $session->target_winner_count);
         $this->assertSame($target->id, $session->target_campaign_id);

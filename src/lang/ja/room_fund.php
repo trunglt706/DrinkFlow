@@ -66,7 +66,7 @@ return [
     'filter_to' => '終了日',
     'filter_submit' => '絞り込み',
     'filter_reset' => '条件をクリア',
-    'member_search' => 'メンバー名またはコードを入力…',
+    'member_search' => 'メンバー名またはメールを入力…',
     'member_no_match' => 'メンバーが見つかりません。',
     'member_hint' => '名前を入力して検索できます。メンバーに紐づかない入金は空欄のままにしてください。',
 ];
