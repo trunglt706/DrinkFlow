@@ -105,7 +105,10 @@ Modal **Ghi kết quả** của Owner trên dashboard vẫn có 4 bước: danh 
 - **Điểm**: tổng giao dịch điểm.
 - **Thắng**: số kết quả hợp lệ mà người chơi thắng.
 - **Thua**: số lần người chơi nằm trong danh sách thua của kết quả hợp lệ.
-- **Đối đầu**: đếm riêng A thắng B và B thắng A.
+- **Đối đầu**: đếm riêng A thắng B và B thắng A. Với mỗi đối thủ, hiển thị thêm **điểm kiếm được** từ đối thủ đó, cùng số thắng/thua.
+  - Ví dụ: Client 1 có tổng 10 điểm, gồm 5 điểm với Client 2 (1 thắng · 2 thua) và 5 điểm với Client 3.
+  - Điểm với đối thủ là tổng điểm snapshot của các kết quả hợp lệ mà người chơi thắng đối thủ đó.
+  - Một kết quả có nhiều người thua (chỉ chủ room ghi được) chia đều điểm cho từng người thua, tối đa 2 chữ số thập phân. Nhờ vậy tổng các dòng đối đầu luôn bằng tổng điểm.
 - **Xếp hạng**: Điểm ↓ → Thắng ↓ → Tên ↑.
 - Lịch sử hiển thị 100 kết quả gần nhất.
 

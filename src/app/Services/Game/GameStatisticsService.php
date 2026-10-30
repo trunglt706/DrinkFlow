@@ -32,7 +32,7 @@ class GameStatisticsService
      * @return array{
      *     summary: array{rounds: int, results: int, current_round: int|null},
      *     leaderboard: array<int, array{rank: int, player_id: int, name: string, is_active: bool, points: int, wins: int, losses: int}>,
-     *     headToHead: array<int, array<int, array{opponent: string, wins: int, losses: int}>>,
+     *     headToHead: array<int, array<int, array{opponent: string, points: int|float, wins: int, losses: int}>>,
      *     history: Collection<int, GameResult>,
      *     players: Collection<int, GamePlayer>
      * }
@@ -51,20 +51,27 @@ class GameStatisticsService
             ->groupBy('winner_player_id')
             ->selectRaw('winner_player_id, COUNT(*) as total')
             ->pluck('total', 'winner_player_id');
+        // One row per (valid result, loser): the snapshot points of the result and who lost it.
         $pairs = DB::table('game_result_losers')
             ->join('game_results', 'game_results.id', '=', 'game_result_losers.game_result_id')
             ->where('game_results.game_room_id', $room->id)
             ->where('game_results.status', GameResultStatus::Valid->value)
-            ->groupBy('game_results.winner_player_id', 'game_result_losers.game_player_id')
-            ->selectRaw('game_results.winner_player_id as winner_id, game_result_losers.game_player_id as loser_id, COUNT(*) as total')
+            ->select(['game_results.id as result_id', 'game_results.winner_player_id as winner_id', 'game_results.points', 'game_result_losers.game_player_id as loser_id'])
             ->get();
+        $losersPerResult = $pairs->countBy('result_id');
 
-        // $beat[winner][loser] = number of valid results where winner beat loser.
+        // $beat[winner][loser] = valid results where winner beat loser; $earned[winner][loser] = points the winner
+        // earned against that loser (a result with several losers splits its points evenly, so the per-opponent
+        // points add up to the player's total).
         $beat = [];
+        $earned = [];
         $losses = [];
         foreach ($pairs as $pair) {
-            $beat[(int) $pair->winner_id][(int) $pair->loser_id] = (int) $pair->total;
-            $losses[(int) $pair->loser_id] = ($losses[(int) $pair->loser_id] ?? 0) + (int) $pair->total;
+            $winnerId = (int) $pair->winner_id;
+            $loserId = (int) $pair->loser_id;
+            $beat[$winnerId][$loserId] = ($beat[$winnerId][$loserId] ?? 0) + 1;
+            $earned[$winnerId][$loserId] = ($earned[$winnerId][$loserId] ?? 0) + (int) $pair->points / $losersPerResult[$pair->result_id];
+            $losses[$loserId] = ($losses[$loserId] ?? 0) + 1;
         }
 
         $rows = $players->map(static fn (GamePlayer $player): array => [
@@ -92,7 +99,12 @@ class GameStatisticsService
                 $won = $beat[(int) $player->id][(int) $opponent->id] ?? 0;
                 $lost = $beat[(int) $opponent->id][(int) $player->id] ?? 0;
                 if ($won > 0 || $lost > 0) {
-                    $headToHead[(int) $player->id][] = ['opponent' => $opponent->display_name, 'wins' => $won, 'losses' => $lost];
+                    $headToHead[(int) $player->id][] = [
+                        'opponent' => $opponent->display_name,
+                        'points' => $this->roundPoints($earned[(int) $player->id][(int) $opponent->id] ?? 0),
+                        'wins' => $won,
+                        'losses' => $lost,
+                    ];
                 }
             }
         }
@@ -114,5 +126,18 @@ class GameStatisticsService
                 ->get(),
             'players' => $players,
         ];
+    }
+
+    /**
+     * Points shown per opponent: whole numbers stay integers, an even split keeps two decimals at most.
+     *
+     * @param int|float $points Raw sum.
+     * @return int|float Display value.
+     */
+    private function roundPoints(int|float $points): int|float
+    {
+        $rounded = round($points, 2);
+
+        return floor($rounded) === $rounded ? (int) $rounded : $rounded;
     }
 }

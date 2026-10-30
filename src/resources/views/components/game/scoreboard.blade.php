@@ -103,11 +103,15 @@
         @if(($headToHead[$row['player_id']] ?? []) === [])
           <p class="mt-2 text-xs text-slate-500">{{ __('games.head_to_head.empty') }}</p>
         @else
-          <ul class="mt-2 grid gap-1.5 sm:grid-cols-2">
+          {{-- Per opponent: points earned against them (they add up to the total), wins and losses. --}}
+          <ul class="mt-2 grid gap-1.5 sm:grid-cols-2" data-head-to-head-detail>
             @foreach($headToHead[$row['player_id']] as $versus)
-              <li class="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs">
-                <span class="text-slate-700">{{ __('games.head_to_head.vs', ['name' => $versus['opponent']]) }}</span>
-                <span class="font-semibold tabular-nums text-slate-900">{{ __('games.head_to_head.record', ['wins' => $versus['wins'], 'losses' => $versus['losses']]) }}</span>
+              <li class="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-xs">
+                <span class="min-w-0">
+                  <span class="block truncate font-medium text-slate-800">{{ __('games.head_to_head.vs', ['name' => $versus['opponent']]) }}</span>
+                  <span class="block text-slate-500">{{ __('games.head_to_head.record', ['wins' => $versus['wins'], 'losses' => $versus['losses']]) }}</span>
+                </span>
+                <span class="shrink-0 text-sm font-bold tabular-nums text-[#006948]">{{ __('games.head_to_head.points', ['points' => $versus['points']]) }}</span>
               </li>
             @endforeach
           </ul>

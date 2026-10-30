@@ -103,7 +103,8 @@ return [
 
     'head_to_head' => [
         'title' => 'Đối đầu',
-        'subtitle' => 'Số lần thắng/thua với từng người.',
+        'subtitle' => 'Điểm và số lần thắng/thua với từng người.',
+        'points' => ':points điểm',
         'vs' => 'với :name',
         'record' => ':wins thắng · :losses thua',
         'total_points' => 'Tổng điểm: :points',

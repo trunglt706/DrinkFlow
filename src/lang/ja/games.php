@@ -103,7 +103,8 @@ return [
 
     'head_to_head' => [
         'title' => '対戦成績',
-        'subtitle' => '各プレイヤーとの勝敗数。',
+        'subtitle' => '各プレイヤーとの得点と勝敗数。',
+        'points' => ':points 点',
         'vs' => ':name 戦',
         'record' => ':wins 勝 · :losses 敗',
         'total_points' => '合計得点: :points',

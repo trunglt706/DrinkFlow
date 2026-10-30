@@ -103,7 +103,8 @@ return [
 
     'head_to_head' => [
         'title' => 'Head-to-head',
-        'subtitle' => 'Wins and losses against each player.',
+        'subtitle' => 'Points, wins and losses against each player.',
+        'points' => ':points pts',
         'vs' => 'vs :name',
         'record' => ':wins W · :losses L',
         'total_points' => 'Total points: :points',

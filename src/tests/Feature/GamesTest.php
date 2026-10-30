@@ -219,9 +219,41 @@ class GamesTest extends TestCase
         $this->assertSame([1, 1, 1], [$board['Bình']['points'], $board['Bình']['wins'], $board['Bình']['losses']]);
         $this->assertSame(1, $board['Chi']['losses']);
 
-        $anVsBinh = collect($stats['headToHead'][$board['An']['player_id']])->firstWhere('opponent', 'Bình');
-        $this->assertSame(['opponent' => 'Bình', 'wins' => 1, 'losses' => 1], $anVsBinh);
+        // An's 3 points came from one result with two losers: split 1.5 / 1.5, adding up to the total.
+        $anVersus = collect($stats['headToHead'][$board['An']['player_id']])->keyBy('opponent');
+        $this->assertSame(['opponent' => 'Bình', 'points' => 1.5, 'wins' => 1, 'losses' => 1], $anVersus['Bình']);
+        $this->assertSame(['opponent' => 'Chi', 'points' => 1.5, 'wins' => 1, 'losses' => 0], $anVersus['Chi']);
+        $this->assertEquals($board['An']['points'], $anVersus->sum('points'));
+        $chiVersus = collect($stats['headToHead'][$board['Chi']['player_id']])->keyBy('opponent');
+        $this->assertSame(3, $chiVersus['Dũng']['points']);
+        $this->assertSame(0, $chiVersus['An']['points']);
         $this->assertSame(3, $stats['summary']['results']);
+    }
+
+    public function test_public_head_to_head_shows_points_per_opponent(): void
+    {
+        $owner = $this->user();
+        $room = $this->startedRoom($owner);
+        $binh = $room->players()->where('display_name', 'Bình')->value('id');
+        auth('web')->logout();
+        $this->get(route('public.games.rooms.show', ['token' => $room->public_token, 'player' => $binh]))->assertOk();
+
+        // Bình: 3 + 1 against An, 3 against Chi (total 7); An beats Bình once.
+        $this->publicRecord($room, 'An', null, 'Thắng lớn')->assertCreated();
+        $this->publicRecord($room, 'An')->assertCreated();
+        $this->publicRecord($room, 'Chi', null, 'Thắng lớn')->assertCreated();
+        $this->record($owner, $room, 'Thắng thường', 'An', ['Bình'])->assertCreated();
+        auth('web')->logout();
+
+        $stats = app(GameStatisticsService::class)->dashboard($room);
+        $versus = collect($stats['headToHead'][$binh])->keyBy('opponent');
+        $this->assertSame(['opponent' => 'An', 'points' => 4, 'wins' => 2, 'losses' => 1], $versus['An']);
+        $this->assertSame(['opponent' => 'Chi', 'points' => 3, 'wins' => 1, 'losses' => 0], $versus['Chi']);
+
+        $this->get(route('public.games.rooms.show', $room->public_token))->assertOk()
+            ->assertSee(__('games.head_to_head.total_points', ['points' => 7]))
+            ->assertSee(__('games.head_to_head.points', ['points' => 4]))
+            ->assertSee(__('games.head_to_head.record', ['wins' => 2, 'losses' => 1]));
     }
 
     public function test_void_keeps_history_adds_reversal_and_excludes_result_from_stats(): void
