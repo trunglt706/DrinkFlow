@@ -63,6 +63,9 @@ class DatabaseSeeder extends Seeder
 
         // 4. System versions.
         $this->call(VersionSeeder::class);
+
+        // 5. Games of the /me "Trò chơi" catalogue.
+        $this->call(GameSeeder::class);
     }
 
     /**

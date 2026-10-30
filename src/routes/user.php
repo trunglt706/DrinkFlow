@@ -119,6 +119,32 @@ Route::middleware(['global.user'])->group(function () {
     Route::get('/me/guides', [\App\Http\Controllers\User\Global\GuideController::class, 'index'])->name('user.me.guides');
     Route::get('/me/guides/{slug}', [\App\Http\Controllers\User\Global\GuideController::class, 'show'])->name('user.me.guides.show');
 
+    // Mini games ("Trò chơi"): catalogue, the owner's rooms per game, room dashboard and scoring rule sets.
+    Route::get('/me/games', [\App\Http\Controllers\User\Global\GamesController::class, 'index'])->name('user.me.games');
+    Route::prefix('/me/games/{game:slug}')->name('user.me.games.')->scopeBindings()->group(function (): void {
+        Route::get('/', [\App\Http\Controllers\User\Global\GamesController::class, 'show'])->name('show');
+        Route::get('/rooms/create', [\App\Http\Controllers\User\Global\GameRoomsController::class, 'create'])->name('rooms.create');
+        Route::post('/rooms', [\App\Http\Controllers\User\Global\GameRoomsController::class, 'store'])->middleware('throttle:20,1')->name('rooms.store');
+        Route::get('/rooms/{gameRoom}', [\App\Http\Controllers\User\Global\GameRoomsController::class, 'show'])->whereNumber('gameRoom')->name('rooms.show');
+        Route::middleware('throttle:60,1')->whereNumber('gameRoom')->group(function (): void {
+            Route::post('/rooms/{gameRoom}/start', [\App\Http\Controllers\User\Global\GameRoomsController::class, 'start'])->name('rooms.start');
+            Route::post('/rooms/{gameRoom}/finish', [\App\Http\Controllers\User\Global\GameRoomsController::class, 'finish'])->name('rooms.finish');
+            Route::post('/rooms/{gameRoom}/rounds', [\App\Http\Controllers\User\Global\GameRoomsController::class, 'openRound'])->name('rooms.rounds.store');
+            Route::post('/rooms/{gameRoom}/rule-version', [\App\Http\Controllers\User\Global\GameRoomsController::class, 'applyRuleVersion'])->name('rooms.rule-version');
+            Route::post('/rooms/{gameRoom}/public-link', [\App\Http\Controllers\User\Global\GameRoomsController::class, 'regenerateLink'])->name('rooms.public-link.regenerate');
+            Route::delete('/rooms/{gameRoom}/public-link', [\App\Http\Controllers\User\Global\GameRoomsController::class, 'revokeLink'])->name('rooms.public-link.revoke');
+            Route::post('/rooms/{gameRoom}/players', [\App\Http\Controllers\User\Global\GamePlayersController::class, 'store'])->name('rooms.players.store');
+            Route::patch('/rooms/{gameRoom}/players/{player}', [\App\Http\Controllers\User\Global\GamePlayersController::class, 'update'])->whereNumber('player')->name('rooms.players.update');
+            Route::post('/rooms/{gameRoom}/results', [\App\Http\Controllers\User\Global\GameResultsController::class, 'store'])->middleware('json.only')->name('rooms.results.store');
+            Route::post('/rooms/{gameRoom}/results/{result}/void', [\App\Http\Controllers\User\Global\GameResultsController::class, 'void'])->whereNumber('result')->name('rooms.results.void');
+        });
+        Route::get('/rule-sets', [\App\Http\Controllers\User\Global\GameRuleSetsController::class, 'index'])->name('rule-sets.index');
+        Route::get('/rule-sets/create', [\App\Http\Controllers\User\Global\GameRuleSetsController::class, 'create'])->name('rule-sets.create');
+        Route::post('/rule-sets', [\App\Http\Controllers\User\Global\GameRuleSetsController::class, 'store'])->middleware('throttle:20,1')->name('rule-sets.store');
+        Route::get('/rule-sets/{ruleSet}/edit', [\App\Http\Controllers\User\Global\GameRuleSetsController::class, 'edit'])->whereNumber('ruleSet')->name('rule-sets.edit');
+        Route::put('/rule-sets/{ruleSet}', [\App\Http\Controllers\User\Global\GameRuleSetsController::class, 'update'])->whereNumber('ruleSet')->middleware('throttle:20,1')->name('rule-sets.update');
+    });
+
     // Global User JSON API & Action Endpoints
     Route::get('/profile', [\App\Http\Controllers\User\Global\ProfileController::class, 'show'])->name('user.profile.show');
     Route::get('/notifications', [\App\Http\Controllers\User\Global\NotificationController::class, 'index'])->name('user.notifications.index');

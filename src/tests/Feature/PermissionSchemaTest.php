@@ -25,7 +25,10 @@ class PermissionSchemaTest extends TestCase
     private const MIGRATION = 'migrations/2026_09_30_030000_create_permissions_tables.php';
 
     /** Permission groups required by the SaaS extension plan. */
-    private const REQUIRED_GROUPS = ['agent', 'package', 'subscription', 'revenue', 'debt', 'room', 'global_user', 'feedback', 'version', 'settings', 'security', 'audit', 'queue', 'superadmin'];
+    private const REQUIRED_GROUPS = ['agent', 'package', 'subscription', 'revenue', 'debt', 'room', 'global_user', 'feedback', 'version', 'game', 'settings', 'security', 'audit', 'queue', 'superadmin'];
+
+    /** Later migrations adding permissions to the catalog, run after MIGRATION. */
+    private const FOLLOW_UP_MIGRATIONS = ['migrations/2026_10_30_110000_add_game_permissions.php'];
 
     private function superadmin(string $email = 'perm-root@drinkflow.test'): Superadmin
     {
@@ -109,6 +112,10 @@ class PermissionSchemaTest extends TestCase
 
         $existing = $this->superadmin('existing@drinkflow.test');
         $migration->up();
+        // A full-access superadmin also receives the permissions added by later migrations.
+        foreach (self::FOLLOW_UP_MIGRATIONS as $followUp) {
+            (require database_path($followUp))->up();
+        }
 
         $grants = DB::table('superadmin_permissions')->where('superadmin_id', $existing->id)->get();
         $this->assertCount(count(Permission::cases()), $grants);

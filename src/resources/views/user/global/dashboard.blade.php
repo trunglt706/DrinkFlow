@@ -107,6 +107,28 @@
       @endif
     </section>
 
+    <!-- Banner: Trò chơi -->
+    <section>
+      <a href="{{ route('user.me.games') }}" data-games-banner
+         style="background-image: linear-gradient(90deg, #006948, #059669);"
+         class="group relative flex items-center gap-4 sm:gap-5 overflow-hidden rounded-2xl border border-emerald-200/70 bg-[#006948] p-5 sm:p-6 text-white shadow-xs transition-all hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2">
+        <span class="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" aria-hidden="true"></span>
+        <span class="pointer-events-none absolute right-24 -bottom-14 h-32 w-32 rounded-full bg-white/5" aria-hidden="true"></span>
+        <span class="relative flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15 border border-white/20">
+          <span class="material-symbols-outlined text-[28px] sm:text-[32px]" style="font-variation-settings: 'FILL' 1;" aria-hidden="true">sports_esports</span>
+        </span>
+        <span class="relative min-w-0 flex-1">
+          <span class="block text-lg sm:text-xl font-bold tracking-tight">{{ __('games.banner.title') }}</span>
+          <span class="mt-0.5 block text-xs sm:text-sm text-emerald-50/90 leading-relaxed">{{ __('games.banner.desc') }}</span>
+        </span>
+        <span class="relative hidden sm:inline-flex h-10 items-center gap-1.5 rounded-xl bg-white px-4 text-xs font-semibold text-[#006948] shadow-2xs">
+          {{ __('games.banner.cta') }}
+          <span class="material-symbols-outlined text-[18px] transition-transform group-hover:translate-x-0.5" aria-hidden="true">arrow_forward</span>
+        </span>
+        <span class="relative material-symbols-outlined text-[22px] sm:hidden" aria-hidden="true">chevron_right</span>
+      </a>
+    </section>
+
     @if($roomsCount > 0)
       <!-- Section: Room Gần Đây -->
       <section>

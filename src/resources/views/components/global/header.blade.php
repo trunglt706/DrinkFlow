@@ -308,6 +308,14 @@
           <span>{{ __('global.header.user_guide') }}</span>
         </a>
 
+        <!-- Trò chơi (Games) -->
+        @if($showMenu('games'))
+          <a class="{{ $tabClasses($activeTab === 'games') }}" href="{{ route('user.me.games') }}" data-nav-games>
+            <span class="material-symbols-outlined text-[16px] sm:text-[17px]">sports_esports</span>
+            <span>{{ __('games.page_title') }}</span>
+          </a>
+        @endif
+
         <!-- Luôn hiển thị Đánh giá -->
         <a class="{{ $tabClasses($activeTab === 'feedback') }}" href="{{ route('user.me.feedback') }}">
           <span class="material-symbols-outlined text-[16px] sm:text-[17px]">rate_review</span>

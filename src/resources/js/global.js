@@ -13,6 +13,7 @@ import { initSessionRevocation } from './global/session-revocation';
 import { initDesktopNotifications } from './global/desktop-notification';
 import { initGuideLightbox } from './shared/image-lightbox';
 import { initProfileBioEditor } from './global/profile-bio';
+import { initGames } from './global/games';
 
 document.addEventListener('DOMContentLoaded', () => {
     initToastNotifications();
@@ -28,4 +29,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initSessionRevocation();
     initGuideLightbox();
     initProfileBioEditor();
+    initGames();
 });

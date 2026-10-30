@@ -17,6 +17,7 @@ export default defineConfig({
                 'resources/js/global.js',
                 'resources/js/room.js',
                 'resources/js/admin.js',
+                'resources/js/game-play.js',
             ],
             refresh: true,
         }),

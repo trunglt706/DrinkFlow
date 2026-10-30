@@ -23,6 +23,17 @@ Route::post('/check-order/{campaign}/{hash}', [\App\Http\Controllers\Public\Orde
     ->middleware(['signed', 'throttle:public-order-check'])
     ->name('public.order-check.lookup');
 
+// Public page of a game room; the token is the capability (revocable by the owner). Visitors record the wins of the
+// player they picked (winner taken from their session, never from the request).
+Route::get('/play/{token}', [\App\Http\Controllers\Public\GameRoomController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]{20,64}')
+    ->middleware('throttle:60,1')
+    ->name('public.games.rooms.show');
+Route::post('/play/{token}/results', [\App\Http\Controllers\Public\GameRoomController::class, 'recordResult'])
+    ->where('token', '[A-Za-z0-9]{20,64}')
+    ->middleware(['json.only', 'throttle:30,1'])
+    ->name('public.games.rooms.results.store');
+
 // Hướng dẫn cho Đại lý (Agents) phải được đăng ký trước route động /guides/{slug} để không bị nuốt.
 Route::get('/guides/agent', [\App\Http\Controllers\Public\GuideController::class, 'agentIndex'])->name('public.guides.agent');
 Route::get('/guides/agent/{slug}', [\App\Http\Controllers\Public\GuideController::class, 'agentShow'])

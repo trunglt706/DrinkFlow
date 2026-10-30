@@ -44,6 +44,7 @@ final class SuperadminNavigation
         ]],
         ['platform.nav.content', [
             ['versions', 'superadmin.versions.page', 'new_releases', 'superadmin.layout.versions', 'version.view'],
+            ['games', 'superadmin.games.index', 'sports_esports', 'games.admin.nav', 'game.view'],
             ['notifications', 'superadmin.notifications.page', 'notifications', 'superadmin.layout.global_notifications', 'settings.view'],
         ]],
         ['platform.nav.governance', [

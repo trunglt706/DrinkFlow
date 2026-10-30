@@ -143,4 +143,10 @@ Route::middleware(['auth:superadmin', 'superadmin', 'superadmin.mask'])->prefix(
     Route::post('/versions/preview', [\App\Http\Controllers\Superadmin\VersionController::class, 'preview'])->middleware('permission:version.manage')->name('superadmin.versions.preview');
     Route::match(['put', 'patch'], '/versions/{version}', [\App\Http\Controllers\Superadmin\VersionController::class, 'update'])->middleware('permission:version.manage')->name('superadmin.versions.update');
     Route::delete('/versions/{version}', [\App\Http\Controllers\Superadmin\VersionController::class, 'destroy'])->middleware('permission:version.manage')->name('superadmin.versions.destroy');
+    // Games of the /me "Trò chơi" catalogue.
+    Route::get('/games', [\App\Http\Controllers\Superadmin\GameController::class, 'index'])->middleware('permission:game.view')->name('superadmin.games.index');
+    Route::post('/games', [\App\Http\Controllers\Superadmin\GameController::class, 'store'])->middleware('permission:game.manage')->name('superadmin.games.store');
+    Route::get('/games/{game}', [\App\Http\Controllers\Superadmin\GameController::class, 'show'])->whereNumber('game')->middleware('permission:game.view')->name('superadmin.games.show');
+    Route::put('/games/{game}', [\App\Http\Controllers\Superadmin\GameController::class, 'update'])->whereNumber('game')->middleware('permission:game.manage')->name('superadmin.games.update');
+    Route::delete('/games/{game}', [\App\Http\Controllers\Superadmin\GameController::class, 'destroy'])->whereNumber('game')->middleware('permission:game.manage')->name('superadmin.games.destroy');
 });

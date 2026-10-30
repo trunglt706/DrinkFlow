@@ -31,6 +31,8 @@ enum Permission: string
     case FeedbackManage = 'feedback.manage';
     case VersionView = 'version.view';
     case VersionManage = 'version.manage';
+    case GameView = 'game.view';
+    case GameManage = 'game.manage';
     case SettingsView = 'settings.view';
     case SettingsManage = 'settings.manage';
     case SecurityView = 'security.view';

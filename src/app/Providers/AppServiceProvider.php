@@ -34,10 +34,14 @@ use App\Listeners\NotifyProxyOrderRecipients;
 use App\Listeners\PublishRealtimeEvent;
 use App\Listeners\PublishSuperadminNotification;
 use App\Models\Admin;
+use App\Models\GameRoom;
+use App\Models\GameRuleSet;
 use App\Models\Room;
 use App\Models\Superadmin;
 use App\Observers\AdminObserver;
 use App\Policies\AdminPolicy;
+use App\Policies\GameRoomPolicy;
+use App\Policies\GameRuleSetPolicy;
 use App\Policies\RoomPolicy;
 use App\Services\Billing\Gateway\PaymentGateway;
 use App\Services\Billing\Gateway\SignedLinkGateway;
@@ -110,6 +114,8 @@ class AppServiceProvider extends ServiceProvider
         }
         Gate::policy(Admin::class, AdminPolicy::class);
         Gate::policy(Room::class, RoomPolicy::class);
+        Gate::policy(GameRoom::class, GameRoomPolicy::class);
+        Gate::policy(GameRuleSet::class, GameRuleSetPolicy::class);
 
         // A self-service Agent registration announces itself to every active Superadmin (see AdminObserver).
         Admin::observe(AdminObserver::class);
