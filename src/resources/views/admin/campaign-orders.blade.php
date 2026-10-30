@@ -459,6 +459,10 @@
                                     </td>
                                     <td class="px-4 py-3 w-32 text-right font-mono font-bold text-on-surface">
                                         {{ \App\Support\Helpers\FormatHelper::formatCurrency($order->final_amount) }}
+                                        {{-- Original menu-price total of the order, before sponsorship, fees and discounts. --}}
+                                        <div class="mt-0.5 text-[10px] font-medium text-outline whitespace-nowrap">
+                                            {{ __('admin.payable_original_total', ['amount' => \App\Support\Helpers\FormatHelper::formatCurrency((int) $order->subtotal)]) }}
+                                        </div>
                                     </td>
                                     <td class="px-4 py-3 w-36 text-center">
                                         <div class="flex items-center justify-center min-h-[24px]">

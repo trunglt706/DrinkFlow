@@ -450,9 +450,12 @@
                             class="w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors relative cursor-pointer"
                             title="{{ __('admin.notifications') }}">
                             <span class="material-symbols-outlined text-[20px]">notifications</span>
-                            @if ($unreadCount > 0 || $unreadNotifications->isNotEmpty())
-                                <span data-unread-indicator
-                                    class="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full ring-2 ring-surface"></span>
+                            @php
+                                $bellUnreadCount = max((int) $unreadCount, $unreadNotifications->count());
+                            @endphp
+                            @if ($bellUnreadCount > 0)
+                                <span data-unread-indicator data-count="{{ $bellUnreadCount }}"
+                                    class="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-error text-white text-[9px] font-bold font-mono leading-4 text-center ring-2 ring-surface pointer-events-none">{{ $bellUnreadCount > 99 ? '99+' : $bellUnreadCount }}</span>
                             @endif
                         </button>
 

@@ -1034,8 +1034,9 @@
                 </div>
             </template>
 
-            <!-- Room Orders Modal: xem đơn của tất cả thành viên trong phòng cho chiến dịch này -->
-            <x-room.campaign-orders-modal />
         @endif
+
+        <!-- Room Orders Modal: xem đơn của tất cả thành viên trong phòng cho chiến dịch này (mở từ đơn hiện tại hoặc lịch sử đơn) -->
+        <x-room.campaign-orders-modal />
     </div>
 </x-room.layout>

@@ -108,7 +108,17 @@
                                 <span class="inline-flex items-center gap-0.5">#{{ $historyOrder->code }}<x-room.copy-button :text="$historyOrder->code" align="left" :reset-ms="2000" data-order-history-copy /></span>
                             </td>
                             <td class="px-3 py-2.5 text-slate-700">
-                                <span class="block max-w-[220px] truncate font-semibold">{{ $historyOrder->campaign?->name }}</span>
+                                @if($historyOrder->campaign_id)
+                                    {{-- Same campaign detail modal as the debts page (openCampaignDetail lives in the orders page's Alpine state). --}}
+                                    <button type="button" @click="openCampaignDetail({{ (int) $historyOrder->campaign_id }})"
+                                        class="flex max-w-[220px] items-center gap-1 text-left font-semibold text-primary hover:text-[#005137] hover:underline transition-colors cursor-pointer group"
+                                        title="{{ $historyOrder->campaign?->name }}">
+                                        <span class="material-symbols-outlined text-[13px] shrink-0 group-hover:scale-110 transition-transform" aria-hidden="true">campaign</span>
+                                        <span class="truncate">{{ $historyOrder->campaign?->name ?? __('global.common.campaign') }}</span>
+                                    </button>
+                                @else
+                                    <span class="block max-w-[220px] truncate font-semibold">{{ $historyOrder->campaign?->name }}</span>
+                                @endif
                                 <span class="block max-w-[220px] truncate text-[11px] text-slate-500">{{ $historyOrder->campaign?->restaurant }} · {{ trans_choice('room.orders.history_items', $historyOrder->items_count, ['count' => $historyOrder->items_count]) }}</span>
                             </td>
                             <td class="px-3 py-2.5 whitespace-nowrap font-mono text-slate-600">{{ $historyOrder->created_at?->copy()->timezone($timezone)->format('d/m/Y H:i') }}</td>

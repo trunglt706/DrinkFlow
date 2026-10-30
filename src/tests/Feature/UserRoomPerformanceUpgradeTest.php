@@ -40,7 +40,7 @@ class UserRoomPerformanceUpgradeTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_dashboard_weekly_trend_executes_few_queries_and_uses_cache(): void
+    public function test_dashboard_monthly_trend_executes_few_queries_and_uses_cache(): void
     {
         Carbon::setTestNow('2026-10-08 12:00:00');
         Cache::flush();
@@ -82,19 +82,20 @@ class UserRoomPerformanceUpgradeTest extends TestCase
 
         DB::flushQueryLog();
         DB::enableQueryLog();
-        $trend1 = $service->getDashboardData($room, $member, $user)['weeklyItemTrend'];
+        $trend1 = $service->getDashboardData($room, $member, $user)['monthlyItemTrend'];
         $queriesForTrend = collect(DB::getQueryLog())->filter(
             static fn (array $q): bool => str_contains($q['query'], 'total_subtotal') || str_contains($q['query'], 'total_quantity')
         )->count();
 
-        $this->assertCount(7, $trend1);
-        $this->assertSame(2, $trend1[6]['items_count']);
-        $this->assertSame(50000, $trend1[6]['value_amount']);
-        $this->assertSame(2, $queriesForTrend);
+        $this->assertCount(8, $trend1['room']);
+        $this->assertCount(8, $trend1['personal']);
+        $this->assertSame(2, $trend1['room'][7]['items_count']);
+        $this->assertSame(50000, $trend1['personal'][7]['value_amount']);
+        $this->assertSame(4, $queriesForTrend);
 
         // Second call should hit the cache without running trend queries
         DB::flushQueryLog();
-        $trend2 = $service->getDashboardData($room, $member, $user)['weeklyItemTrend'];
+        $trend2 = $service->getDashboardData($room, $member, $user)['monthlyItemTrend'];
         $queriesForTrend2 = collect(DB::getQueryLog())->filter(
             static fn (array $q): bool => str_contains($q['query'], 'total_subtotal') || str_contains($q['query'], 'total_quantity')
         )->count();

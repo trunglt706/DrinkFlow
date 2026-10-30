@@ -211,7 +211,10 @@ class RoomOrdersLayoutTest extends TestCase
             ->assertDontSee('data-orders-current-empty', false)
             ->assertDontSee(__('room.dashboard.enter_campaign'))
             ->assertSee('data-order-history-row="'.$closedOrder->code.'"', false)
-            ->assertSee('data-order-history-copy', false);
+            ->assertSee('data-order-history-copy', false)
+            // The history's campaign opens the same campaign detail modal as the debts page, even without a live order.
+            ->assertSee('@click="openCampaignDetail('.$closedCampaign->id.')"', false)
+            ->assertSee('x-show="campaignModalOpen"', false);
 
         // Live campaign without an order from this member: the history is still there.
         $liveCampaign = Campaign::create(['room_id' => $room->id, 'name' => 'Live Campaign', 'restaurant' => 'Cafe', 'status' => CampaignStatus::Active]);

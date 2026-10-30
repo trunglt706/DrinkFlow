@@ -87,11 +87,19 @@ function addToBell(content, icon, i18n) {
     list.prepend(item);
 
     const toggle = root.querySelector('[data-notifications-toggle]');
-    if (toggle && !toggle.querySelector('[data-unread-indicator]')) {
-        const dot = document.createElement('span');
-        dot.dataset.unreadIndicator = '';
-        dot.className = 'absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full ring-2 ring-surface';
-        toggle.appendChild(dot);
+    if (toggle) {
+        // Bell badge with the unread count (capped at 99+).
+        let badge = toggle.querySelector('[data-unread-indicator]');
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.dataset.unreadIndicator = '';
+            badge.dataset.count = '0';
+            badge.className = 'absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-error text-white text-[9px] font-bold font-mono leading-4 text-center ring-2 ring-surface pointer-events-none';
+            toggle.appendChild(badge);
+        }
+        const total = (Number(badge.dataset.count) || 0) + 1;
+        badge.dataset.count = String(total);
+        badge.textContent = total > 99 ? '99+' : String(total);
     }
 
     const count = root.querySelector('[data-unread-count]');

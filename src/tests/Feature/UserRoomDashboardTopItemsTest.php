@@ -313,14 +313,15 @@ class UserRoomDashboardTopItemsTest extends TestCase
     }
 
     /**
-     * The sponsor leaderboard shows at most seven sponsors, highest amount first.
+     * The sponsor leaderboard lists every sponsor of the current month (no top-N cut), highest amount
+     * first, and leaves out campaigns created in an earlier month.
      *
      * @return void
      */
-    public function test_dashboard_top_sponsors_are_limited_to_seven(): void
+    public function test_dashboard_top_sponsors_list_every_sponsor_of_the_current_month(): void
     {
-        $room = Room::create(['name' => 'Technology', 'slug' => 'technology-top-sponsors-limit', 'status' => RoomStatus::Active]);
-        $member = $this->member($room, $this->user('limit@example.test'), 'LIMIT');
+        $room = Room::create(['name' => 'Technology', 'slug' => 'technology-top-sponsors-month', 'status' => RoomStatus::Active]);
+        $member = $this->member($room, $this->user('month@example.test'), 'MONTH');
 
         foreach (range(1, 8) as $rank) {
             $campaign = Campaign::create([
@@ -334,21 +335,33 @@ class UserRoomDashboardTopItemsTest extends TestCase
             ]);
         }
 
+        $lastMonthCampaign = Campaign::create([
+            'room_id' => $room->id, 'name' => 'Old coffee', 'restaurant' => 'Test Restaurant',
+            'status' => CampaignStatus::Closed, 'sponsor_type' => 'per_item', 'sponsor_name' => 'Last month sponsor',
+        ]);
+        $lastMonthCampaign->forceFill(['created_at' => now()->startOfMonth()->subDay()])->saveQuietly();
+        $member->orders()->create([
+            'room_id' => $room->id, 'campaign_id' => $lastMonthCampaign->id,
+            'subtotal' => 900000, 'sponsor_amount' => 900000, 'final_amount' => 0, 'status' => OrderStatus::Completed,
+        ]);
+
         $data = app(UserRoomDashboardService::class)->getDashboardData($room, $member, null);
 
-        $this->assertCount(7, $data['topSponsors']);
+        $this->assertCount(8, $data['topSponsors']);
         $this->assertSame('Sponsor 8', $data['topSponsors'][0]['name']);
-        $this->assertNotContains('Sponsor 1', array_column($data['topSponsors'], 'name'));
+        $this->assertSame('Sponsor 1', $data['topSponsors'][7]['name']);
+        $this->assertNotContains('Last month sponsor', array_column($data['topSponsors'], 'name'));
     }
 
     /**
-     * The 7-day trend aggregates daily item count and value of completed orders, oldest day first, today last.
+     * The monthly trend has one entry per day from the 1st of the month to today, with a room-wide
+     * series and a series of the current member's own completed orders.
      *
      * @return void
      */
-    public function test_dashboard_weekly_trend_aggregates_items_and_value_per_day(): void
+    public function test_dashboard_monthly_trend_aggregates_room_and_personal_items_per_day(): void
     {
-        $room = Room::create(['name' => 'Technology', 'slug' => 'technology-weekly-trend', 'status' => RoomStatus::Active]);
+        $room = Room::create(['name' => 'Technology', 'slug' => 'technology-monthly-trend', 'status' => RoomStatus::Active]);
         $campaign = Campaign::create([
             'room_id' => $room->id,
             'name' => 'Trend campaign',
@@ -386,23 +399,36 @@ class UserRoomDashboardTopItemsTest extends TestCase
         $pendingOrder->items()->create([
             'item_name' => 'Pending drink', 'unit_price' => 35000, 'quantity' => 2, 'line_subtotal' => 70000,
         ]);
+        // Another member's order counts for the room but not in the current member's personal series.
+        $other = $this->member($room, $this->user('other-trend@example.test'), 'OTHER');
+        $otherOrder = $other->orders()->create([
+            'room_id' => $room->id, 'campaign_id' => $campaign->id,
+            'subtotal' => 20000, 'final_amount' => 20000, 'status' => OrderStatus::Completed,
+        ]);
+        $otherOrder->items()->create([
+            'item_name' => 'Other drink', 'unit_price' => 20000, 'quantity' => 1, 'line_subtotal' => 20000,
+        ]);
 
         $data = app(UserRoomDashboardService::class)->getDashboardData($room, $member, null);
-        $trend = $data['weeklyItemTrend'];
+        $trend = $data['monthlyItemTrend'];
+        $days = (int) now()->day;
 
-        $this->assertCount(7, $trend);
-        $today = $trend[6];
-        $this->assertSame(3, $today['items_count']);
-        $this->assertSame(80000, $today['value_amount']);
-        $this->assertSame(0, $trend[0]['items_count']);
+        $this->assertCount($days, $trend['room']);
+        $this->assertCount($days, $trend['personal']);
+        $this->assertSame('1', $trend['room'][0]['day']);
+        $this->assertSame(4, $trend['room'][$days - 1]['items_count']);
+        $this->assertSame(100000, $trend['room'][$days - 1]['value_amount']);
+        $this->assertSame(3, $trend['personal'][$days - 1]['items_count']);
+        $this->assertSame(80000, $trend['personal'][$days - 1]['value_amount']);
 
         // The chart data attributes must hold plain JSON that the browser can JSON.parse().
         $html = $this->actingAs($member->globalUser, 'web')->get(route('user.dashboard', $room->slug))->assertOk()->getContent();
-        $this->assertMatchesRegularExpression('/data-weekly-trend="([^"]*)"/', $html);
-        preg_match('/data-weekly-trend="([^"]*)"/', $html, $matches);
+        $this->assertMatchesRegularExpression('/data-monthly-trend="([^"]*)"/', $html);
+        preg_match('/data-monthly-trend="([^"]*)"/', $html, $matches);
         $decoded = json_decode(html_entity_decode($matches[1], ENT_QUOTES), true);
         $this->assertIsArray($decoded);
-        $this->assertSame(80000, $decoded[6]['value_amount']);
+        $this->assertSame(100000, $decoded['room'][$days - 1]['value_amount']);
+        $this->assertSame(80000, $decoded['personal'][$days - 1]['value_amount']);
     }
 
     /**

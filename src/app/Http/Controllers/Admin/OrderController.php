@@ -86,7 +86,9 @@ class OrderController extends Controller
         $query = Order::where('room_id', $room->id)
             ->where('campaign_id', $activeCampaign?->id ?? 0)
             ->with(['roomUser.globalUser', 'parent.roomUser.globalUser', 'children.roomUser.globalUser', 'items.toppings', 'campaign', 'placedByAdmin:id,name'])
-            ->latest();
+            // Newest order first; id breaks ties between orders placed in the same second.
+            ->latest()
+            ->orderByDesc('id');
 
         $search = trim($request->string('search')->toString());
         if ($search !== '') {

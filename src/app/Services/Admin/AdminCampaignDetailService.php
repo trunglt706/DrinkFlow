@@ -113,6 +113,19 @@ class AdminCampaignDetailService
         $isFullSponsorship = $this->sponsorship->isFullSponsorship($campaign);
         $sponsorPool = $isFullSponsorship ? $this->sponsorship->fullSponsorPool($campaign, $orders) : null;
         $sponsorSubsidy = $sponsorPool !== null ? $sponsorPool['pool'] : (int) $orders->sum('sponsor_amount');
+
+        // "Trả riêng" lines are billed to their member (never sponsored); same per-member figures as the debts written on close.
+        $selfPaidByUser = ($sponsorPool ?? $this->sponsorship->fullSponsorPool($campaign, $orders))['self_paid_by_user'];
+        $orderOwners = $orders->pluck('roomUser', 'room_user_id');
+        $selfPaidMembers = collect($selfPaidByUser)
+            ->map(static fn (int $amount, int $roomUserId): array => [
+                'room_user_id' => $roomUserId,
+                'name' => $orderOwners->get($roomUserId)?->display_name ?? __('admin.member'),
+                'amount' => $amount,
+            ])
+            ->sortByDesc('amount')
+            ->values();
+        $selfPaidTotal = (int) $selfPaidMembers->sum('amount');
         $netPayables = (int) $orders->sum('final_amount');
         $paidViaQr = (int) $campaign->debts->sum('paid_amount');
         $memberDebt = (int) $campaign->debts->whereIn('status', [DebtStatus::Unpaid->value, DebtStatus::Partial->value])->sum('remaining_amount');
@@ -219,7 +232,8 @@ class AdminCampaignDetailService
         return [
             'room' => $room,
             'campaign' => $campaign,
-            'orders' => $orders,
+            // Newest order first for display; the sums above keep the creation order (rounding remainders follow it).
+            'orders' => $orders->sortByDesc(static fn (Order $order): array => [$order->created_at?->getTimestamp() ?? 0, $order->id])->values(),
             'aggregatedItems' => $aggregatedItems->values(),
             'departmentGroups' => $departmentGroups
                 ->sort(static fn (array $a, array $b): int => [$a['is_unassigned'], mb_strtolower($a['department'])] <=> [$b['is_unassigned'], mb_strtolower($b['department'])])
@@ -237,6 +251,8 @@ class AdminCampaignDetailService
             'paidViaQr' => $paidViaQr,
             'memberDebt' => $memberDebt,
             'sponsorsList' => $sponsorsList,
+            'selfPaidTotal' => $selfPaidTotal,
+            'selfPaidMembers' => $selfPaidMembers,
         ];
     }
 

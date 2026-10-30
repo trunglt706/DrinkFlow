@@ -741,6 +741,28 @@
                                 </div>
                             @endif
 
+                            <!-- Self-paid ("trả riêng") total and per-member amounts -->
+                            @if (($selfPaidTotal ?? 0) > 0)
+                                <div class="space-y-2.5 bg-surface-container-low p-3.5 rounded-xl border border-outline-variant/60">
+                                    <div class="flex justify-between items-center font-bold text-amber-800">
+                                        <span class="flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined text-[16px] text-amber-600">person_pin</span>
+                                            <span>{{ __('admin.self_paid_total_label') }}</span>
+                                        </span>
+                                        <span class="font-mono">{{ \App\Support\Helpers\FormatHelper::formatCurrency($selfPaidTotal) }}</span>
+                                    </div>
+                                    <p class="text-[11px] text-outline">{{ __('admin.self_paid_members_hint', ['count' => $selfPaidMembers->count()]) }}</p>
+                                    <ul class="max-h-48 overflow-y-auto divide-y divide-outline-variant/40 rounded-lg border border-outline-variant/40 bg-surface-container-lowest">
+                                        @foreach ($selfPaidMembers as $selfPaidMember)
+                                            <li class="flex items-center justify-between gap-3 px-3 py-1.5">
+                                                <span class="truncate text-on-surface font-medium" title="{{ $selfPaidMember['name'] }}">{{ $selfPaidMember['name'] }}</span>
+                                                <span class="shrink-0 font-mono font-semibold text-amber-800">{{ \App\Support\Helpers\FormatHelper::formatCurrency($selfPaidMember['amount']) }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+
                             <!-- Self-paid debt calculation basis -->
                             @php
                                 $selfPaidBasisValue = (string) ($campaign->self_paid_price_basis ?? \App\Models\Campaign::SELF_PAID_PRICE_BASIS_ORIGINAL);

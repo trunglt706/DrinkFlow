@@ -1272,4 +1272,95 @@ class AdminCampaignSubViewsTest extends TestCase
             ->assertSee(__('admin.close_campaign_confirm_modal_title'))
             ->assertDontSee('id="close-campaign-modal"', false);
     }
+
+    /**
+     * The financial settlement lists the self-paid ("trả riêng") total and each member's self-paid
+     * amount, and the orders tab shows the original menu-price total under the payable amount.
+     *
+     * @return void
+     */
+    public function test_info_page_lists_self_paid_members_and_orders_tab_shows_original_total(): void
+    {
+        $makeMember = fn (string $name): RoomUser => RoomUser::create([
+            'room_id' => $this->room->id,
+            'global_user_id' => GlobalUser::create(['name' => $name, 'email' => str($name)->slug().'@example.test'])->id,
+            'display_name' => $name,
+            'status' => 'active',
+        ]);
+        $alice = $makeMember('Alice Selfpaid');
+        $bob = $makeMember('Bob Selfpaid');
+        $carol = $makeMember('Carol Sponsored');
+
+        foreach ([[$alice, [40000, 15000]], [$bob, [25000]]] as [$member, $selfPaidLines]) {
+            $selfPaid = array_sum($selfPaidLines);
+            $order = Order::create([
+                'room_id' => $this->room->id, 'campaign_id' => $this->campaign->id, 'room_user_id' => $member->id,
+                'subtotal' => 30000 + $selfPaid, 'final_amount' => 30000 + $selfPaid, 'status' => OrderStatus::Submitted,
+            ]);
+            $order->items()->create(['item_name' => 'Trà', 'unit_price' => 30000, 'quantity' => 1, 'line_subtotal' => 30000]);
+            foreach ($selfPaidLines as $linePrice) {
+                $order->items()->create(['item_name' => 'Bánh', 'unit_price' => $linePrice, 'quantity' => 1, 'line_subtotal' => $linePrice, 'is_self_paid' => true]);
+            }
+        }
+        $carolOrder = Order::create([
+            'room_id' => $this->room->id, 'campaign_id' => $this->campaign->id, 'room_user_id' => $carol->id,
+            'subtotal' => 123000, 'final_amount' => 100000, 'status' => OrderStatus::Submitted,
+        ]);
+        $carolOrder->items()->create(['item_name' => 'Trà', 'unit_price' => 123000, 'quantity' => 1, 'line_subtotal' => 123000]);
+
+        $response = $this->actingAs($this->admin, 'admin')->get(route('admin.campaigns.info', [$this->room->slug, $this->campaign]))
+            ->assertOk()
+            ->assertSee(__('admin.self_paid_total_label'))
+            ->assertSee(__('admin.self_paid_members_hint', ['count' => 2]));
+        $this->assertSame(80000, $response->viewData('selfPaidTotal'));
+        $this->assertSame(
+            [['Alice Selfpaid', 55000], ['Bob Selfpaid', 25000]],
+            $response->viewData('selfPaidMembers')->map(fn (array $row): array => [$row['name'], $row['amount']])->all(),
+        );
+
+        $this->actingAs($this->admin, 'admin')->get(route('admin.campaigns.orders', [$this->room->slug, $this->campaign]))
+            ->assertOk()
+            ->assertSee(__('admin.payable_original_total', ['amount' => \App\Support\Helpers\FormatHelper::formatCurrency(123000)]));
+    }
+
+    /**
+     * The campaign's order list and the admin order management page show the newest order first.
+     *
+     * @return void
+     */
+    public function test_order_lists_are_sorted_newest_first(): void
+    {
+        foreach (['Oldest Orderer' => 3, 'Newest Orderer' => 1, 'Middle Orderer' => 2] as $name => $hoursAgo) {
+            $member = RoomUser::create([
+                'room_id' => $this->room->id,
+                'global_user_id' => GlobalUser::create(['name' => $name, 'email' => str($name)->slug().'@example.test'])->id,
+                'display_name' => $name,
+                'status' => 'active',
+            ]);
+            $order = Order::create([
+                'room_id' => $this->room->id, 'campaign_id' => $this->campaign->id, 'room_user_id' => $member->id,
+                'subtotal' => 30000, 'final_amount' => 30000, 'status' => OrderStatus::Submitted,
+                // The note is only rendered in the order rows, so it pins down the row order.
+                'note' => 'note-'.$hoursAgo.'h',
+            ]);
+            $order->items()->create(['item_name' => 'Trà', 'unit_price' => 30000, 'quantity' => 1, 'line_subtotal' => 30000]);
+            $order->forceFill(['created_at' => now()->subHours($hoursAgo)])->saveQuietly();
+        }
+
+        // Notes are repeated later in the page's JSON data: compare where each one first appears (the table rows).
+        $firstPositions = static fn (string $html): array => array_map(
+            static fn (string $note): int|false => strpos($html, $note),
+            ['note-1h', 'note-2h', 'note-3h'],
+        );
+        foreach ([
+            route('admin.campaigns.orders', [$this->room->slug, $this->campaign]),
+            route('admin.orders.page', $this->room->slug),
+        ] as $url) {
+            $positions = $firstPositions($this->actingAs($this->admin, 'admin')->get($url)->assertOk()->getContent());
+            $this->assertNotContains(false, $positions, $url);
+            $sorted = $positions;
+            sort($sorted);
+            $this->assertSame($sorted, $positions, $url);
+        }
+    }
 }

@@ -58,53 +58,79 @@
     <!-- Weekly charts followed by the active campaign -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
       
-      <!-- Sponsor Leaderboard & Weekly Trend Charts -->
+      <!-- Sponsor Leaderboard & Monthly Trend Charts -->
       <div class="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-4"
         data-room-dashboard-charts
         data-top-sponsors="{{ json_encode($topSponsors ?? [], JSON_UNESCAPED_UNICODE) }}"
-        data-weekly-trend="{{ json_encode($weeklyItemTrend ?? [], JSON_UNESCAPED_UNICODE) }}"
+        data-monthly-trend="{{ json_encode($monthlyItemTrend ?? [], JSON_UNESCAPED_UNICODE) }}"
         data-chart-labels="{{ json_encode([
           'items' => __('room.dashboard.chart_items_label'),
           'value' => __('room.dashboard.chart_value_label'),
           'sponsoredCampaigns' => __('room.dashboard.sponsored_campaigns_count'),
           'sponsorTotal' => __('room.dashboard.top_sponsors_total'),
+          'sponsorOthers' => __('room.dashboard.sponsor_others'),
+          'sponsorColRank' => __('room.dashboard.sponsor_col_rank'),
+          'sponsorColName' => __('room.dashboard.sponsor_col_name'),
+          'sponsorColCampaigns' => __('room.dashboard.sponsor_col_campaigns'),
+          'sponsorColAmount' => __('room.dashboard.sponsor_col_amount'),
+          'sponsorColShare' => __('room.dashboard.sponsor_col_share'),
           'noSponsorData' => __('room.dashboard.no_sponsor_data'),
-          'noTrendData' => __('room.dashboard.no_weekly_trend_data'),
+          'noTrendData' => __('room.dashboard.no_monthly_trend_data'),
+          'noPersonalTrendData' => __('room.dashboard.no_personal_trend_data'),
         ], JSON_UNESCAPED_UNICODE) }}"
       >
-        <!-- Top Sponsors Donut Chart -->
+        <!-- Top Sponsors: donut chart (default) or full table -->
         <section class="lg:col-span-5 bg-white border border-slate-200/80 rounded-xl p-4 shadow-2xs flex flex-col">
-          <div class="flex items-center gap-2 pb-2.5 border-b border-slate-100 mb-2.5">
-            <span class="material-symbols-outlined text-[#006948] text-[18px]" aria-hidden="true">military_tech</span>
-            <div class="min-w-0">
-              <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-700">{{ __('room.dashboard.top_sponsors_title') }}</h3>
-              <p class="text-[10px] text-slate-400 truncate">{{ __('room.dashboard.top_sponsors_subtitle') }}</p>
+          <div class="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-100 mb-2.5">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="material-symbols-outlined text-[#006948] text-[18px]" aria-hidden="true">military_tech</span>
+              <div class="min-w-0">
+                <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-700">{{ __('room.dashboard.top_sponsors_title') }}</h3>
+                <p class="text-[10px] text-slate-400 truncate" title="{{ __('room.dashboard.top_sponsors_subtitle') }}">{{ __('room.dashboard.top_sponsors_subtitle') }}</p>
+              </div>
+            </div>
+            <div class="inline-flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5" role="group" aria-label="{{ __('room.dashboard.view_mode_label') }}" data-toggle-group="sponsor-view">
+              <button type="button" data-toggle-value="chart" aria-pressed="true" title="{{ __('room.dashboard.view_chart') }}" class="inline-flex h-6 items-center gap-1 rounded-md px-2 text-[10px] font-semibold cursor-pointer transition-colors">
+                <span class="material-symbols-outlined text-[14px]" aria-hidden="true">donut_large</span><span class="hidden sm:inline">{{ __('room.dashboard.view_chart') }}</span>
+              </button>
+              <button type="button" data-toggle-value="table" aria-pressed="false" title="{{ __('room.dashboard.view_table') }}" class="inline-flex h-6 items-center gap-1 rounded-md px-2 text-[10px] font-semibold cursor-pointer transition-colors">
+                <span class="material-symbols-outlined text-[14px]" aria-hidden="true">table_rows</span><span class="hidden sm:inline">{{ __('room.dashboard.view_table') }}</span>
+              </button>
             </div>
           </div>
           <div class="relative flex-1 min-h-[200px]">
             <div id="top-sponsors-chart" class="h-full min-h-[200px]"></div>
+            <div id="top-sponsors-table" class="hidden"></div>
             <x-loading-overlay data-chart-loading :visible="true" />
           </div>
         </section>
 
-        <!-- Weekly Items & Value Combo Chart -->
+        <!-- Monthly Items & Value Combo Chart: room (default) or personal -->
         <section class="lg:col-span-7 bg-white border border-slate-200/80 rounded-xl p-4 shadow-2xs flex flex-col">
-          {{-- Mobile: title, subtitle and legend stack vertically; from sm up the legend sits on the right. --}}
+          {{-- Mobile: title, subtitle and controls stack vertically; from sm up the controls sit on the right. --}}
           <div class="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between pb-2.5 border-b border-slate-100 mb-2.5">
             <div class="flex items-center gap-2 min-w-0">
               <span class="material-symbols-outlined text-[#006948] text-[18px]" aria-hidden="true">area_chart</span>
               <div class="min-w-0">
-                <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-700">{{ __('room.dashboard.weekly_trend_title') }}</h3>
-                <p class="text-[10px] text-slate-400 sm:truncate">{{ __('room.dashboard.weekly_trend_subtitle') }}</p>
+                <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-700">{{ __('room.dashboard.monthly_trend_title') }}</h3>
+                <p class="text-[10px] text-slate-400 sm:truncate">{{ __('room.dashboard.monthly_trend_subtitle') }}</p>
               </div>
             </div>
-            <div class="flex items-center gap-3 pl-[26px] sm:pl-0 text-[10px] text-slate-500 shrink-0">
+            <div class="flex flex-wrap items-center gap-3 pl-[26px] sm:pl-0 text-[10px] text-slate-500 shrink-0">
               <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-[#006948]"></span>{{ __('room.dashboard.chart_items_label') }}</span>
               <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm border-t-2 border-blue-600 bg-blue-600/25"></span>{{ __('room.dashboard.chart_value_label') }}</span>
+              <div class="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5" role="group" aria-label="{{ __('room.dashboard.view_mode_label') }}" data-toggle-group="trend-scope">
+                <button type="button" data-toggle-value="room" aria-pressed="true" class="inline-flex h-6 items-center gap-1 rounded-md px-2 text-[10px] font-semibold cursor-pointer transition-colors">
+                  <span class="material-symbols-outlined text-[14px]" aria-hidden="true">groups</span>{{ __('room.dashboard.trend_scope_room') }}
+                </button>
+                <button type="button" data-toggle-value="personal" aria-pressed="false" class="inline-flex h-6 items-center gap-1 rounded-md px-2 text-[10px] font-semibold cursor-pointer transition-colors">
+                  <span class="material-symbols-outlined text-[14px]" aria-hidden="true">person</span>{{ __('room.dashboard.trend_scope_personal') }}
+                </button>
+              </div>
             </div>
           </div>
           <div class="relative flex-1 min-h-[200px]">
-            <div id="weekly-trend-chart" class="h-full min-h-[200px]"></div>
+            <div id="monthly-trend-chart" class="h-full min-h-[200px]"></div>
             <x-loading-overlay data-chart-loading :visible="true" />
           </div>
         </section>
