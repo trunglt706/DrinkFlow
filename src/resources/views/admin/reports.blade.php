@@ -46,6 +46,7 @@
             'totalReceived' => __('admin.report_col_total_received'),
             'totalOutstanding' => __('admin.report_col_total_outstanding'),
             'accountUnassigned' => __('admin.report_payment_account_unassigned'),
+            'toggleAccountNumber' => __('admin.toggle_account_number_visibility'),
             'noAccountsTitle' => __('admin.report_no_payment_accounts_found'),
             'noAccountsDesc' => __('admin.report_no_payment_accounts_found_desc'),
         ];

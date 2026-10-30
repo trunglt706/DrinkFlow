@@ -104,6 +104,17 @@ export function initAdminReports() {
 
     if (!dateRangePicker && !document.querySelector('.rtab')) return;
 
+    // Show the full account number or the masked one again (rows are re-rendered, so the listener is delegated).
+    document.querySelector('#payment-accounts-list')?.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-account-number-toggle]');
+        const number = button?.parentElement.querySelector('[data-account-number]');
+        if (!number) return;
+        const revealed = button.getAttribute('aria-pressed') !== 'true';
+        number.textContent = revealed ? number.dataset.full : number.dataset.masked;
+        button.setAttribute('aria-pressed', String(revealed));
+        button.querySelector('.material-symbols-outlined').textContent = revealed ? 'visibility_off' : 'visibility';
+    });
+
     window.switchReportTab = function(tabId) {
         currentActiveTab = tabId;
 
@@ -309,7 +320,12 @@ export function initAdminReports() {
                                 : `
                                     <div class="flex items-center gap-1.5 min-w-0">
                                         <span class="shrink-0 px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono font-bold text-[10px]">${escapeHtml(a.bank_code)}</span>
-                                        <span class="font-mono font-semibold text-on-surface truncate">${escapeHtml(a.account_number)}</span>
+                                        <span data-account-number data-masked="${escapeHtml(a.account_number)}" data-full="${escapeHtml(a.account_number_full || a.account_number)}" class="font-mono font-semibold text-on-surface truncate">${escapeHtml(a.account_number)}</span>
+                                        <button type="button" data-account-number-toggle aria-pressed="false"
+                                            title="${escapeHtml(i18n.toggleAccountNumber || '')}" aria-label="${escapeHtml(i18n.toggleAccountNumber || '')}"
+                                            class="inline-flex shrink-0 items-center text-outline hover:text-primary transition-colors cursor-pointer">
+                                            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">visibility</span>
+                                        </button>
                                     </div>
                                     <div class="text-[11px] text-outline uppercase truncate">${escapeHtml(a.account_name)}</div>
                                 `;

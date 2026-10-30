@@ -1324,6 +1324,43 @@ class AdminCampaignSubViewsTest extends TestCase
     }
 
     /**
+     * The aggregated and department tabs show each line's payable share (delivery fee added, discount deducted)
+     * next to its original total, and the shares add up exactly to the campaign total.
+     *
+     * @return void
+     */
+    public function test_aggregated_and_department_lines_show_payable_share_after_fee_and_discount(): void
+    {
+        $this->campaign->update(['delivery_fee' => 10000, 'discount' => 20000]);
+        foreach ([['Dana Payable', 'Tầng 1', 'Trà', 30000], ['Evan Payable', 'Tầng 2', 'Cà phê', 60000]] as [$name, $desk, $itemName, $price]) {
+            $member = RoomUser::create([
+                'room_id' => $this->room->id,
+                'global_user_id' => GlobalUser::create(['name' => $name, 'email' => str($name)->slug().'@example.test', 'desk_location' => $desk])->id,
+                'display_name' => $name,
+                'status' => 'active',
+            ]);
+            $order = Order::create([
+                'room_id' => $this->room->id, 'campaign_id' => $this->campaign->id, 'room_user_id' => $member->id,
+                'subtotal' => $price, 'final_amount' => $price, 'status' => OrderStatus::Submitted,
+            ]);
+            $order->items()->create(['item_name' => $itemName, 'unit_price' => $price, 'quantity' => 1, 'line_subtotal' => $price]);
+        }
+
+        $response = $this->actingAs($this->admin, 'admin')->get(route('admin.campaigns.orders', [$this->room->slug, $this->campaign]))
+            ->assertOk()
+            ->assertSee(__('admin.payable_original_total', ['amount' => \App\Support\Helpers\FormatHelper::formatCurrency(60000)]));
+
+        // 90.000 + 10.000 - 20.000 = 80.000, split 1:2 over the lines with the rounding remainder kept in the total.
+        $this->assertSame(
+            [['Trà', 30000, 26667], ['Cà phê', 60000, 53333]],
+            $response->viewData('aggregatedItems')->map(fn (array $item): array => [$item['name'], $item['total_amount'], $item['payable_amount']])->all(),
+        );
+        $departments = $response->viewData('departmentGroups');
+        $this->assertSame([26667, 53333], $departments->pluck('payable_amount')->all());
+        $this->assertSame([26667, 53333], $departments->map(fn (array $dept): int => (int) $dept['items']->sum('payable_amount'))->all());
+    }
+
+    /**
      * The campaign's order list and the admin order management page show the newest order first.
      *
      * @return void

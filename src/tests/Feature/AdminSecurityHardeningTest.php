@@ -161,7 +161,7 @@ class AdminSecurityHardeningTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_channel_editor_never_receives_stored_secrets_and_blank_update_keeps_them(): void
+    public function test_channel_editor_receives_stored_secrets_uncached_and_blank_update_keeps_them(): void
     {
         $service = app(RoomNotificationChannelService::class);
         $channel = $service->save($this->room->id, [
@@ -174,8 +174,9 @@ class AdminSecurityHardeningTest extends TestCase
         $response = $this->actingAs($this->admin, 'admin')
             ->getJson("/admin/{$this->room->id}/notification-channels/{$channel->id}")
             ->assertOk();
-        $this->assertStringNotContainsString('super-secret', $response->getContent());
-        $response->assertJsonPath('data.config.secret_token', '');
+        // The room admin sees the stored credentials to check them (masked behind a show/hide toggle in the form).
+        $response->assertJsonPath('data.config.secret_token', 'super-secret');
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
         $this->assertContains('secret_token', $response->json('data.secrets_configured'));
 
         $this->actingAs($this->admin, 'admin')

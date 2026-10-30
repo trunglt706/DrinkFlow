@@ -67,14 +67,33 @@ export function initAdminNotifications() {
         document.querySelector(`[data-platform-guide="${type}"]`)?.classList.remove('hidden');
     };
 
+    /**
+     * Show or mask the credential input that a [data-secret-toggle] button controls.
+     *
+     * @param {HTMLElement} button Toggle button; its data-secret-toggle holds the input id.
+     * @param {boolean} visible Whether the value is shown in clear text.
+     */
+    const setSecretVisible = (button, visible) => {
+        const input = document.getElementById(button.dataset.secretToggle);
+        if (!input) return;
+        input.type = visible ? 'text' : 'password';
+        button.setAttribute('aria-pressed', String(visible));
+        const icon = button.querySelector('.material-symbols-outlined');
+        if (icon) icon.textContent = visible ? 'visibility_off' : 'visibility';
+    };
+    document.querySelectorAll('[data-secret-toggle]').forEach((button) => {
+        button.addEventListener('click', () => setSecretVisible(button, button.getAttribute('aria-pressed') !== 'true'));
+    });
+
     const resetCredentialFields = () => {
         ['#ch-tg-token', '#ch-tg-chat-id', '#ch-slack-url', '#ch-cw-token', '#ch-cw-room-id', '#ch-wh-url', '#ch-wh-secret'].forEach((selector) => {
             const input = document.querySelector(selector);
             if (input) {
                 input.value = '';
-                input.placeholder = input.dataset.defaultPlaceholder || input.placeholder;
             }
         });
+        // Credentials are hidden again whenever the form is reset or another channel is opened.
+        document.querySelectorAll('[data-secret-toggle]').forEach((button) => setSecretVisible(button, false));
     };
 
     const resetForm = () => {
@@ -152,10 +171,6 @@ export function initAdminNotifications() {
                 const input = document.querySelector(selector);
                 if (input) {
                     input.value = config[key] || '';
-                    if ((details.secrets_configured || []).includes(key)) {
-                        input.dataset.defaultPlaceholder = input.dataset.defaultPlaceholder || input.placeholder;
-                        input.placeholder = '••••••••';
-                    }
                 }
             });
             switchPlatform(typeSelect?.value || 'webhook');

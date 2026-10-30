@@ -118,6 +118,8 @@ class AdminReportAnalyticsTest extends TestCase
 
         $this->assertSame('VCB', $rows[(string) $vcb->id]['bank_code']);
         $this->assertStringNotContainsString('0011002233', (string) $rows[(string) $vcb->id]['account_number']);
+        // The full number is only revealed on demand by the show/hide toggle.
+        $this->assertSame('0011002233', $rows[(string) $vcb->id]['account_number_full']);
         $this->assertSame(2, $rows[(string) $vcb->id]['order_count']);
         $this->assertSame(40000, $rows[(string) $vcb->id]['total_received']);
         $this->assertSame(20000, $rows[(string) $vcb->id]['total_outstanding']);

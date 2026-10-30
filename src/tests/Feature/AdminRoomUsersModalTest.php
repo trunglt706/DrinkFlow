@@ -128,4 +128,38 @@ class AdminRoomUsersModalTest extends TestCase
         // The status badge starts with an icon.
         $this->assertMatchesRegularExpression('/data-member-status-badge[^>]*>\s*<span class="material-symbols-outlined[^"]*"\s+aria-hidden="true">check_circle<\/span>/', $html);
     }
+
+    /**
+     * The members directory lists the most recently active member first; members who never visited come last.
+     */
+    public function test_members_directory_is_sorted_by_last_access_descending(): void
+    {
+        $admin = Admin::create([
+            'name' => 'Room Admin',
+            'email' => 'sort-admin@example.test',
+            'password' => Hash::make('secret'),
+            'status' => 'active',
+        ]);
+        $room = Room::create(['name' => 'Sort Room', 'slug' => 'sort-room', 'status' => 'active']);
+        $admin->rooms()->attach($room);
+        foreach (['Never Visited' => null, 'Visited Yesterday' => now()->subDay(), 'Visited Just Now' => now()->subMinute(), 'Visited Last Week' => now()->subWeek()] as $name => $lastActiveAt) {
+            RoomUser::create([
+                'room_id' => $room->id,
+                'global_user_id' => GlobalUser::create(['name' => $name, 'email' => str($name)->slug().'@example.test', 'status' => 'active'])->id,
+                'display_name' => $name,
+                'status' => RoomUserStatus::Active,
+                'last_active_at' => $lastActiveAt,
+            ]);
+        }
+
+        $roomUsers = $this->actingAs($admin, 'admin')
+            ->get(route('admin.room-users.page', $room->slug))
+            ->assertOk()
+            ->viewData('roomUsers');
+
+        $this->assertSame(
+            ['Visited Just Now', 'Visited Yesterday', 'Visited Last Week', 'Never Visited'],
+            $roomUsers->getCollection()->pluck('display_name')->all(),
+        );
+    }
 }

@@ -75,6 +75,8 @@ class PaymentAccountReportService
                     'bank_code' => $account?->bank_code,
                     'bank_name' => $account?->bank_name,
                     'account_number' => $account ? FormatHelper::mask((string) $account->getRawOriginal('account_number')) : null,
+                    // Full number for the room's admin, revealed on demand by the show/hide toggle (exports keep the masked one).
+                    'account_number_full' => $account ? (string) $account->getRawOriginal('account_number') : null,
                     'account_name' => $account?->account_name,
                     'order_count' => (int) ($orderCounts[$key] ?? 0),
                     'total_received' => (int) ($debt?->total_received ?? 0),

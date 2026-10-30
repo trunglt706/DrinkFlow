@@ -294,7 +294,11 @@
                                         {{ \App\Support\Helpers\FormatHelper::formatCurrency($item['unit_price']) }}
                                     </td>
                                     <td class="px-4 py-3 w-36 text-right font-mono font-bold text-on-surface">
-                                        {{ \App\Support\Helpers\FormatHelper::formatCurrency($item['total_amount']) }}
+                                        {{-- Payable share after the delivery fee and discount, with the original menu-price total below. --}}
+                                        {{ \App\Support\Helpers\FormatHelper::formatCurrency($item['payable_amount']) }}
+                                        <div class="mt-0.5 text-[10px] font-medium text-outline whitespace-nowrap">
+                                            {{ __('admin.payable_original_total', ['amount' => \App\Support\Helpers\FormatHelper::formatCurrency($item['total_amount'])]) }}
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
@@ -583,8 +587,11 @@
                                     <span class="px-2.5 py-0.5 rounded bg-emerald-50 text-primary border border-emerald-200 font-semibold">
                                         {{ __('admin.department_orders_count', ['count' => $dept['total_quantity']]) }}
                                     </span>
+                                    <span class="px-2.5 py-0.5 rounded bg-surface-container text-outline border border-outline-variant">
+                                        {{ __('admin.payable_original_total', ['amount' => \App\Support\Helpers\FormatHelper::formatCurrency($dept['total_amount'])]) }}
+                                    </span>
                                     <span class="px-2.5 py-0.5 rounded bg-surface-container-high text-on-surface font-bold">
-                                        {{ \App\Support\Helpers\FormatHelper::formatCurrency($dept['total_amount']) }}
+                                        {{ \App\Support\Helpers\FormatHelper::formatCurrency($dept['payable_amount']) }}
                                     </span>
                                 </div>
                             </div>
@@ -635,7 +642,10 @@
                                                     </span>
                                                 </td>
                                                 <td class="px-4 py-2.5 w-32 text-right font-mono font-bold text-on-surface">
-                                                    {{ \App\Support\Helpers\FormatHelper::formatCurrency($item['total_amount']) }}
+                                                    {{ \App\Support\Helpers\FormatHelper::formatCurrency($item['payable_amount']) }}
+                                                    <div class="mt-0.5 text-[10px] font-medium text-outline whitespace-nowrap">
+                                                        {{ __('admin.payable_original_total', ['amount' => \App\Support\Helpers\FormatHelper::formatCurrency($item['total_amount'])]) }}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         @endforeach

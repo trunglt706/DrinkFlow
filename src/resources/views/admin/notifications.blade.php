@@ -131,7 +131,12 @@
                     <div id="platform-telegram" class="platform-config-fields space-y-3">
                         <div>
                             <label class="block font-semibold text-on-surface mb-1">{{ __('admin.telegram_bot_token') }}</label>
-                            <input type="password" id="ch-tg-token" autocomplete="new-password" placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ" class="w-full h-9 px-3 bg-surface border border-outline-variant rounded font-mono text-xs text-on-surface">
+                            <div class="relative">
+                                <input type="password" id="ch-tg-token" autocomplete="new-password" placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ" class="w-full h-9 pl-3 pr-9 bg-surface border border-outline-variant rounded font-mono text-xs text-on-surface">
+                                <button type="button" data-secret-toggle="ch-tg-token" aria-pressed="false" title="{{ __('admin.toggle_secret_visibility') }}" aria-label="{{ __('admin.toggle_secret_visibility') }}" class="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center text-outline hover:text-primary transition-colors cursor-pointer">
+                                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">visibility</span>
+                                </button>
+                            </div>
                         </div>
                         <div>
                             <label class="block font-semibold text-on-surface mb-1">{{ __('admin.telegram_chat_id') }}</label>
@@ -151,7 +156,12 @@
                     <div id="platform-chatwork" class="platform-config-fields space-y-3 hidden">
                         <div>
                             <label class="block font-semibold text-on-surface mb-1">{{ __('admin.chatwork_api_token') }}</label>
-                            <input type="password" id="ch-cw-token" autocomplete="new-password" placeholder="abcdef0123456789abcdef0123456789" class="w-full h-9 px-3 bg-surface border border-outline-variant rounded font-mono text-xs text-on-surface">
+                            <div class="relative">
+                                <input type="password" id="ch-cw-token" autocomplete="new-password" placeholder="abcdef0123456789abcdef0123456789" class="w-full h-9 pl-3 pr-9 bg-surface border border-outline-variant rounded font-mono text-xs text-on-surface">
+                                <button type="button" data-secret-toggle="ch-cw-token" aria-pressed="false" title="{{ __('admin.toggle_secret_visibility') }}" aria-label="{{ __('admin.toggle_secret_visibility') }}" class="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center text-outline hover:text-primary transition-colors cursor-pointer">
+                                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">visibility</span>
+                                </button>
+                            </div>
                         </div>
                         <div>
                             <label class="block font-semibold text-on-surface mb-1">{{ __('admin.chatwork_room_id') }}</label>
@@ -167,7 +177,12 @@
                         </div>
                         <div>
                             <label class="block font-semibold text-on-surface mb-1">{{ __('admin.webhook_secret_token') }} ({{ __('admin.optional') }})</label>
-                            <input type="password" id="ch-wh-secret" autocomplete="new-password" placeholder="secret-token-key" class="w-full h-9 px-3 bg-surface border border-outline-variant rounded font-mono text-xs text-on-surface">
+                            <div class="relative">
+                                <input type="password" id="ch-wh-secret" autocomplete="new-password" placeholder="secret-token-key" class="w-full h-9 pl-3 pr-9 bg-surface border border-outline-variant rounded font-mono text-xs text-on-surface">
+                                <button type="button" data-secret-toggle="ch-wh-secret" aria-pressed="false" title="{{ __('admin.toggle_secret_visibility') }}" aria-label="{{ __('admin.toggle_secret_visibility') }}" class="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center text-outline hover:text-primary transition-colors cursor-pointer">
+                                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">visibility</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 

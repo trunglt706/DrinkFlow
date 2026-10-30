@@ -102,10 +102,13 @@ class RoomNotificationChannelService
     }
 
     /**
-     * Return channel details for an authorized room administrator editing a channel, with credentials blanked out.
+     * Return channel details for an authorized room administrator editing a channel.
+     *
+     * Credentials are returned as stored so the administrator can check them (the editor masks them behind a
+     * show/hide toggle); a blank credential on save still keeps the stored value.
      *
      * @param NotificationChannel $channel Notification channel.
-     * @return array<string, mixed> Channel details; credential values are blank and listed in `secrets_configured`.
+     * @return array<string, mixed> Channel details; the credential keys that hold a value are listed in `secrets_configured`.
      */
     public function editable(NotificationChannel $channel): array
     {
@@ -121,9 +124,6 @@ class RoomNotificationChannelService
             self::SECRET_KEYS,
             static fn (string $key): bool => isset($config[$key]) && $config[$key] !== '',
         ));
-        foreach ($secretsConfigured as $key) {
-            $config[$key] = '';
-        }
 
         return [
             'id' => $channel->id,

@@ -79,7 +79,9 @@ class NotificationChannelController extends Controller
     {
         abort_unless($channel->room_id === $room->id, 404);
 
-        return response()->json(['data' => $service->editable($channel)]);
+        // The editor receives the stored credentials: never let a browser or proxy cache them.
+        return response()->json(['data' => $service->editable($channel)])
+            ->header('Cache-Control', 'no-store, private');
     }
 
     /**

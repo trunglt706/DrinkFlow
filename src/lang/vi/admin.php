@@ -1003,6 +1003,8 @@ return [
     'sso_local_id' => 'SSO / Local ID',
     'sso_local_identity' => 'SSO / Định danh nội bộ',
     'toggle_password_visibility' => 'Hiện/Ẩn mật khẩu',
+    'toggle_account_number_visibility' => 'Hiện/Ẩn số tài khoản',
+    'toggle_secret_visibility' => 'Hiện/Ẩn dữ liệu',
     'captcha_bot_protection' => 'Xác thực Captcha chống bot',
     'level_2_active' => 'Cấp độ 2 Hoạt động',
     'captcha_answer_placeholder' => 'Đáp án',

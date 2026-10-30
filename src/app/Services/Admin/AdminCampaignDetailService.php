@@ -14,6 +14,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Room;
 use App\Services\Campaign\CampaignSponsorshipCalculator;
+use Illuminate\Support\Collection;
 
 class AdminCampaignDetailService
 {
@@ -229,6 +230,17 @@ class AdminCampaignDetailService
             $departmentGroups->put($department, $dept);
         }
 
+        // Each line's payable share of the campaign total (delivery fee added, discount deducted), prorated on its
+        // original amount. Department totals take their share of the campaign total, then split it over their lines,
+        // so the lines of a department always add up to its total.
+        $aggregatedItems = self::withPayableAmounts($aggregatedItems, $grossTotal);
+        $departmentGroups = self::withPayableAmounts($departmentGroups, $grossTotal)
+            ->map(static function (array $dept): array {
+                $dept['items'] = self::withPayableAmounts($dept['items'], $dept['payable_amount']);
+
+                return $dept;
+            });
+
         return [
             'room' => $room,
             'campaign' => $campaign,
@@ -368,6 +380,35 @@ class AdminCampaignDetailService
             'declined_users_count' => $declinedUsersCount,
             'total_users_count' => $activeRoomUserIds->count(),
         ];
+    }
+
+    /**
+     * Split a payable total over rows in proportion to their original `total_amount`.
+     *
+     * Uses the largest remainder method so the rounded shares add up exactly to the given total.
+     *
+     * @param Collection<array-key, array<string, mixed>> $rows Rows carrying an integer `total_amount` (original price).
+     * @param int $payableTotal Amount to split (original total + delivery fee - discount).
+     * @return Collection<array-key, array<string, mixed>> Same rows with a `payable_amount` key added.
+     */
+    private static function withPayableAmounts(Collection $rows, int $payableTotal): Collection
+    {
+        $originalTotal = (int) $rows->sum('total_amount');
+        if ($originalTotal <= 0) {
+            return $rows->map(static fn (array $row): array => $row + ['payable_amount' => 0]);
+        }
+
+        $shares = $rows->map(static fn (array $row): float => ((int) $row['total_amount'] * $payableTotal) / $originalTotal);
+        $payables = $shares->map(static fn (float $share): int => (int) floor($share));
+        $remainder = $payableTotal - (int) $payables->sum();
+        $shares->sortByDesc(static fn (float $share): float => $share - floor($share))
+            ->keys()
+            ->take($remainder)
+            ->each(static function ($key) use ($payables): void {
+                $payables->put($key, $payables->get($key) + 1);
+            });
+
+        return $rows->map(static fn (array $row, $key): array => $row + ['payable_amount' => $payables->get($key)]);
     }
 
     /**

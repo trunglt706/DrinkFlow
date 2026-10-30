@@ -75,7 +75,10 @@ class RoomUserController extends Controller
         $query = $room->roomUsers()
             ->with(['globalUser', 'devices'])
             ->withCount(['devices', 'orders', 'debts'])
-            ->latest();
+            // Most recently active members first (never-active members, NULL, come last), then newest members.
+            ->orderByDesc('last_active_at')
+            ->latest()
+            ->orderByDesc('id');
 
         $search = trim($request->string('q')->toString());
         if ($search !== '') {

@@ -762,23 +762,6 @@
                                     </ul>
                                 </div>
                             @endif
-
-                            <!-- Self-paid debt calculation basis -->
-                            @php
-                                $selfPaidBasisValue = (string) ($campaign->self_paid_price_basis ?? \App\Models\Campaign::SELF_PAID_PRICE_BASIS_ORIGINAL);
-                            @endphp
-                            <div class="space-y-1.5 bg-surface-container-low p-3.5 rounded-xl border border-outline-variant/60">
-                                <div class="flex items-center gap-1.5 font-bold text-on-surface text-[11px]">
-                                    <span class="material-symbols-outlined text-[16px] text-amber-600">payments</span>
-                                    <span>{{ __('admin.self_paid_price_basis_label') }}</span>
-                                </div>
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-[11px] font-semibold">
-                                    {{ __('admin.self_paid_price_basis_' . $selfPaidBasisValue) }}
-                                </span>
-                                <p class="text-[11px] text-outline leading-relaxed">
-                                    {{ __('admin.self_paid_price_basis_hint') }}
-                                </p>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -814,6 +797,23 @@
                                         {{ $campaign->deadline?->format('H:i') ?? '--:--' }}
                                     </span>
                                 </div>
+                            </div>
+
+                            <!-- Self-paid debt calculation basis -->
+                            @php
+                                $selfPaidBasisValue = (string) ($campaign->self_paid_price_basis ?? \App\Models\Campaign::SELF_PAID_PRICE_BASIS_ORIGINAL);
+                            @endphp
+                            <div class="space-y-1.5 bg-surface-container-low p-3.5 rounded-xl border border-outline-variant/60">
+                                <div class="flex items-center gap-1.5 font-bold text-on-surface text-[11px]">
+                                    <span class="material-symbols-outlined text-[16px] text-amber-600">payments</span>
+                                    <span>{{ __('admin.self_paid_price_basis_label') }}</span>
+                                </div>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-[11px] font-semibold">
+                                    {{ __('admin.self_paid_price_basis_' . $selfPaidBasisValue) }}
+                                </span>
+                                <p class="text-[11px] text-outline leading-relaxed">
+                                    {{ __('admin.self_paid_price_basis_hint') }}
+                                </p>
                             </div>
                         </div>
                     </div>

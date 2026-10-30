@@ -984,6 +984,8 @@ return [
     'sso_local_id' => 'SSO / ローカルID',
     'sso_local_identity' => 'SSO / 内部ID',
     'toggle_password_visibility' => 'パスワードの表示/非表示を切り替え',
+    'toggle_account_number_visibility' => '口座番号の表示/非表示を切り替え',
+    'toggle_secret_visibility' => '値の表示/非表示を切り替え',
     'captcha_bot_protection' => 'ボット防止Captcha認証',
     'level_2_active' => 'レベル2 有効',
     'captcha_answer_placeholder' => '回答',

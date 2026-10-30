@@ -984,6 +984,8 @@ return [
     'sso_local_id' => 'SSO / Local ID',
     'sso_local_identity' => 'SSO / Local Identity',
     'toggle_password_visibility' => 'Toggle password visibility',
+    'toggle_account_number_visibility' => 'Show/hide account number',
+    'toggle_secret_visibility' => 'Show/hide value',
     'captcha_bot_protection' => 'Anti-bot Captcha Challenge',
     'level_2_active' => 'Level 2 Active',
     'captcha_answer_placeholder' => 'Answer',
