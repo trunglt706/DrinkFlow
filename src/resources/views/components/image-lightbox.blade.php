@@ -7,24 +7,26 @@
   class="hidden fixed inset-0 z-[9999] bg-slate-950/90 backdrop-blur-sm items-center justify-center select-none"
   role="dialog" aria-modal="true" aria-label="{{ $title ?? __('global.lightbox.title') }}">
   <img data-image-lightbox-image src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="" loading="lazy"
-    class="max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-9rem)] max-h-[calc(100vh-12rem)] -translate-y-8 object-contain rounded-lg shadow-2xl bg-white">
+    class="max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-4rem)] max-h-[calc(100vh-12rem)] -translate-y-8 object-contain rounded-lg shadow-2xl bg-white">
 
+  {{-- Top bar, away from the image so it stays readable: prev / next on the left (disabled at the first / last
+       image, no wrap-around), close on the right. --}}
+  <div class="absolute top-3 left-3 sm:top-5 sm:left-5 flex items-center gap-2" data-image-lightbox-nav>
+    <button type="button" data-image-lightbox-prev
+      class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-white/10"
+      title="{{ __('global.lightbox.prev') }}" aria-label="{{ __('global.lightbox.prev') }}">
+      <span class="material-symbols-outlined text-[26px]" aria-hidden="true">chevron_left</span>
+    </button>
+    <button type="button" data-image-lightbox-next
+      class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-white/10"
+      title="{{ __('global.lightbox.next') }}" aria-label="{{ __('global.lightbox.next') }}">
+      <span class="material-symbols-outlined text-[26px]" aria-hidden="true">chevron_right</span>
+    </button>
+  </div>
   <button type="button" data-image-lightbox-close
     class="absolute top-3 right-3 sm:top-5 sm:right-5 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors"
     title="{{ __('global.lightbox.close') }}" aria-label="{{ __('global.lightbox.close') }}">
-    <span class="material-symbols-outlined text-[24px]">close</span>
-  </button>
-
-  <button type="button" data-image-lightbox-prev
-    class="absolute left-2 sm:left-5 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors"
-    title="{{ __('global.lightbox.prev') }}" aria-label="{{ __('global.lightbox.prev') }}">
-    <span class="material-symbols-outlined text-[28px]">chevron_left</span>
-  </button>
-
-  <button type="button" data-image-lightbox-next
-    class="absolute right-2 sm:right-5 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors"
-    title="{{ __('global.lightbox.next') }}" aria-label="{{ __('global.lightbox.next') }}">
-    <span class="material-symbols-outlined text-[28px]">chevron_right</span>
+    <span class="material-symbols-outlined text-[24px]" aria-hidden="true">close</span>
   </button>
 
   <div class="absolute bottom-4 inset-x-4 text-center text-white">

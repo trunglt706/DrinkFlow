@@ -22,6 +22,32 @@ class CampaignOrderingAvailabilityTest extends TestCase
     use RefreshDatabase;
 
     /**
+     * The menu offers a grid / list display toggle (grid by default, remembered in the browser storage).
+     *
+     * @return void
+     */
+    public function test_menu_offers_grid_and_list_display_modes(): void
+    {
+        [$user, $room] = $this->createRoomMember('open');
+        $this->createCampaignWithItem($room, CampaignStatus::Active, now()->addHour());
+
+        $this->actingAs($user, 'web')
+            ->get(route('user.campaigns.index', $room))
+            ->assertOk()
+            ->assertSee('data-menu-view-toggle', false)
+            ->assertSee('data-menu-view="grid"', false)
+            ->assertSee('data-menu-view="list"', false)
+            ->assertSee('data-menu-items', false)
+            ->assertSee('data-list-price', false)
+            // The item has no description: the card and the image viewer show the default one.
+            ->assertSee('data-lightbox-description="'.e(__('room.campaign.default_drink_desc')).'"', false)
+            ->assertSee("drinkflow.campaign.menu_view", false)
+            ->assertSee(__('room.campaign.menu_view_label'))
+            ->assertSee(__('room.campaign.menu_view_grid'))
+            ->assertSee(__('room.campaign.menu_view_list'));
+    }
+
+    /**
      * Verify that an active campaign before its deadline displays ordering controls.
      *
      * @return void

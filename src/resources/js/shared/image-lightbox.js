@@ -49,8 +49,14 @@ function getViewer() {
     let lastFocus = null;
     const multiple = () => entries.length > 1;
 
+    // No wrap-around: the first image disables "previous", the last one disables "next".
+    const hasPrev = () => index > 0;
+    const hasNext = () => index < entries.length - 1;
+
     const show = (i) => {
-        index = (i + entries.length) % entries.length;
+        index = Math.min(Math.max(i, 0), entries.length - 1);
+        prevBtn.disabled = !hasPrev();
+        nextBtn.disabled = !hasNext();
         const entry = entries[index];
         view.src = entry.src;
         view.alt = entry.alt;
@@ -80,8 +86,8 @@ function getViewer() {
         lastFocus?.focus?.();
     };
 
-    prevBtn.addEventListener('click', () => show(index - 1));
-    nextBtn.addEventListener('click', () => show(index + 1));
+    prevBtn.addEventListener('click', () => { if (hasPrev()) show(index - 1); });
+    nextBtn.addEventListener('click', () => { if (hasNext()) show(index + 1); });
     closeBtn.addEventListener('click', close);
     overlay.addEventListener('click', (event) => {
         if (event.target === overlay) close();
@@ -93,8 +99,8 @@ function getViewer() {
             // Keep a modal underneath (e.g. the cart) open: Esc only closes the viewer.
             event.stopImmediatePropagation();
             close();
-        } else if (event.key === 'ArrowLeft' && multiple()) show(index - 1);
-        else if (event.key === 'ArrowRight' && multiple()) show(index + 1);
+        } else if (event.key === 'ArrowLeft' && hasPrev()) show(index - 1);
+        else if (event.key === 'ArrowRight' && hasNext()) show(index + 1);
     }, true);
 
     let touchStartX = null;
@@ -105,7 +111,8 @@ function getViewer() {
         if (touchStartX === null || !multiple()) return;
         const deltaX = (event.changedTouches[0]?.clientX ?? touchStartX) - touchStartX;
         touchStartX = null;
-        if (Math.abs(deltaX) > 50) show(index + (deltaX < 0 ? 1 : -1));
+        if (deltaX < -50 && hasNext()) show(index + 1);
+        else if (deltaX > 50 && hasPrev()) show(index - 1);
     }, { passive: true });
 
     viewer = {

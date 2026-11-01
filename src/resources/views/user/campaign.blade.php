@@ -15,6 +15,13 @@
     menuItems: {{ Js::from($activeCampaign?->items ?? []) }},
     maxBudget: {{ (int) ($activeCampaign?->max_budget ?? 0) }},
     withinBudgetOnly: false,
+    {{-- Menu display mode ('grid' default | 'list': compact rows, 1 per row on mobile, 2 from sm), remembered in this browser only. --}}
+    menuViewKey: 'drinkflow.campaign.menu_view',
+    menuView: (() => { try { return localStorage.getItem('drinkflow.campaign.menu_view') === 'list' ? 'list' : 'grid'; } catch (e) { return 'grid'; } })(),
+    setMenuView(mode) {
+      this.menuView = mode === 'list' ? 'list' : 'grid';
+      try { localStorage.setItem(this.menuViewKey, this.menuView); } catch (e) { /* storage unavailable: keep it for this visit only */ }
+    },
     hasDeclined: {{ Js::from((bool) $hasDeclined) }},
     showCustomModal: false,
     showCartModal: false,
@@ -713,22 +720,38 @@
             </div>
           </div>
         </div>
-        @if((int) ($activeCampaign->max_budget ?? 0) > 0)
-          <!-- Budget Filter: chỉ hiện món có giá nằm trong trần ngân sách của chiến dịch -->
-          <label class="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-700 select-none">
-            <input type="checkbox" x-model="withinBudgetOnly" class="h-4 w-4 cursor-pointer rounded border-slate-300 text-[#006948] focus:ring-[#006948]">
-            <span>{{ __('room.campaign.budget_filter_label', ['amount' => \App\Support\Helpers\FormatHelper::formatCurrency((int) $activeCampaign->max_budget)]) }}</span>
-          </label>
-        @endif
+        <div class="flex items-center justify-between gap-3">
+          @if((int) ($activeCampaign->max_budget ?? 0) > 0)
+            <!-- Budget Filter: chỉ hiện món có giá nằm trong trần ngân sách của chiến dịch -->
+            <label class="inline-flex min-w-0 cursor-pointer items-center gap-2 text-xs font-medium text-slate-700 select-none">
+              <input type="checkbox" x-model="withinBudgetOnly" class="h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 text-[#006948] focus:ring-[#006948]">
+              <span>{{ __('room.campaign.budget_filter_label', ['amount' => \App\Support\Helpers\FormatHelper::formatCurrency((int) $activeCampaign->max_budget)]) }}</span>
+            </label>
+          @endif
+          <!-- Menu display mode: grid (default) / list (compact rows: 1 per row on mobile, 2 from sm) -->
+          <div class="ml-auto inline-flex shrink-0 rounded-xl border border-slate-200 bg-white p-0.5" role="group" aria-label="{{ __('room.campaign.menu_view_label') }}" data-menu-view-toggle>
+            @foreach(['grid' => 'grid_view', 'list' => 'view_list'] as $mode => $icon)
+              <button type="button" @click="setMenuView('{{ $mode }}')" data-menu-view="{{ $mode }}"
+                      :aria-pressed="menuView === '{{ $mode }}' ? 'true' : 'false'"
+                      title="{{ __('room.campaign.menu_view_'.$mode) }}" aria-label="{{ __('room.campaign.menu_view_'.$mode) }}"
+                      class="flex h-8 w-8 items-center justify-center rounded-lg transition-colors cursor-pointer"
+                      :class="menuView === '{{ $mode }}' ? 'bg-[#006948] text-white shadow-2xs' : 'text-slate-500 hover:bg-slate-50'">
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">{{ $icon }}</span>
+              </button>
+            @endforeach
+          </div>
+        </div>
 
-        <!-- Menu Items Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        <!-- Menu Items: grid (default) or list (1 compact item per row on mobile, 2 from sm) -->
+        <div class="grid" data-menu-items :class="menuView === 'list' ? 'grid-cols-1 sm:grid-cols-2 gap-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3'">
           @forelse($activeCampaign->items as $item)
             <div x-show="filterMatch({{ json_encode($item) }})"
-                 class="bg-white border border-slate-200/80 hover:border-emerald-300 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between transition-all duration-200 shadow-2xs hover:shadow-md hover:-translate-y-0.5">
-              <div>
-                <div class="w-full h-28 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-[#006948] overflow-hidden mb-2.5 relative">
-                  <span class="material-symbols-outlined text-[32px]">local_cafe</span>
+                 class="bg-white border border-slate-200/80 hover:border-emerald-300 rounded-xl flex flex-col justify-between transition-all duration-200 shadow-2xs hover:shadow-md hover:-translate-y-0.5"
+                 :class="menuView === 'list' ? 'p-2' : 'p-3 sm:p-3.5'">
+              <div :class="menuView === 'list' ? 'flex items-start gap-2' : ''">
+                <div class="rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-[#006948] overflow-hidden relative"
+                     :class="menuView === 'list' ? 'h-12 w-12 shrink-0' : 'w-full h-28 mb-2.5'">
+                  <span class="material-symbols-outlined" :class="menuView === 'list' ? 'text-[22px]' : 'text-[32px]'">local_cafe</span>
                   <template x-if="itemImageUrl({{ Js::from($item) }})">
                     <img x-lazy-src="itemImageUrl({{ Js::from($item) }})"
                          :data-lightbox-src="itemImageUrl({{ Js::from($item) }})"
@@ -737,7 +760,7 @@
                          data-lightbox="campaign-menu"
                          data-lightbox-title="{{ $item->name }}"
                          data-lightbox-price="{{ \App\Support\Helpers\FormatHelper::formatCurrency($item->base_price) }}"
-                         data-lightbox-description="{{ $item->description }}"
+                         data-lightbox-description="{{ $item->description ?: __('room.campaign.default_drink_desc') }}"
                          tabindex="0"
                          role="button"
                          aria-label="{{ __('room.campaign.view_item_image', ['name' => $item->name]) }}"
@@ -747,12 +770,17 @@
                          class="absolute inset-0 h-full w-full object-cover cursor-zoom-in">
                   </template>
                   @if($item->category)
-                    <span class="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-white/90 backdrop-blur-xs text-[10px] font-semibold text-slate-600 border border-slate-200/60 shadow-2xs">
+                    <span x-show="menuView !== 'list'" class="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-white/90 backdrop-blur-xs text-[10px] font-semibold text-slate-600 border border-slate-200/60 shadow-2xs">
                       {{ $item->category }}
                     </span>
                   @endif
                 </div>
-                <h3 class="text-xs font-bold text-slate-900 leading-snug truncate">{{ $item->name }}</h3>
+                <div class="min-w-0 flex-1">
+                {{-- List mode: the price sits on the name line, aligned right; the action row only keeps the icon buttons. --}}
+                <div class="flex items-baseline justify-between gap-2">
+                  <h3 class="min-w-0 text-xs font-bold text-slate-900 leading-snug truncate" title="{{ $item->name }}">{{ $item->name }}</h3>
+                  <span x-show="menuView === 'list'" x-cloak class="shrink-0 text-xs font-bold font-mono text-slate-900" data-list-price>{{ \App\Support\Helpers\FormatHelper::formatCurrency($item->base_price) }}</span>
+                </div>
                 @if($dishRating = $itemRatings[$item->id] ?? null)
                   {{-- Average stars the room gave this dish in earlier campaigns. --}}
                   <p class="mt-0.5 flex items-center gap-0.5 text-[11px] font-semibold text-amber-600" data-item-average="{{ $item->id }}"
@@ -762,26 +790,33 @@
                     <span class="font-normal text-slate-400">({{ trans_choice('room.rating.count', $dishRating['count'], ['count' => $dishRating['count']]) }})</span>
                   </p>
                 @endif
-                <p class="text-[11px] text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">{{ $item->description ?? __('room.campaign.default_drink_desc') }}</p>
+                <p class="text-[11px] text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">{{ $item->description ?: __('room.campaign.default_drink_desc') }}</p>
+                </div>
               </div>
 
-              <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
-                <span class="text-xs sm:text-sm font-bold font-mono text-slate-900">{{ \App\Support\Helpers\FormatHelper::formatCurrency($item->base_price) }}</span>
+              <div class="border-t border-slate-100 flex items-center justify-between gap-2"
+                   :class="menuView === 'list' ? 'mt-2 pt-2' : 'mt-3 pt-2.5'"
+                   @if(!($canOrderCampaign && !$activeUserOrder)) x-show="menuView !== 'list'" @endif>
+                <span x-show="menuView !== 'list'" class="text-xs sm:text-sm font-bold font-mono text-slate-900">{{ \App\Support\Helpers\FormatHelper::formatCurrency($item->base_price) }}</span>
                 @if($canOrderCampaign && !$activeUserOrder)
-                  <div class="flex items-center gap-1.5">
+                  <div class="flex items-center gap-1.5" :class="menuView === 'list' ? 'w-full justify-end' : ''">
                   <button type="button"
                           @click="openQuickOrder({{ json_encode($item) }})"
                           data-quick-order-button
-                          class="px-2.5 h-7 bg-white hover:bg-emerald-50 border border-[#006948] text-[#006948] rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer whitespace-nowrap">
-                    <span class="material-symbols-outlined text-[14px]">bolt</span>
-                    <span>{{ __('room.campaign.quick_order') }}</span>
+                          title="{{ __('room.campaign.quick_order') }}" aria-label="{{ __('room.campaign.quick_order') }}"
+                          class="h-7 bg-white hover:bg-emerald-50 border border-[#006948] text-[#006948] rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
+                          :class="menuView === 'list' ? 'w-8' : 'px-2.5'">
+                    <span class="material-symbols-outlined text-[14px]" aria-hidden="true">bolt</span>
+                    <span x-show="menuView !== 'list'">{{ __('room.campaign.quick_order') }}</span>
                   </button>
                   <button type="button"
                           @click="openCustomize({{ json_encode($item) }})"
                           data-add-to-cart-button
-                          class="px-2.5 h-7 bg-[#006948] hover:bg-[#005137] text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs cursor-pointer">
-                    <span class="material-symbols-outlined text-[14px]">add</span>
-                    <span>{{ __('room.dashboard.select_drink') }}</span>
+                          title="{{ __('room.dashboard.select_drink') }}" aria-label="{{ __('room.dashboard.select_drink') }}"
+                          class="h-7 bg-[#006948] hover:bg-[#005137] text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition-colors shadow-2xs cursor-pointer"
+                          :class="menuView === 'list' ? 'w-8' : 'px-2.5'">
+                    <span class="material-symbols-outlined text-[14px]" aria-hidden="true">add</span>
+                    <span x-show="menuView !== 'list'">{{ __('room.dashboard.select_drink') }}</span>
                   </button>
                   </div>
                 @endif
@@ -1072,6 +1107,8 @@
                              :data-lightbox-src="itemImageUrl(item)"
                              :alt="item.item_name || '{{ __('admin.item_image_alt') }}'"
                              data-lightbox="campaign-cart"
+                             :data-lightbox-title="item.item_name || ''"
+                             :data-lightbox-description="(menuItems.find((menuItem) => menuItem.id === item.item_id)?.description) || {{ Js::from(__('room.campaign.default_drink_desc')) }}"
                              tabindex="0"
                              role="button"
                              :aria-label="{{ Js::from(__('room.campaign.view_item_image', ['name' => ':name'])) }}.replace(':name', item.item_name || '')"
