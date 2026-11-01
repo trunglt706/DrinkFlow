@@ -6,7 +6,7 @@
  */
 
 import {
-    firstError, initConfirmForms, notify, postResult, readI18n, reloadWithToast, showPendingToast, startButtonLoading,
+    firstError, initConfirmForms, notify, postResult, readI18n, reloadIfStale, reloadWithToast, showPendingToast, startButtonLoading,
     stopButtonLoading, uuid,
 } from '../shared/game-common';
 
@@ -228,8 +228,11 @@ function initRecordDialog() {
                 winner_id: Number(winner()?.value),
                 loser_ids: losers().map((input) => Number(input.value)),
                 idempotency_key: idempotencyKey,
+                round: dialog.dataset.round ? Number(dialog.dataset.round) : null,
             });
             if (!ok) {
+                // Out-of-date page (new round, room finished, player lost): reload and show why.
+                if (reloadIfStale(data)) return;
                 stopButtonLoading(submit);
                 showError(firstError(data) || i18n.error);
                 return;

@@ -13,6 +13,7 @@ use App\Models\GameRound;
 use App\Models\GameRuleSet;
 use App\Models\GlobalUser;
 use App\Services\Audit\AuditService;
+use App\Services\Realtime\RealtimeEmitter;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -34,7 +35,13 @@ class GameRoomService
     /** Length of the public link token. */
     private const TOKEN_LENGTH = 40;
 
-    public function __construct(private readonly AuditService $audit) {}
+    /** Realtime event telling the public page of a room that its status or round changed (the page reloads). */
+    public const REALTIME_STATUS_EVENT = 'game_room.status_changed';
+
+    public function __construct(
+        private readonly AuditService $audit,
+        private readonly RealtimeEmitter $realtime,
+    ) {}
 
     /**
      * Rooms the owner created for a game, most recently active first.
@@ -102,6 +109,33 @@ class GameRoomService
     }
 
     /**
+     * Data of the create-room form pre-filled from an earlier room ("Clone"): its rule set and its players. Nothing is
+     * written here: the owner reviews the form and submits it through create(), which validates everything again.
+     *
+     * Players are the active ones in their display order; when fewer than MIN_PLAYERS are still active, every player
+     * is taken so the form starts valid. The new room applies the current version of the rule set (create()).
+     *
+     * @param GameRoom $source Room being cloned (the caller checked that the user manages it).
+     * @return array{name: string, players: list<string>, rule_set_id: int} Form values.
+     */
+    public function clonePrefill(GameRoom $source): array
+    {
+        $players = $source->players()->get();
+        $active = $players->where('is_active', true);
+        $names = ($active->count() >= self::MIN_PLAYERS ? $active : $players)
+            ->pluck('display_name')
+            ->take(self::MAX_PLAYERS)
+            ->values()
+            ->all();
+
+        return [
+            'name' => Str::limit(__('games.create.clone_name', ['name' => $source->name]), 100, ''),
+            'players' => $names,
+            'rule_set_id' => (int) $source->game_rule_set_id,
+        ];
+    }
+
+    /**
      * Start a waiting room: it becomes playing and its first round opens.
      *
      * @param GameRoom $room Room.
@@ -123,28 +157,40 @@ class GameRoomService
             GameRound::create(['game_room_id' => $locked->id, 'number' => 1]);
             $this->audit->record('game_room.started', 'game_room', (int) $locked->id);
         });
+        $this->broadcastStatus($room, GameRoomStatus::Playing);
     }
 
     /**
      * Open the next round of a playing room.
      *
+     * Race safety: the room row is locked, and the caller passes the round it was looking at, so a double click or
+     * two tabs (owner dashboard + public page) open one round, not two in a row.
+     *
      * @param GameRoom $room Room.
+     * @param int|null $currentRound Round the owner was looking at; refused when it is no longer the current one.
      * @return GameRound New round.
      *
-     * @throws GameActionException When the room is not playing.
+     * @throws GameActionException When the room is not playing or another round was opened meanwhile.
      */
-    public function openRound(GameRoom $room): GameRound
+    public function openRound(GameRoom $room, ?int $currentRound = null): GameRound
     {
-        return DB::transaction(function () use ($room): GameRound {
+        $round = DB::transaction(function () use ($room, $currentRound): GameRound {
             $locked = $this->lock($room);
             $this->assertPlaying($locked);
-            $number = (int) $locked->rounds()->max('number') + 1;
+            $latest = (int) $locked->rounds()->max('number');
+            if ($currentRound !== null && $latest !== $currentRound) {
+                throw new GameActionException(__('games.errors.round_already_opened', ['number' => $latest]));
+            }
+            $number = $latest + 1;
             $round = GameRound::create(['game_room_id' => $locked->id, 'number' => $number]);
             $locked->update(['last_activity_at' => now()]);
             $this->audit->record('game_round.opened', 'game_room', (int) $locked->id, null, [], ['round' => $number]);
 
             return $round;
         });
+        $this->broadcastStatus($room, GameRoomStatus::Playing, (int) $round->number);
+
+        return $round;
     }
 
     /**
@@ -165,6 +211,23 @@ class GameRoomService
             $locked->update(['status' => GameRoomStatus::Finished, 'finished_at' => now(), 'last_activity_at' => now()]);
             $this->audit->record('game_room.finished', 'game_room', (int) $locked->id);
         });
+        $this->broadcastStatus($room, GameRoomStatus::Finished);
+    }
+
+    /**
+     * Tell the open public pages of the room (channel game:{id}) that its status or round changed, so they reload. Sent after
+     * the transaction committed; a delivery failure is logged by the emitter and never undoes the change.
+     *
+     * @param GameRoom $room Room.
+     * @param GameRoomStatus $status New status.
+     * @param int|null $round Round just opened, when the change is a new round.
+     * @return void
+     */
+    private function broadcastStatus(GameRoom $room, GameRoomStatus $status, ?int $round = null): void
+    {
+        $payload = ['status' => $status->value] + ($round === null ? [] : ['round' => $round]);
+        $publish = fn (): bool => $this->realtime->emit(self::REALTIME_STATUS_EVENT, 0, $payload, 'game:'.$room->id);
+        DB::transactionLevel() > 0 ? DB::afterCommit($publish) : $publish();
     }
 
     /**

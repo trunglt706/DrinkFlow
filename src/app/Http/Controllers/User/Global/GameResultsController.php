@@ -38,6 +38,7 @@ class GameResultsController extends Controller
             (int) $request->validated('winner_id'),
             array_map('intval', (array) $request->validated('loser_ids')),
             (string) $request->validated('idempotency_key'),
+            expectedRound: $request->validated('round') === null ? null : (int) $request->validated('round'),
         );
 
         return response()->json([

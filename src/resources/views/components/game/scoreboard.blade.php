@@ -9,7 +9,12 @@
 {{--
   Leaderboard, head-to-head and result history of a game room, shared by the owner dashboard and the public page.
   Desktop shows tables; mobile shows stacked cards. With $canVoid the owner gets a "void" action per valid result.
+  Points are zero-sum (the loser loses what the winner earns): they are shown signed (+2 / -2 / 0), green / red / grey.
 --}}
+@php
+  $signedPoints = static fn (int|float $points): string => ($points > 0 ? '+' : '').$points;
+  $pointsColor = static fn (int|float $points): string => $points > 0 ? 'text-[#006948]' : ($points < 0 ? 'text-rose-600' : 'text-slate-500');
+@endphp
 <section class="rounded-2xl border border-slate-200/80 bg-white shadow-xs" data-leaderboard>
   <h2 class="flex items-center gap-2 border-b border-slate-100 px-5 py-4 text-base font-bold text-slate-900">
     <span class="material-symbols-outlined text-[20px] text-[#006948]" aria-hidden="true">leaderboard</span>
@@ -49,7 +54,7 @@
                 <span class="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">{{ __('games.leaderboard.inactive') }}</span>
               @endunless
             </td>
-            <td class="px-4 py-3 text-right font-bold tabular-nums text-[#006948]">{{ $row['points'] }}</td>
+            <td class="px-4 py-3 text-right font-bold tabular-nums {{ $pointsColor($row['points']) }}" data-leaderboard-points>{{ $signedPoints($row['points']) }}</td>
             <td class="px-4 py-3 text-right tabular-nums text-slate-700">{{ $row['wins'] }}</td>
             <td class="px-5 py-3 text-right tabular-nums text-slate-700">{{ $row['losses'] }}</td>
           </tr>
@@ -72,7 +77,7 @@
             </span>
           </span>
           <span class="text-right">
-            <span class="block text-lg font-bold tabular-nums text-[#006948]">{{ $row['points'] }}</span>
+            <span class="block text-lg font-bold tabular-nums {{ $pointsColor($row['points']) }}">{{ $signedPoints($row['points']) }}</span>
             <span class="block text-[11px] text-slate-400">{{ __('games.leaderboard.points') }}</span>
           </span>
         </li>
@@ -96,14 +101,14 @@
         <summary class="flex cursor-pointer select-none items-center justify-between gap-3 text-sm">
           <span class="font-semibold text-slate-900">{{ $row['name'] }}</span>
           <span class="flex items-center gap-2 text-xs text-slate-500">
-            {{ __('games.head_to_head.total_points', ['points' => $row['points']]) }}
+            <span class="font-semibold {{ $pointsColor($row['points']) }}" data-head-to-head-total>{{ __('games.head_to_head.total_points', ['points' => $signedPoints($row['points'])]) }}</span>
             <span class="material-symbols-outlined text-[18px] transition-transform group-open:rotate-180" aria-hidden="true">expand_more</span>
           </span>
         </summary>
         @if(($headToHead[$row['player_id']] ?? []) === [])
           <p class="mt-2 text-xs text-slate-500">{{ __('games.head_to_head.empty') }}</p>
         @else
-          {{-- Per opponent: points earned against them (they add up to the total), wins and losses. --}}
+          {{-- Per opponent: net points (earned against them minus conceded to them), wins and losses. --}}
           <ul class="mt-2 grid gap-1.5 sm:grid-cols-2" data-head-to-head-detail>
             @foreach($headToHead[$row['player_id']] as $versus)
               <li class="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-xs">
@@ -111,7 +116,7 @@
                   <span class="block truncate font-medium text-slate-800">{{ __('games.head_to_head.vs', ['name' => $versus['opponent']]) }}</span>
                   <span class="block text-slate-500">{{ __('games.head_to_head.record', ['wins' => $versus['wins'], 'losses' => $versus['losses']]) }}</span>
                 </span>
-                <span class="shrink-0 text-sm font-bold tabular-nums text-[#006948]">{{ __('games.head_to_head.points', ['points' => $versus['points']]) }}</span>
+                <span class="shrink-0 text-sm font-bold tabular-nums {{ $pointsColor($versus['points']) }}" data-head-to-head-points>{{ __('games.head_to_head.points', ['points' => $signedPoints($versus['points'])]) }}</span>
               </li>
             @endforeach
           </ul>

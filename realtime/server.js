@@ -42,13 +42,14 @@ const internalSecret = process.env.REALTIME_INTERNAL_SECRET || '';
 if (!secret) throw new Error('SOCKET_TOKEN_SECRET or APP_KEY is required (check .env in realtime/ or src/)');
 const maxBodyBytes = 256 * 1024;
 // Events addressed to a single user, trusted device or admin account (see PublishRealtimeEvent): delivered on user_channel only.
-const privateEvents = new Set(['notification.created', 'admin.notification.created', 'superadmin.notification.created', 'room.membership.updated', 'session.force_reload', 'sponsor_draw.event']);
+const privateEvents = new Set(['notification.created', 'admin.notification.created', 'superadmin.notification.created', 'room.membership.updated', 'session.force_reload', 'sponsor_draw.event', 'game_room.status_changed']);
 // Events for every connected page, including anonymous public visitors: delivered on the `public` channel only.
 const broadcastEvents = new Set(['system.maintenance']);
 // Events that are not tied to a room, so they are sent with room_id 0.
-const roomlessEvents = new Set(['notification.created', 'admin.notification.created', 'superadmin.notification.created', 'session.force_reload', 'system.maintenance']);
+const roomlessEvents = new Set(['notification.created', 'admin.notification.created', 'superadmin.notification.created', 'session.force_reload', 'system.maintenance', 'game_room.status_changed']);
 // draw:{id} = viewers of one sponsor draw session (token claim draw_session_id, issued only while its link is valid).
-const userChannelPattern = /^(?:(?:user|global_user|admin|superadmin|draw):\d+|device:[A-Za-z0-9-]{1,128})$/;
+// game:{id} = visitors of one game room's public page (token claim game_room_id, issued only while its link is open).
+const userChannelPattern = /^(?:(?:user|global_user|admin|superadmin|draw|game):\d+|device:[A-Za-z0-9-]{1,128})$/;
 
 const decode = value => Buffer.from(value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - value.length % 4) % 4), 'base64').toString('utf8');
 const verify = token => {
@@ -59,7 +60,7 @@ const verify = token => {
   if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
   try {
     const payload = JSON.parse(decode(encoded));
-    return ['user', 'admin', 'superadmin', 'draw_viewer'].includes(payload.actor_type) && Number(payload.exp) >= Math.floor(Date.now() / 1000) ? payload : null;
+    return ['user', 'admin', 'superadmin', 'draw_viewer', 'game_viewer'].includes(payload.actor_type) && Number(payload.exp) >= Math.floor(Date.now() / 1000) ? payload : null;
   } catch { return null; }
 };
 
@@ -100,7 +101,8 @@ const httpServer = createServer((req, res) => {
           'campaign.cancelled', 'campaign.delivering',
           'campaign.menu.updated', 'campaign.menu.deleted', 'campaign.participant.declined', 'campaign.participant.rejoined', 'notification.created',
           'admin.notification.created', 'superadmin.notification.created',
-          'room.membership.updated', 'session.force_reload', 'system.maintenance', 'sponsor_draw.event'
+          'room.membership.updated', 'session.force_reload', 'system.maintenance', 'sponsor_draw.event',
+          'game_room.status_changed'
         ]);
         const roomId = Number(input.room_id);
         const requiresRoom = !roomlessEvents.has(input.event);
@@ -191,6 +193,8 @@ io.on('connection', socket => {
   if (claims.actor_type === 'admin') allowed.add(`admin:${claims.admin_id}`);
   // Sponsor draw viewer: only that session's channel (no room / user channels), until the token expires.
   if (claims.actor_type === 'draw_viewer' && Number.isInteger(Number(claims.draw_session_id)) && Number(claims.draw_session_id) > 0) allowed.add(`draw:${claims.draw_session_id}`);
+  // Public game room visitor: only that room's channel (start / finish make the page reload).
+  if (claims.actor_type === 'game_viewer' && Number.isInteger(Number(claims.game_room_id)) && Number(claims.game_room_id) > 0) allowed.add(`game:${claims.game_room_id}`);
   if (claims.actor_type === 'superadmin') {
     allowed.add('superadmin');
     allowed.add('system');

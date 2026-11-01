@@ -42,17 +42,20 @@ class GameResultService
      * @param int $ruleItemId Rule item of the version the room applies.
      * @param array<int, int> $loserIds Losing players.
      * @param string $idempotencyKey Client key of the submission (same key on retry).
+     * @param string $claimToken Visitor's claim token: the player must still be held by them when the result is written.
+     * @param int|null $expectedRound Round the visitor was looking at; refused when another round has opened since.
      * @return array{result: GameResult, replayed: bool} The result, and whether it already existed for this key.
      *
-     * @throws GameActionException When the room is not playing or the players / rule item are not valid.
+     * @throws GameActionException When the room is not playing, the round changed, the player is no longer held by the
+     *                             visitor or the players / rule item are not valid.
      */
-    public function recordFromPublicLink(GameRoom $room, GamePlayer $player, int $ruleItemId, array $loserIds, string $idempotencyKey): array
+    public function recordFromPublicLink(GameRoom $room, GamePlayer $player, int $ruleItemId, array $loserIds, string $idempotencyKey, string $claimToken, ?int $expectedRound = null): array
     {
         if ((int) $player->game_room_id !== (int) $room->id) {
             throw new GameActionException(__('games.errors.player_not_in_room'));
         }
 
-        return $this->record($room, null, $ruleItemId, (int) $player->id, $loserIds, $idempotencyKey, (int) $player->id);
+        return $this->record($room, null, $ruleItemId, (int) $player->id, $loserIds, $idempotencyKey, (int) $player->id, $expectedRound, $claimToken);
     }
 
     /**
@@ -65,11 +68,15 @@ class GameResultService
      * @param array<int, int> $loserIds Losing players.
      * @param string $idempotencyKey Client key of the submission (same key on retry).
      * @param int|null $recordedByPlayerId Player who recorded it from the public link.
+     * @param int|null $expectedRound Round the client was looking at: when another round opened meanwhile the result is
+     *                                refused instead of silently landing in the new round.
+     * @param string|null $claimToken Public link only: the winner must still be held by this claim token.
      * @return array{result: GameResult, replayed: bool} The result, and whether it already existed for this key.
      *
-     * @throws GameActionException When the room is not playing or the players / rule item are not valid.
+     * @throws GameActionException When the room is not playing, the round changed, the claim was lost or the players /
+     *                             rule item are not valid.
      */
-    public function record(GameRoom $room, ?GlobalUser $recorder, int $ruleItemId, int $winnerId, array $loserIds, string $idempotencyKey, ?int $recordedByPlayerId = null): array
+    public function record(GameRoom $room, ?GlobalUser $recorder, int $ruleItemId, int $winnerId, array $loserIds, string $idempotencyKey, ?int $recordedByPlayerId = null, ?int $expectedRound = null, ?string $claimToken = null): array
     {
         $existing = $this->findByKey($room, $idempotencyKey);
         if ($existing !== null) {
@@ -77,13 +84,18 @@ class GameResultService
         }
 
         try {
-            return DB::transaction(function () use ($room, $recorder, $ruleItemId, $winnerId, $loserIds, $idempotencyKey, $recordedByPlayerId): array {
+            return DB::transaction(function () use ($room, $recorder, $ruleItemId, $winnerId, $loserIds, $idempotencyKey, $recordedByPlayerId, $expectedRound, $claimToken): array {
                 $locked = $this->rooms->lock($room);
                 $existing = $this->findByKey($locked, $idempotencyKey);
                 if ($existing !== null) {
                     return ['result' => $existing, 'replayed' => true];
                 }
-                $this->rooms->assertPlaying($locked);
+                try {
+                    $this->rooms->assertPlaying($locked);
+                } catch (GameActionException $notPlaying) {
+                    // The room was finished while the sheet was open: the page must reload.
+                    throw GameActionException::stale($notPlaying->getMessage());
+                }
 
                 $loserIds = array_values(array_unique(array_map('intval', $loserIds)));
                 $this->assertPlayers($locked, $winnerId, $loserIds);
@@ -91,6 +103,12 @@ class GameResultService
                 $round = $locked->rounds()->orderByDesc('number')->first();
                 if ($round === null) {
                     throw new GameActionException(__('games.errors.not_playing'));
+                }
+                if ($expectedRound !== null && (int) $round->number !== $expectedRound) {
+                    throw GameActionException::stale(__('games.errors.round_changed', ['number' => $round->number]));
+                }
+                if ($claimToken !== null && ! $locked->players()->whereKey($winnerId)->where('claimed_by', $claimToken)->lockForUpdate()->exists()) {
+                    throw GameActionException::stale(__('games.errors.claim_lost'));
                 }
 
                 $result = GameResult::create([

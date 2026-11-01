@@ -26,7 +26,9 @@ class GameRoomsController extends Controller
     public function __construct(private readonly GameRoomService $rooms) {}
 
     /**
-     * Create-room form: name, players and rule set on one screen.
+     * Create-room form: name, players and rule set on one screen. With ?from={room id} (the "Clone" action of the
+     * room list) the form is pre-filled with that room's rule set and players; only a room of the same game that the
+     * user manages can be cloned.
      *
      * @param Request $request Current request.
      * @param Game $game Game.
@@ -37,11 +39,25 @@ class GameRoomsController extends Controller
     {
         abort_unless($game->is_active, 404);
         $user = $this->currentGlobalUser($request);
+        $from = $request->validate(['from' => ['nullable', 'integer', 'min:1']])['from'] ?? null;
+        $source = null;
+        if ($from !== null) {
+            $source = GameRoom::query()->where('game_id', $game->id)->whereKey((int) $from)->firstOrFail();
+            Gate::forUser($user)->authorize('manage', $source);
+        }
+        $ownedRuleSets = $ruleSets->forOwner($game, $user);
+        $prefill = $source === null ? null : $this->rooms->clonePrefill($source);
+        if ($prefill !== null && ! $ownedRuleSets->contains('id', $prefill['rule_set_id'])) {
+            // The cloned room's rule set is no longer available to the owner: let them pick another one.
+            $prefill['rule_set_id'] = null;
+        }
 
         return view('user.global.games.create', [
             'user' => $user,
             'game' => $game,
-            'ruleSets' => $ruleSets->forOwner($game, $user),
+            'ruleSets' => $ownedRuleSets,
+            'cloneSource' => $source,
+            'prefill' => $prefill,
             'defaultPlayers' => GameRoomService::DEFAULT_PLAYERS,
             'minPlayers' => GameRoomService::MIN_PLAYERS,
             'maxPlayers' => GameRoomService::MAX_PLAYERS,
@@ -113,7 +129,7 @@ class GameRoomsController extends Controller
     }
 
     /**
-     * Open the next round.
+     * Open the next round. The form sends the round it shows (current_round) so a double submit opens one round.
      *
      * @param Request $request Current request.
      * @param Game $game Game.
@@ -123,7 +139,8 @@ class GameRoomsController extends Controller
     public function openRound(Request $request, Game $game, GameRoom $gameRoom): RedirectResponse
     {
         $this->authorizeOwner($request, $gameRoom);
-        $round = $this->rooms->openRound($gameRoom);
+        $current = $request->validate(['current_round' => ['nullable', 'integer', 'min:1']])['current_round'] ?? null;
+        $round = $this->rooms->openRound($gameRoom, $current === null ? null : (int) $current);
 
         return back()->with('status', __('games.flash.round_opened', ['number' => $round->number]));
     }

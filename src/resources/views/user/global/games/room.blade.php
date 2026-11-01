@@ -40,6 +40,7 @@
           @if($isPlaying)
             <form method="POST" action="{{ route('user.me.games.rooms.rounds.store', $routeArgs) }}" data-confirm="{{ __('games.room.new_round_confirm') }}" class="flex-1 sm:flex-none">
               @csrf
+              <input type="hidden" name="current_round" value="{{ $summary['current_round'] }}">
               <button type="submit" class="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true">add_circle</span>{{ __('games.room.new_round') }}
               </button>
@@ -220,7 +221,7 @@
 
   {{-- Record result sheet --}}
   @if($isPlaying)
-    <dialog data-record-dialog data-url="{{ route('user.me.games.rooms.results.store', $routeArgs) }}"
+    <dialog data-record-dialog data-url="{{ route('user.me.games.rooms.results.store', $routeArgs) }}" data-round="{{ $summary['current_round'] }}"
             data-i18n="{{ json_encode([
                 'needCategory' => __('games.record.need_category'),
                 'needWinner' => __('games.record.need_winner'),

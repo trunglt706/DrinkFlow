@@ -34,6 +34,8 @@ return [
         'empty_desc' => 'Create your first room to start recording results.',
         'empty_filtered' => 'No room matches this filter.',
         'open' => 'Open room',
+        'clone' => 'Clone',
+        'clone_hint' => 'Create a new room with the same rule set and players',
     ],
 
     'create' => [
@@ -56,6 +58,9 @@ return [
         'review' => 'Review',
         'review_hint' => 'The room is created as "Waiting". Press "Start" when everyone is ready.',
         'submit' => 'Create room',
+        'clone_name' => ':name (copy)',
+        'clone_notice' => 'Cloning room ":name": its rule set and players are pre-filled and can be edited before creating. The new room uses the latest version of the rule set and starts with an empty scoreboard.',
+        'clone_rule_set_missing' => 'The rule set of the original room is no longer available; please pick another one.',
     ],
 
     'room' => [
@@ -103,7 +108,7 @@ return [
 
     'head_to_head' => [
         'title' => 'Head-to-head',
-        'subtitle' => 'Points, wins and losses against each player.',
+        'subtitle' => 'Net points (won − conceded), wins and losses against each player.',
         'points' => ':points pts',
         'vs' => 'vs :name',
         'record' => ':wins W · :losses L',
@@ -228,6 +233,9 @@ return [
         'player_not_in_room' => 'A player is not in this room or no longer plays.',
         'rule_item_invalid' => 'This category is not part of the rules the room applies.',
         'already_voided' => 'The result is already voided.',
+        'round_changed' => 'Round :number has been opened. Reload the page and record the result for the new round.',
+        'round_already_opened' => 'Round :number was already opened. The page has been refreshed.',
+        'claim_lost' => 'You no longer hold this player. Please pick your name again.',
         'retry' => 'Could not record the result, please try again.',
     ],
 
@@ -254,6 +262,8 @@ return [
         'results_count' => ':count results',
         'new_round' => 'New round',
         'waiting' => 'The room has not started. Waiting for the owner to press "Start".',
+        'players_count' => ':count players',
+        'reload' => 'Reload',
         'inactive_player' => 'You no longer play in this room, so you cannot record new results.',
         'no_opponents' => 'No other active players yet.',
         'language' => 'Language',
@@ -307,6 +317,8 @@ return [
         'viewing_as' => 'You are viewing as :name.',
         'change' => 'Change',
         'clear' => 'Clear',
+        'taken' => 'Already taken',
+        'taken_error' => 'This name has already been picked by someone else. Please pick another name.',
         'invalid_title' => 'Invalid link',
         'invalid_desc' => 'This room link does not exist or was revoked by the room owner. Ask the owner for a new link.',
         'back_home' => 'Back to home',

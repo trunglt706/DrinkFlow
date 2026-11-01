@@ -9,6 +9,7 @@ use App\Enums\RoomStatus;
 use App\Enums\SuperadminStatus;
 use App\Enums\RoomUserStatus;
 use App\Models\Admin;
+use App\Models\GameRoom;
 use App\Models\GlobalUser;
 use App\Models\Room;
 use App\Models\Superadmin;
@@ -21,6 +22,7 @@ class SocketTokenService
     /** Actor types understood by the realtime gateway. */
     public const ACTOR_ADMIN = 'admin';
     public const ACTOR_SUPERADMIN = 'superadmin';
+    public const ACTOR_GAME_VIEWER = 'game_viewer';
 
     /** Trusted device UUIDs accepted in tokens (also enforced by the realtime server's `device:` channel). */
     private const DEVICE_UUID_PATTERN = '/^[A-Za-z0-9-]{1,128}$/';
@@ -145,6 +147,28 @@ class SocketTokenService
             'actor_type' => 'draw_viewer',
             'draw_session_id' => $session->id,
             'exp' => min(now()->addSeconds($ttlSeconds)->timestamp, $session->link_expires_at->timestamp),
+            'jti' => (string) Str::uuid(),
+        ]);
+
+        return $encoded . '.' . hash_hmac('sha256', $encoded, $this->signingSecret());
+    }
+
+    /**
+     * Issue a token that only joins one game room's public channel (game:{id}).
+     *
+     * The caller has already resolved the room from a valid, open public link; the token carries no player or
+     * account, it only lets the page hear that the room was started or finished.
+     *
+     * @param GameRoom $room Room of the public link.
+     * @param int $ttlSeconds Time-to-live in seconds.
+     * @return string Signed HMAC token string.
+     */
+    public function issueForGameViewer(GameRoom $room, int $ttlSeconds = 300): string
+    {
+        $encoded = $this->encode([
+            'actor_type' => self::ACTOR_GAME_VIEWER,
+            'game_room_id' => $room->id,
+            'exp' => now()->addSeconds($ttlSeconds)->timestamp,
             'jti' => (string) Str::uuid(),
         ]);
 

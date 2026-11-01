@@ -5,7 +5,7 @@
   $playerUrl = fn ($id) => route('public.games.rooms.show', ['token' => $token, 'player' => $id]);
   $showBottomBar = $isPlaying && ($canRecord || $isOwner || ! $selected);
 @endphp
-<x-game.play-layout :title="$room->name" :back-url="$isOwner ? route('user.me.games.rooms.show', [$room->game, $room]) : null">
+<x-game.play-layout :title="$room->name" :back-url="$isOwner ? route('user.me.games.rooms.show', [$room->game, $room]) : null" :socket-token-url="route('public.games.rooms.socket-token', $token)">
   <main class="mx-auto max-w-3xl space-y-4 px-4 pt-2 {{ $showBottomBar ? 'pb-28' : 'pb-10' }}" data-play-page>
     {{-- Room header --}}
     <section class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
@@ -35,6 +35,11 @@
         <span class="material-symbols-outlined text-[18px]" aria-hidden="true">check_circle</span>{{ session('status') }}
       </div>
     @endif
+    @if($claimRefused)
+      <div class="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900" role="alert" data-player-taken-error>
+        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">lock</span>{{ __('games.public.taken_error') }}
+      </div>
+    @endif
     @if(session('error'))
       <div class="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800" role="alert">
         <span class="material-symbols-outlined text-[18px]" aria-hidden="true">error</span>{{ session('error') }}
@@ -55,7 +60,14 @@
             </summary>
             <div class="absolute right-0 z-20 mt-2 w-60 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
               @foreach($players as $player)
-                <a href="{{ $playerUrl($player->id) }}" class="flex h-10 items-center rounded-lg px-3 text-sm {{ $player->id === $selected->id ? 'bg-amber-50 font-semibold text-amber-900' : 'text-slate-700 hover:bg-slate-50' }}">{{ $player->display_name }}</a>
+                @if(in_array($player->id, $claimedIds, true))
+                  <span aria-disabled="true" data-player-taken title="{{ __('games.public.taken') }}" class="flex h-10 cursor-not-allowed items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 text-sm font-semibold text-amber-800">
+                    <span class="truncate">{{ $player->display_name }}</span>
+                    <span class="material-symbols-outlined text-[16px]" aria-hidden="true">lock</span>
+                  </span>
+                @else
+                  <a href="{{ $playerUrl($player->id) }}" class="flex h-10 items-center rounded-lg px-3 text-sm {{ $player->id === $selected->id ? 'bg-emerald-50 font-semibold text-[#006948]' : 'text-slate-700 hover:bg-slate-50' }}">{{ $player->display_name }}</a>
+                @endif
               @endforeach
               <a href="{{ $playerUrl($clearPlayer) }}" class="mt-1 flex h-10 items-center rounded-lg border-t border-slate-100 px-3 text-xs font-semibold text-slate-500">{{ __('games.public.clear') }}</a>
             </div>
@@ -63,10 +75,10 @@
         </div>
         @if($selectedRow)
           <dl class="mt-3 grid grid-cols-4 gap-2 text-center" data-my-stats>
-            @foreach([['rank', '#'.$selectedRow['rank']], ['points', $selectedRow['points']], ['wins', $selectedRow['wins']], ['losses', $selectedRow['losses']]] as [$key, $value])
+            @foreach([['rank', '#'.$selectedRow['rank']], ['points', ($selectedRow['points'] > 0 ? '+' : '').$selectedRow['points']], ['wins', $selectedRow['wins']], ['losses', $selectedRow['losses']]] as [$key, $value])
               <div class="rounded-xl bg-slate-50 py-2">
                 <dt class="text-[11px] text-slate-500">{{ __('games.play.'.$key) }}</dt>
-                <dd class="text-lg font-bold tabular-nums {{ $key === 'points' ? 'text-[#006948]' : 'text-slate-900' }}">{{ $value }}</dd>
+                <dd class="text-lg font-bold tabular-nums {{ $key === 'points' ? ($selectedRow['points'] > 0 ? 'text-[#006948]' : ($selectedRow['points'] < 0 ? 'text-rose-600' : 'text-slate-500')) : 'text-slate-900' }}">{{ $value }}</dd>
               </div>
             @endforeach
           </dl>
@@ -79,10 +91,21 @@
         @else
           <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
             @foreach($players as $player)
-              <a href="{{ $playerUrl($player->id) }}" data-player-choice
-                 class="flex h-12 items-center justify-center rounded-xl border px-3 text-sm font-semibold {{ $player->is_active ? 'border-slate-200 bg-white text-slate-800 hover:border-[#006948] hover:bg-emerald-50' : 'border-dashed border-slate-200 bg-slate-50 text-slate-400' }}">
-                <span class="truncate">{{ $player->display_name }}</span>
-              </a>
+              @if(in_array($player->id, $claimedIds, true))
+                <span aria-disabled="true" data-player-taken
+                      class="flex h-12 cursor-not-allowed flex-col items-center justify-center rounded-xl border-2 border-amber-300 bg-amber-50 px-3 text-amber-900 shadow-sm ring-2 ring-amber-100">
+                  <span class="flex max-w-full items-center gap-1 text-sm font-semibold">
+                    <span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;" aria-hidden="true">lock</span>
+                    <span class="truncate">{{ $player->display_name }}</span>
+                  </span>
+                  <span class="text-[10px] font-medium leading-tight text-amber-700">{{ __('games.public.taken') }}</span>
+                </span>
+              @else
+                <a href="{{ $playerUrl($player->id) }}" data-player-choice
+                   class="flex h-12 items-center justify-center rounded-xl border px-3 text-sm font-semibold {{ $player->is_active ? 'border-slate-200 bg-white text-slate-800 hover:border-[#006948] hover:bg-emerald-50' : 'border-dashed border-slate-200 bg-slate-50 text-slate-400' }}">
+                  <span class="truncate">{{ $player->display_name }}</span>
+                </a>
+              @endif
             @endforeach
           </div>
         @endif
@@ -90,11 +113,7 @@
     </section>
 
     {{-- State notices --}}
-    @if($room->status === \App\Enums\GameRoomStatus::Waiting)
-      <p class="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">hourglass_top</span>{{ __('games.play.waiting') }}
-      </p>
-    @elseif($selected && ! $selected->is_active)
+    @if($selected && ! $selected->is_active)
       <p class="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700">
         <span class="material-symbols-outlined text-[18px]" aria-hidden="true">person_off</span>{{ __('games.play.inactive_player') }}
       </p>
@@ -124,6 +143,7 @@
         @if($isOwner)
           <form method="POST" action="{{ route('user.me.games.rooms.rounds.store', [$room->game, $room]) }}" data-confirm="{{ __('games.room.new_round_confirm') }}" class="flex flex-1">
             @csrf
+            <input type="hidden" name="current_round" value="{{ $summary['current_round'] }}">
             <button type="submit" data-play-new-round class="flex h-12 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
               <span class="material-symbols-outlined text-[20px]" aria-hidden="true">add_circle</span>{{ __('games.play.new_round') }}
             </button>
@@ -135,7 +155,7 @@
 
   {{-- Record sheet: the winner is the visitor's player; only category and losers are picked --}}
   @if($canRecord)
-    <dialog data-play-record-dialog data-url="{{ route('public.games.rooms.results.store', $token) }}"
+    <dialog data-play-record-dialog data-url="{{ route('public.games.rooms.results.store', $token) }}" data-round="{{ $summary['current_round'] }}"
             data-i18n="{{ json_encode([
                 'summary' => __('games.play.summary', ['winner' => ':winner', 'losers' => ':losers', 'category' => ':category', 'points' => ':points']),
                 'summaryEmpty' => __('games.play.summary_empty'),

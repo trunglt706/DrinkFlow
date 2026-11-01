@@ -11,13 +11,14 @@ use App\Http\Requests\Game\RecordPublicGameResultRequest;
 use App\Services\Game\GamePublicAccessService;
 use App\Services\Game\GameResultService;
 use App\Services\Game\GameStatisticsService;
+use App\Services\Realtime\SocketTokenService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 /**
  * Public page of a game room, reached through its capability token (no sign-in). The visitor picks which player
- * they are; they may then record their own wins (category + losers). The room owner, when signed in, also gets the
+ * they are (a player held by another visitor cannot be picked); they may then record their own wins (category + losers). The room owner, when signed in, also gets the
  * "new round" action (posted to the owner route, which checks GameRoomPolicy).
  */
 class GameRoomController extends Controller
@@ -44,14 +45,29 @@ class GameRoomController extends Controller
         if ($this->access->isClosed($room)) {
             return response()->view('public.game-room-invalid', ['closed' => true], 410);
         }
+        if ($room->status === GameRoomStatus::Waiting) {
+            // Not started yet: only the basic room info and a reload action, no players picker or scoreboard.
+            $room->load('game')->loadCount('players');
 
-        $wanted = $request->query('player');
-        if ($wanted === self::CLEAR_PLAYER) {
-            $this->access->clearPlayer($request->session(), $room);
-        } elseif (is_string($wanted) && ctype_digit($wanted)) {
-            $this->access->selectPlayer($request->session(), $room, (int) $wanted);
+            return response()->view('public.game-room-waiting', [
+                'room' => $room,
+                'token' => $token,
+                'isOwner' => $request->user('web')?->can('manage', $room) === true,
+            ]);
         }
-        $selected = $this->access->selectedPlayer($request->session(), $room);
+
+        $session = $request->session();
+        $wanted = $request->query('player');
+        $claimRefused = false;
+        if ($wanted === self::CLEAR_PLAYER) {
+            $this->access->clearPlayer($session, $room);
+        } elseif (is_string($wanted) && ctype_digit($wanted)) {
+            $claimRefused = ! $this->access->selectPlayer($session, $room, (int) $wanted);
+        }
+        $selected = $this->access->selectedPlayer($session, $room);
+        if ($selected !== null) {
+            $this->access->refreshClaim($session, $selected);
+        }
         $room->load('ruleVersion.items');
         $stats = $statistics->dashboard($room);
 
@@ -61,10 +77,32 @@ class GameRoomController extends Controller
             'selected' => $selected,
             'selectedRow' => $selected === null ? null : collect($stats['leaderboard'])->firstWhere('player_id', (int) $selected->id),
             'clearPlayer' => self::CLEAR_PLAYER,
+            'claimedIds' => $this->access->claimedByOthers($session, $room),
+            'claimRefused' => $claimRefused,
             'ruleItems' => $room->ruleVersion->items->where('is_active', true)->values(),
             'canRecord' => $room->status === GameRoomStatus::Playing && $selected?->is_active === true,
             'isOwner' => $request->user('web')?->can('manage', $room) === true,
         ] + $stats);
+    }
+
+    /**
+     * Realtime token of the room's public channel, so the page reloads when the owner starts or finishes the room.
+     *
+     * @param string $token Public token.
+     * @param SocketTokenService $tokens Socket token issuer.
+     * @return JsonResponse Token, 404 for an invalid link, 410 for a closed room.
+     */
+    public function socketToken(string $token, SocketTokenService $tokens): JsonResponse
+    {
+        $room = $this->access->findRoom($token);
+        if ($room === null) {
+            return response()->json(['message' => __('games.public.invalid_title')], 404);
+        }
+        if ($this->access->isClosed($room)) {
+            return response()->json(['message' => __('games.public.closed_desc')], 410);
+        }
+
+        return response()->json(['data' => ['token' => $tokens->issueForGameViewer($room)]]);
     }
 
     /**
@@ -88,8 +126,10 @@ class GameRoomController extends Controller
             return response()->json(['message' => __('games.public.closed_desc')], 410);
         }
         $player = $this->access->selectedPlayer($request->session(), $room);
-        if ($player === null) {
-            throw new GameActionException(__('games.play.choose_first'));
+        $claim = $this->access->currentClaim($request->session());
+        if ($player === null || $claim === null) {
+            // No player held any more (claim expired / taken): the page reloads to show the picker again.
+            throw GameActionException::stale(__('games.play.choose_first'));
         }
 
         $outcome = $results->recordFromPublicLink(
@@ -98,6 +138,8 @@ class GameRoomController extends Controller
             (int) $request->validated('rule_item_id'),
             [(int) $request->validated('loser_id')],
             (string) $request->validated('idempotency_key'),
+            $claim,
+            $request->validated('round') === null ? null : (int) $request->validated('round'),
         );
 
         return response()->json([

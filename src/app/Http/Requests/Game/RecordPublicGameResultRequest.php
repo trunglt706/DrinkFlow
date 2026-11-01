@@ -30,6 +30,8 @@ class RecordPublicGameResultRequest extends FormRequest
             // From the public page a result names exactly one loser.
             'loser_id' => ['required', 'integer'],
             'idempotency_key' => ['required', 'string', 'uuid'],
+            // Round shown to the client: a result is refused once another round has opened (no silent move).
+            'round' => ['nullable', 'integer', 'min:1'],
         ];
     }
 

@@ -1,4 +1,4 @@
-@props(['title' => null, 'backUrl' => null, 'backLabel' => null])
+@props(['title' => null, 'backUrl' => null, 'backLabel' => null, 'socketTokenUrl' => null])
 {{--
   Stand-alone, mobile-first layout of the public game room pages (/play/{token}): no site header, footer or room
   navigation, just a compact top bar (brand + language) so the scoreboard and the record button fill the screen.
@@ -24,6 +24,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=block" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
+  @if($socketTokenUrl)
+    <script src="{{ rtrim((string) config('services.realtime.public_url', 'http://localhost:3001'), '/') }}/socket.io/socket.io.js" defer></script>
+  @endif
   <script>
     tailwind.config = {
       theme: {
@@ -38,7 +41,9 @@
     @vite(['resources/js/game-play.js'])
   @endif
 </head>
-<body data-submit-loading-text="{{ __('global.common.loading') }}" class="min-h-screen bg-[#F8FAFC] font-sans text-slate-800 antialiased selection:bg-emerald-100">
+<body data-submit-loading-text="{{ __('global.common.loading') }}"
+      @if($socketTokenUrl) data-play-realtime-url="{{ rtrim((string) config('services.realtime.public_url', 'http://localhost:3001'), '/') }}" data-play-socket-token-url="{{ $socketTokenUrl }}" @endif
+      class="min-h-screen bg-[#F8FAFC] font-sans text-slate-800 antialiased selection:bg-emerald-100">
   @php $locales = \App\Constants\AppLocale::SUPPORTED; @endphp
   <div class="mx-auto flex max-w-3xl items-center justify-between gap-2 px-4 pt-3 pb-1">
     <div class="flex min-w-0 items-center gap-2">

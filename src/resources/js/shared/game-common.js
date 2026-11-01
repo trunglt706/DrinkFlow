@@ -111,23 +111,42 @@ export async function postResult(url, payload) {
 /** First validation message of a 422 body, or its message. */
 export const firstError = (data) => (data?.errors ? Object.values(data.errors)[0]?.[0] : null) || data?.message || '';
 
-/** Reload the page and show the toast once it is rendered again. */
-export function reloadWithToast(message) {
+/** Reload the page and show the toast (success or error) once it is rendered again. */
+export function reloadWithToast(message, type = 'success') {
     try {
-        sessionStorage.setItem(GAME_TOAST_KEY, message || '');
+        sessionStorage.setItem(GAME_TOAST_KEY, JSON.stringify({ message: message || '', type }));
     } catch {
         // Storage unavailable: the reloaded page simply shows no toast.
     }
     window.location.reload();
 }
 
+/**
+ * Handle a refused result: when the server says the page is out of date (`reload: true`: another round opened, the
+ * room finished, the player is no longer held) the page reloads and shows the reason; otherwise the caller shows it.
+ *
+ * @returns {boolean} True when the page is reloading.
+ */
+export function reloadIfStale(data) {
+    if (!data?.reload) return false;
+    reloadWithToast(firstError(data), 'error');
+
+    return true;
+}
+
 export function showPendingToast() {
     try {
-        const message = sessionStorage.getItem(GAME_TOAST_KEY);
-        if (message) {
-            sessionStorage.removeItem(GAME_TOAST_KEY);
-            notify(message);
+        const stored = sessionStorage.getItem(GAME_TOAST_KEY);
+        if (!stored) return;
+        sessionStorage.removeItem(GAME_TOAST_KEY);
+        let toast = { message: stored, type: 'success' };
+        try {
+            const parsed = JSON.parse(stored);
+            if (parsed && typeof parsed.message === 'string') toast = parsed;
+        } catch {
+            // Plain string stored by an older page.
         }
+        if (toast.message) notify(toast.message, toast.type === 'error' ? 'error' : 'success');
     } catch {
         // Storage unavailable.
     }

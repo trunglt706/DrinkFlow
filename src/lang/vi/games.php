@@ -34,6 +34,8 @@ return [
         'empty_desc' => 'Tạo room đầu tiên để bắt đầu ghi nhận kết quả.',
         'empty_filtered' => 'Không có room nào phù hợp bộ lọc.',
         'open' => 'Mở room',
+        'clone' => 'Clone',
+        'clone_hint' => 'Tạo room mới với cùng bộ luật và danh sách người chơi',
     ],
 
     'create' => [
@@ -56,6 +58,9 @@ return [
         'review' => 'Xem lại',
         'review_hint' => 'Room sẽ được tạo ở trạng thái "Đang chờ". Bấm "Bắt đầu" khi mọi người sẵn sàng.',
         'submit' => 'Tạo room',
+        'clone_name' => ':name (bản sao)',
+        'clone_notice' => 'Đang sao chép từ room ":name": bộ luật và danh sách người chơi đã được điền sẵn, bạn có thể chỉnh trước khi tạo. Room mới dùng phiên bản mới nhất của bộ luật và bắt đầu với bảng điểm trống.',
+        'clone_rule_set_missing' => 'Bộ luật của room cũ không còn khả dụng, hãy chọn bộ luật khác.',
     ],
 
     'room' => [
@@ -103,7 +108,7 @@ return [
 
     'head_to_head' => [
         'title' => 'Đối đầu',
-        'subtitle' => 'Điểm và số lần thắng/thua với từng người.',
+        'subtitle' => 'Điểm chênh lệch (điểm thắng − điểm thua) và số lần thắng/thua với từng người.',
         'points' => ':points điểm',
         'vs' => 'với :name',
         'record' => ':wins thắng · :losses thua',
@@ -228,6 +233,9 @@ return [
         'player_not_in_room' => 'Người chơi không thuộc room hoặc đã ngừng chơi.',
         'rule_item_invalid' => 'Danh mục không thuộc bộ luật room đang áp dụng.',
         'already_voided' => 'Kết quả đã bị hủy trước đó.',
+        'round_changed' => 'Vòng :number đã được mở. Hãy tải lại trang và ghi kết quả cho vòng mới.',
+        'round_already_opened' => 'Vòng :number đã được tạo trước đó. Trang đã được cập nhật.',
+        'claim_lost' => 'Bạn không còn giữ tên người chơi này. Hãy chọn lại tên của bạn.',
         'retry' => 'Không ghi được kết quả, vui lòng thử lại.',
     ],
 
@@ -254,6 +262,8 @@ return [
         'results_count' => ':count kết quả',
         'new_round' => 'Vòng mới',
         'waiting' => 'Room chưa bắt đầu. Chờ chủ room bấm "Bắt đầu".',
+        'players_count' => ':count người chơi',
+        'reload' => 'Tải lại',
         'inactive_player' => 'Bạn đã ngừng chơi trong room này nên không ghi được kết quả mới.',
         'no_opponents' => 'Chưa có người chơi khác đang hoạt động.',
         'language' => 'Ngôn ngữ',
@@ -307,6 +317,8 @@ return [
         'viewing_as' => 'Bạn đang xem với tên :name.',
         'change' => 'Đổi',
         'clear' => 'Bỏ chọn',
+        'taken' => 'Đã có người chọn',
+        'taken_error' => 'Tên này đã có người khác chọn. Hãy chọn tên khác.',
         'invalid_title' => 'Link không hợp lệ',
         'invalid_desc' => 'Link room không tồn tại hoặc đã bị chủ room thu hồi. Hãy xin chủ room link mới.',
         'back_home' => 'Về trang chủ',

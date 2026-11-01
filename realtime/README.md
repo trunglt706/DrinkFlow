@@ -69,6 +69,7 @@ Gateway tự join channel dựa trên signed claims. Browser không được t�
 | `user:{roomUserId}` | User | Event cá nhân trong một Room |
 | `global_user:{globalUserId}` | User | Event global của người dùng |
 | `room:{roomId}` | User/Admin/Superadmin | Broadcast trong Room được claims cho phép |
+| `game:{gameRoomId}` | Game viewer (`game_viewer`) | Khách xem trang public `/play/{token}` của một game room; nhận `game_room.status_changed` khi chủ room Start/End để reload trang |
 | `admin:{adminId}` | Admin | Event riêng của Admin |
 | `superadmin` | Superadmin | Event toàn hệ thống cho Superadmin |
 | `system` | Superadmin | Event vận hành hệ thống |
@@ -106,6 +107,7 @@ campaign.cancelled, campaign.delivering
 campaign.menu.updated, campaign.menu.deleted
 campaign.participant.declined, campaign.participant.rejoined
 notification.created, room.membership.updated
+sponsor_draw.event, game_room.status_changed
 ```
 
 Kết quả HTTP: `202` khi hợp lệ; `401` nếu sai internal secret; `400` nếu JSON lỗi; `422` nếu event, `room_id` hoặc input không hợp lệ. Event được gửi đến `room:{room_id}` và, nếu hợp lệ, thêm đến `user:<số>` hoặc `global_user:<số>`.

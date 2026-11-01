@@ -16,6 +16,8 @@ use App\Models\GlobalUser;
 use App\Services\Game\GameStatisticsService;
 use Database\Seeders\GameSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request as HttpRequest;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -213,20 +215,26 @@ class GamesTest extends TestCase
         $stats = app(GameStatisticsService::class)->dashboard($room);
         $board = collect($stats['leaderboard'])->keyBy('name');
 
-        // An and Chi both have 3 points and 1 win: display name decides.
+        // Zero-sum: An +3 (split -1.5 Bình / -1.5 Chi) -1 = 2; Chi +3 -1.5 = 1.5; Bình +1 -1.5 = -0.5; Dũng -3.
         $this->assertSame(['An', 'Chi', 'Bình', 'Dũng'], array_column($stats['leaderboard'], 'name'));
-        $this->assertSame([3, 1, 1], [$board['An']['points'], $board['An']['wins'], $board['An']['losses']]);
-        $this->assertSame([1, 1, 1], [$board['Bình']['points'], $board['Bình']['wins'], $board['Bình']['losses']]);
-        $this->assertSame(1, $board['Chi']['losses']);
+        $this->assertSame([2, 1, 1], [$board['An']['points'], $board['An']['wins'], $board['An']['losses']]);
+        $this->assertSame([-0.5, 1, 1], [$board['Bình']['points'], $board['Bình']['wins'], $board['Bình']['losses']]);
+        $this->assertSame([1.5, 1], [$board['Chi']['points'], $board['Chi']['losses']]);
+        $this->assertSame(-3, $board['Dũng']['points']);
+        $this->assertEqualsWithDelta(0, array_sum(array_column($stats['leaderboard'], 'points')), 0.001);
 
-        // An's 3 points came from one result with two losers: split 1.5 / 1.5, adding up to the total.
+        // An's 3 points came from one result with two losers: split 1.5 / 1.5. Head-to-head shows net points:
+        // An vs Bình = 1.5 earned - 1 conceded; the opponent always shows the opposite value.
         $anVersus = collect($stats['headToHead'][$board['An']['player_id']])->keyBy('opponent');
-        $this->assertSame(['opponent' => 'Bình', 'points' => 1.5, 'wins' => 1, 'losses' => 1], $anVersus['Bình']);
+        $this->assertSame(['opponent' => 'Bình', 'points' => 0.5, 'wins' => 1, 'losses' => 1], $anVersus['Bình']);
         $this->assertSame(['opponent' => 'Chi', 'points' => 1.5, 'wins' => 1, 'losses' => 0], $anVersus['Chi']);
-        $this->assertEquals($board['An']['points'], $anVersus->sum('points'));
+        $binhVersus = collect($stats['headToHead'][$board['Bình']['player_id']])->keyBy('opponent');
+        $this->assertSame(['opponent' => 'An', 'points' => -0.5, 'wins' => 1, 'losses' => 1], $binhVersus['An']);
         $chiVersus = collect($stats['headToHead'][$board['Chi']['player_id']])->keyBy('opponent');
         $this->assertSame(3, $chiVersus['Dũng']['points']);
-        $this->assertSame(0, $chiVersus['An']['points']);
+        $this->assertSame(-1.5, $chiVersus['An']['points']);
+        $dungVersus = collect($stats['headToHead'][$board['Dũng']['player_id']])->keyBy('opponent');
+        $this->assertSame(['opponent' => 'Chi', 'points' => -3, 'wins' => 0, 'losses' => 1], $dungVersus['Chi']);
         $this->assertSame(3, $stats['summary']['results']);
     }
 
@@ -238,7 +246,7 @@ class GamesTest extends TestCase
         auth('web')->logout();
         $this->get(route('public.games.rooms.show', ['token' => $room->public_token, 'player' => $binh]))->assertOk();
 
-        // Bình: 3 + 1 against An, 3 against Chi (total 7); An beats Bình once.
+        // Bình: 3 + 1 against An, 3 against Chi; An beats Bình once (1 point): net 3 against An, total 6.
         $this->publicRecord($room, 'An', null, 'Thắng lớn')->assertCreated();
         $this->publicRecord($room, 'An')->assertCreated();
         $this->publicRecord($room, 'Chi', null, 'Thắng lớn')->assertCreated();
@@ -247,13 +255,186 @@ class GamesTest extends TestCase
 
         $stats = app(GameStatisticsService::class)->dashboard($room);
         $versus = collect($stats['headToHead'][$binh])->keyBy('opponent');
-        $this->assertSame(['opponent' => 'An', 'points' => 4, 'wins' => 2, 'losses' => 1], $versus['An']);
+        $this->assertSame(['opponent' => 'An', 'points' => 3, 'wins' => 2, 'losses' => 1], $versus['An']);
         $this->assertSame(['opponent' => 'Chi', 'points' => 3, 'wins' => 1, 'losses' => 0], $versus['Chi']);
+        $anVersus = collect($stats['headToHead'][$room->players()->where('display_name', 'An')->value('id')])->keyBy('opponent');
+        $this->assertSame(['opponent' => 'Bình', 'points' => -3, 'wins' => 1, 'losses' => 2], $anVersus['Bình']);
+        $chiVersus = collect($stats['headToHead'][$room->players()->where('display_name', 'Chi')->value('id')])->keyBy('opponent');
+        $this->assertSame(-3, $chiVersus['Bình']['points']);
 
         $this->get(route('public.games.rooms.show', $room->public_token))->assertOk()
-            ->assertSee(__('games.head_to_head.total_points', ['points' => 7]))
-            ->assertSee(__('games.head_to_head.points', ['points' => 4]))
+            ->assertSee(__('games.head_to_head.total_points', ['points' => '+6']))
+            ->assertSee(__('games.head_to_head.points', ['points' => '+3']))
+            ->assertSee(__('games.head_to_head.points', ['points' => -3]))
             ->assertSee(__('games.head_to_head.record', ['wins' => 2, 'losses' => 1]));
+    }
+
+    public function test_public_page_of_waiting_room_shows_only_basic_info_and_reload(): void
+    {
+        $owner = $this->user();
+        $room = $this->room($owner, $this->ruleSet($owner));
+        auth('web')->logout();
+
+        $this->get(route('public.games.rooms.show', $room->public_token))
+            ->assertOk()
+            ->assertSee('Bàn cuối tuần')
+            ->assertSee(__('games.status.waiting'))
+            ->assertSee(__('games.play.waiting'))
+            ->assertSee(__('games.play.reload'))
+            ->assertSee('data-play-reload', false)
+            ->assertDontSee(__('games.public.choose_name'))
+            ->assertDontSee('data-head-to-head', false)
+            ->assertDontSee(__('games.play.record'));
+    }
+
+    public function test_start_and_finish_tell_public_pages_to_reload_through_realtime(): void
+    {
+        config(['services.realtime.url' => 'http://realtime.test', 'services.realtime.internal_secret' => 'secret']);
+        Http::fake(['realtime.test/*' => Http::response(['delivered' => true], 202)]);
+        $owner = $this->user();
+        $room = $this->room($owner, $this->ruleSet($owner));
+
+        // Visitors of the public page get a token of the room channel only.
+        auth('web')->logout();
+        $token = $this->getJson(route('public.games.rooms.socket-token', $room->public_token))->assertOk()->json('data.token');
+        $claims = json_decode((string) base64_decode(strtr(explode('.', $token)[0], '-_', '+/')), true);
+        $this->assertSame('game_viewer', $claims['actor_type']);
+        $this->assertSame($room->id, $claims['game_room_id']);
+        $this->assertArrayNotHasKey('global_user_id', $claims);
+
+        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.start', [$this->game, $room]))->assertRedirect();
+        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.finish', [$this->game, $room]))->assertRedirect();
+
+        $sent = Http::recorded()->map(fn (array $pair) => $pair[0])->filter(fn (HttpRequest $request) => str_ends_with($request->url(), '/internal/emit'))->values();
+        $this->assertCount(2, $sent);
+        foreach (['playing', 'finished'] as $index => $status) {
+            $this->assertSame('game_room.status_changed', $sent[$index]['event']);
+            $this->assertSame('game:'.$room->id, $sent[$index]['user_channel']);
+            $this->assertSame(['status' => $status], $sent[$index]['payload']);
+        }
+
+        // A closed room issues no more tokens; an unknown link neither.
+        auth('web')->logout();
+        $this->getJson(route('public.games.rooms.socket-token', $room->public_token))->assertStatus(410);
+        $this->getJson(route('public.games.rooms.socket-token', str_repeat('x', 40)))->assertNotFound();
+    }
+
+    public function test_new_round_double_submit_opens_a_single_round(): void
+    {
+        $owner = $this->user();
+        $room = $this->startedRoom($owner);
+        $url = route('user.me.games.rooms.rounds.store', [$this->game, $room]);
+
+        // Two submits of the same form (both saw round 1): only the first opens round 2.
+        $this->actingAs($owner, 'web')->post($url, ['current_round' => 1])->assertRedirect()->assertSessionHas('status');
+        $this->actingAs($owner, 'web')->post($url, ['current_round' => 1])->assertRedirect()
+            ->assertSessionHas('error', __('games.errors.round_already_opened', ['number' => 2]));
+        $this->assertSame([1, 2], $room->rounds()->orderBy('number')->pluck('number')->all());
+
+        // The owner page sends the round it shows.
+        $this->actingAs($owner, 'web')->get(route('user.me.games.rooms.show', [$this->game, $room]))
+            ->assertOk()->assertSee('name="current_round" value="2"', false);
+    }
+
+    public function test_result_for_a_round_that_was_replaced_is_refused(): void
+    {
+        $owner = $this->user();
+        $room = $this->startedRoom($owner);
+        $binh = $room->players()->where('display_name', 'Bình')->value('id');
+        $players = $room->players()->pluck('id', 'display_name');
+        $itemId = $room->ruleVersion()->firstOrFail()->items()->where('name', 'Thắng thường')->value('id');
+        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.rounds.store', [$this->game, $room]), ['current_round' => 1])->assertRedirect();
+
+        // Owner dashboard still showing round 1.
+        $this->actingAs($owner, 'web')->postJson(route('user.me.games.rooms.results.store', [$this->game, $room]), [
+            'rule_item_id' => $itemId, 'winner_id' => $players['An'], 'loser_ids' => [$players['Bình']],
+            'idempotency_key' => (string) Str::uuid(), 'round' => 1,
+        ])->assertStatus(422)->assertJsonPath('message', __('games.errors.round_changed', ['number' => 2]))->assertJsonPath('reload', true);
+
+        // Public page still showing round 1.
+        auth('web')->logout();
+        $this->get(route('public.games.rooms.show', ['token' => $room->public_token, 'player' => $binh]))->assertOk()
+            ->assertSee('data-round="2"', false);
+        $this->postJson(route('public.games.rooms.results.store', $room->public_token), [
+            'rule_item_id' => $itemId, 'loser_id' => $players['An'], 'idempotency_key' => (string) Str::uuid(), 'round' => 1,
+        ])->assertStatus(422)->assertJsonPath('message', __('games.errors.round_changed', ['number' => 2]))->assertJsonPath('reload', true);
+        $this->assertSame(0, GameResult::count());
+
+        // The current round is accepted.
+        $this->postJson(route('public.games.rooms.results.store', $room->public_token), [
+            'rule_item_id' => $itemId, 'loser_id' => $players['An'], 'idempotency_key' => (string) Str::uuid(), 'round' => 2,
+        ])->assertCreated();
+        $this->assertSame(2, (int) GameResult::firstOrFail()->round->number);
+    }
+
+    public function test_public_result_is_refused_once_the_player_claim_is_lost(): void
+    {
+        $owner = $this->user();
+        $room = $this->startedRoom($owner);
+        $binh = $room->players()->where('display_name', 'Bình')->value('id');
+        auth('web')->logout();
+        $this->get(route('public.games.rooms.show', ['token' => $room->public_token, 'player' => $binh]))->assertOk();
+        $visitor = session()->all();
+
+        // The claim expired and another visitor took Bình.
+        $this->travel((int) config('session.lifetime') + 1)->minutes();
+        $this->flushSession();
+        $this->get(route('public.games.rooms.show', ['token' => $room->public_token, 'player' => $binh]))
+            ->assertOk()->assertSee(__('games.play.you', ['name' => 'Bình']));
+
+        $this->flushSession();
+        $this->withSession($visitor)->publicRecord($room, 'An')->assertStatus(422)->assertJsonPath('reload', true);
+        $this->assertSame(0, GameResult::count());
+    }
+
+    public function test_database_keeps_one_claimed_player_per_visitor_and_room(): void
+    {
+        $owner = $this->user();
+        $room = $this->startedRoom($owner);
+        [$first, $second] = $room->players()->orderBy('id')->limit(2)->pluck('id')->all();
+        $room->players()->whereKey($first)->toBase()->update(['claimed_by' => 'same-token', 'claimed_at' => now()]);
+
+        $this->expectException(\Illuminate\Database\QueryException::class);
+        $room->players()->whereKey($second)->toBase()->update(['claimed_by' => 'same-token', 'claimed_at' => now()]);
+    }
+
+    public function test_player_picked_on_public_link_cannot_be_picked_by_another_visitor(): void
+    {
+        $owner = $this->user();
+        $room = $this->startedRoom($owner);
+        $an = $room->players()->where('display_name', 'An')->value('id');
+        $binh = $room->players()->where('display_name', 'Bình')->value('id');
+        auth('web')->logout();
+        $url = fn ($player = null) => route('public.games.rooms.show', array_filter(['token' => $room->public_token, 'player' => $player]));
+
+        // Visitor 1 takes An.
+        $this->get($url($an))->assertOk()->assertSee(__('games.play.you', ['name' => 'An']));
+        $visitorOne = session()->all();
+
+        // Visitor 2 sees An taken and cannot pick it, then takes Bình.
+        $this->flushSession();
+        $this->get($url())->assertOk()->assertSee('data-player-taken', false)->assertSee(__('games.public.taken'));
+        $this->get($url($an))->assertOk()
+            ->assertSee(__('games.public.taken_error'))
+            ->assertDontSee(__('games.play.you', ['name' => 'An']));
+        $this->get($url($binh))->assertOk()->assertSee(__('games.play.you', ['name' => 'Bình']));
+        $visitorTwo = session()->all();
+
+        // Visitor 1 cannot take Bình (held by visitor 2), then releases An.
+        $this->flushSession();
+        $this->withSession($visitorOne)->get($url($binh))->assertOk()->assertSee(__('games.public.taken_error'));
+        $this->get($url('none'))->assertOk();
+        $this->assertNull($room->players()->whereKey($an)->value('claimed_by'));
+
+        // An is free again: visitor 2 leaves Bình for it.
+        $this->flushSession();
+        $this->withSession($visitorTwo)->get($url($an))->assertOk()->assertSee(__('games.play.you', ['name' => 'An']));
+        $this->assertNull($room->players()->whereKey($binh)->value('claimed_by'));
+
+        // An idle claim expires with the session lifetime.
+        $this->travel((int) config('session.lifetime') + 1)->minutes();
+        $this->flushSession();
+        $this->get($url($an))->assertOk()->assertSee(__('games.play.you', ['name' => 'An']));
     }
 
     public function test_void_keeps_history_adds_reversal_and_excludes_result_from_stats(): void
@@ -286,6 +467,27 @@ class GamesTest extends TestCase
         $this->actingAs($owner, 'web')
             ->post(route('user.me.games.rooms.results.void', [$this->game, $room, $result]), ['reason' => 'Lần nữa'])
             ->assertSessionHas('error', __('games.errors.already_voided'));
+        $this->assertSame(1, GameScoreTransaction::where('type', GameScoreTransactionType::Reversal->value)->count());
+    }
+
+    public function test_result_sent_after_the_room_finished_asks_the_page_to_reload(): void
+    {
+        $owner = $this->user();
+        $room = $this->startedRoom($owner);
+        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.finish', [$this->game, $room]))->assertRedirect();
+
+        // Owner sheet still open on the old page.
+        $this->record($owner, $room, 'Thắng lớn', 'An', ['Bình'])
+            ->assertStatus(422)->assertJsonPath('message', __('games.errors.finished'))->assertJsonPath('reload', true);
+        $this->assertSame(0, GameResult::count());
+    }
+
+    public function test_invalid_result_does_not_ask_for_a_reload(): void
+    {
+        $owner = $this->user();
+        $room = $this->startedRoom($owner);
+
+        $this->record($owner, $room, 'Thắng lớn', 'An', ['An'])->assertStatus(422)->assertJsonMissingPath('reload');
     }
 
     public function test_rule_change_creates_version_applied_only_on_demand_and_old_snapshots_stay(): void
@@ -330,6 +532,117 @@ class GamesTest extends TestCase
             'allow_negative_points' => '1',
             'items' => [['name' => 'Phạt', 'points' => -1, 'is_active' => '1']],
         ])->assertSessionHasNoErrors();
+    }
+
+    public function test_penalty_category_is_zero_sum_and_voided_penalty_no_longer_counts(): void
+    {
+        $owner = $this->user();
+        $this->actingAs($owner, 'web')->post(route('user.me.games.rule-sets.store', $this->game), [
+            'name' => 'Có phạt',
+            'allow_negative_points' => '1',
+            'items' => [['name' => 'Thắng lớn', 'points' => 3, 'is_active' => '1'], ['name' => 'Phạt', 'points' => -2, 'is_active' => '1']],
+        ])->assertSessionHasNoErrors();
+        $room = $this->room($owner, GameRuleSet::where('owner_id', $owner->id)->latest('id')->firstOrFail());
+        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.start', [$this->game, $room]))->assertRedirect();
+
+        $this->record($owner, $room, 'Thắng lớn', 'An', ['Bình'])->assertCreated();
+        $this->record($owner, $room, 'Phạt', 'Bình', ['An'])->assertCreated();
+        $this->record($owner, $room, 'Phạt', 'Bình', ['Chi'])->assertCreated();
+
+        // Zero-sum: An +3 and +2 (Bình's penalty against An) = 5; Bình -3 -2 -2 = -7; Chi +2.
+        $rows = collect(app(GameStatisticsService::class)->dashboard($room)['leaderboard'])->keyBy('name');
+        $this->assertSame([5, -7, 2], [$rows['An']['points'], $rows['Bình']['points'], $rows['Chi']['points']]);
+
+        // A voided penalty no longer counts.
+        $penalty = GameResult::where('points', '<', 0)->orderByDesc('id')->firstOrFail();
+        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.results.void', [$this->game, $room, $penalty]), ['reason' => 'Nhầm'])->assertRedirect();
+        $rows = collect(app(GameStatisticsService::class)->dashboard($room)['leaderboard'])->keyBy('name');
+        $this->assertSame([5, -5, 0], [$rows['An']['points'], $rows['Bình']['points'], $rows['Chi']['points']]);
+    }
+
+    public function test_points_are_shown_signed_without_a_separate_negative_figure(): void
+    {
+        $owner = $this->user();
+        $room = $this->startedRoom($owner);
+        $this->record($owner, $room, 'Thắng lớn', 'An', ['Bình'])->assertCreated();
+
+        $stats = app(GameStatisticsService::class)->dashboard($room);
+        $rows = collect($stats['leaderboard'])->keyBy('name');
+        $this->assertSame([3, -3], [$rows['An']['points'], $rows['Bình']['points']]);
+        $this->assertArrayNotHasKey('negative_points', $rows['An']);
+        $this->assertArrayNotHasKey('negative_points', $stats['summary']);
+        $binhVersus = collect($stats['headToHead'][$rows['Bình']['player_id']])->keyBy('opponent');
+        $this->assertSame(-3, $binhVersus['An']['points']);
+
+        // Leaderboard and head-to-head totals: +3 / -3 / 0, opponent detail: +3 / -3.
+        $this->actingAs($owner, 'web')->get(route('user.me.games.rooms.show', [$this->game, $room]))->assertOk()
+            ->assertSee('data-leaderboard-points>+3<', false)
+            ->assertSee('data-leaderboard-points>-3<', false)
+            ->assertSee('data-leaderboard-points>0<', false)
+            ->assertSee(__('games.head_to_head.total_points', ['points' => '+3']))
+            ->assertSee(__('games.head_to_head.total_points', ['points' => -3]))
+            ->assertSee(__('games.head_to_head.points', ['points' => '+3']))
+            ->assertSee(__('games.head_to_head.points', ['points' => -3]));
+
+        // Public "my stats" of the losing visitor.
+        auth('web')->logout();
+        $binh = $room->players()->where('display_name', 'Bình')->value('id');
+        $this->get(route('public.games.rooms.show', ['token' => $room->public_token, 'player' => $binh]))->assertOk()
+            ->assertSeeInOrder(['data-my-stats', __('games.play.points'), '-3'], false);
+    }
+
+    public function test_clone_prefills_create_form_with_rule_set_and_active_players(): void
+    {
+        $owner = $this->user();
+        $room = $this->startedRoom($owner);
+        $this->record($owner, $room, 'Thắng lớn', 'An', ['Bình'])->assertCreated();
+        $dung = $room->players()->where('display_name', 'Dũng')->firstOrFail();
+        $this->actingAs($owner, 'web')
+            ->patch(route('user.me.games.rooms.players.update', [$this->game, $room, $dung]), ['display_name' => 'Dũng'])
+            ->assertRedirect();
+        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.finish', [$this->game, $room]))->assertRedirect();
+
+        // The room list offers Clone.
+        $cloneUrl = route('user.me.games.rooms.create', ['game' => $this->game->slug, 'from' => $room->id]);
+        $this->actingAs($owner, 'web')->get(route('user.me.games.show', $this->game))->assertOk()
+            ->assertSee('data-clone-room', false)
+            ->assertSee(e($cloneUrl), false);
+
+        // The form is pre-filled: name, active players in order, the same rule set.
+        $this->actingAs($owner, 'web')->get($cloneUrl)->assertOk()
+            ->assertSee('data-clone-notice', false)
+            ->assertSee('value="'.e(__('games.create.clone_name', ['name' => 'Bàn cuối tuần'])).'"', false)
+            ->assertSeeInOrder(['value="An"', 'value="Bình"', 'value="Chi"'], false)
+            ->assertDontSee('value="Dũng"', false)
+            ->assertSee('value="'.$room->game_rule_set_id.'" checked', false);
+
+        // Submitting creates a fresh waiting room with no results.
+        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.store', $this->game), [
+            'name' => __('games.create.clone_name', ['name' => 'Bàn cuối tuần']),
+            'players' => ['An', 'Bình', 'Chi'],
+            'rule_set_id' => $room->game_rule_set_id,
+        ])->assertRedirect();
+        $clone = GameRoom::where('owner_id', $owner->id)->latest('id')->firstOrFail();
+        $this->assertNotSame($room->id, $clone->id);
+        $this->assertSame(GameRoomStatus::Waiting, $clone->status);
+        $this->assertSame($room->game_rule_set_id, $clone->game_rule_set_id);
+        $this->assertSame(['An', 'Bình', 'Chi'], $clone->players()->pluck('display_name')->all());
+        $this->assertSame(0, GameResult::where('game_room_id', $clone->id)->count());
+        $this->assertNotSame($room->public_token, $clone->public_token);
+    }
+
+    public function test_only_the_owner_can_clone_a_room(): void
+    {
+        $owner = $this->user();
+        $room = $this->startedRoom($owner);
+        $other = $this->user('other@company.com');
+
+        $this->actingAs($other, 'web')
+            ->get(route('user.me.games.rooms.create', ['game' => $this->game->slug, 'from' => $room->id]))
+            ->assertForbidden();
+        $this->actingAs($owner, 'web')
+            ->get(route('user.me.games.rooms.create', ['game' => $this->game->slug, 'from' => 999999]))
+            ->assertNotFound();
     }
 
     public function test_renaming_player_keeps_history_and_finished_room_rejects_results(): void

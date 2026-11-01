@@ -31,6 +31,8 @@ class RecordGameResultRequest extends FormRequest
             'loser_ids' => ['required', 'array', 'min:1'],
             'loser_ids.*' => ['integer', 'distinct', 'different:winner_id'],
             'idempotency_key' => ['required', 'string', 'uuid'],
+            // Round shown to the client: a result is refused once another round has opened (no silent move).
+            'round' => ['nullable', 'integer', 'min:1'],
         ];
     }
 

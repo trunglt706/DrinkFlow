@@ -15,7 +15,9 @@ use Illuminate\Support\Facades\DB;
  * Read model of a game room shared by the owner dashboard and the public page: summary, leaderboard, head-to-head
  * and history.
  *
- * - Points: sum of the player's score transactions (a void adds a reversal, so voided results cancel out).
+ * - Points (zero-sum): of every valid result the winner gets its points and the losers lose them, split evenly when
+ *   there are several losers (A beats B for 2 → A +2, B -2). A player's total is therefore the sum of their
+ *   head-to-head values. Voided results do not count. The score transactions stay the winner-side ledger.
  * - Wins: valid results the player won. Losses: valid results listing the player as loser (a result with several
  *   losers is one win for the winner and one loss for each loser).
  * - Ranking: points DESC, wins DESC, display name ASC.
@@ -31,7 +33,7 @@ class GameStatisticsService
      * @param GameRoom $room Room.
      * @return array{
      *     summary: array{rounds: int, results: int, current_round: int|null},
-     *     leaderboard: array<int, array{rank: int, player_id: int, name: string, is_active: bool, points: int, wins: int, losses: int}>,
+     *     leaderboard: array<int, array{rank: int, player_id: int, name: string, is_active: bool, points: int|float, wins: int, losses: int}>,
      *     headToHead: array<int, array<int, array{opponent: string, points: int|float, wins: int, losses: int}>>,
      *     history: Collection<int, GameResult>,
      *     players: Collection<int, GamePlayer>
@@ -42,11 +44,6 @@ class GameStatisticsService
         $players = $room->players()->get();
         $validResults = GameResult::query()->where('game_room_id', $room->id)->where('status', GameResultStatus::Valid->value);
 
-        $points = DB::table('game_score_transactions')
-            ->where('game_room_id', $room->id)
-            ->groupBy('game_player_id')
-            ->selectRaw('game_player_id, SUM(points) as total')
-            ->pluck('total', 'game_player_id');
         $wins = (clone $validResults)
             ->groupBy('winner_player_id')
             ->selectRaw('winner_player_id, COUNT(*) as total')
@@ -61,25 +58,30 @@ class GameStatisticsService
         $losersPerResult = $pairs->countBy('result_id');
 
         // $beat[winner][loser] = valid results where winner beat loser; $earned[winner][loser] = points the winner
-        // earned against that loser (a result with several losers splits its points evenly, so the per-opponent
-        // points add up to the player's total).
+        // earned against that loser (a result with several losers splits its points evenly). Head-to-head shows the
+        // net of both directions, so a pair always shows opposite values.
+        // $points[player] = zero-sum total.
         $beat = [];
         $earned = [];
         $losses = [];
+        $points = [];
         foreach ($pairs as $pair) {
             $winnerId = (int) $pair->winner_id;
             $loserId = (int) $pair->loser_id;
+            $share = (int) $pair->points / $losersPerResult[$pair->result_id];
             $beat[$winnerId][$loserId] = ($beat[$winnerId][$loserId] ?? 0) + 1;
-            $earned[$winnerId][$loserId] = ($earned[$winnerId][$loserId] ?? 0) + (int) $pair->points / $losersPerResult[$pair->result_id];
+            $earned[$winnerId][$loserId] = ($earned[$winnerId][$loserId] ?? 0) + $share;
             $losses[$loserId] = ($losses[$loserId] ?? 0) + 1;
+            $points[$winnerId] = ($points[$winnerId] ?? 0) + $share;
+            $points[$loserId] = ($points[$loserId] ?? 0) - $share;
         }
 
-        $rows = $players->map(static fn (GamePlayer $player): array => [
+        $rows = $players->map(fn (GamePlayer $player): array => [
             'rank' => 0,
             'player_id' => (int) $player->id,
             'name' => $player->display_name,
             'is_active' => $player->is_active,
-            'points' => (int) ($points[$player->id] ?? 0),
+            'points' => $this->roundPoints($points[(int) $player->id] ?? 0),
             'wins' => (int) ($wins[$player->id] ?? 0),
             'losses' => (int) ($losses[$player->id] ?? 0),
         ])->all();
@@ -101,7 +103,11 @@ class GameStatisticsService
                 if ($won > 0 || $lost > 0) {
                     $headToHead[(int) $player->id][] = [
                         'opponent' => $opponent->display_name,
-                        'points' => $this->roundPoints($earned[(int) $player->id][(int) $opponent->id] ?? 0),
+                        // Net points: what the player earned against this opponent minus what the opponent earned
+                        // against them (A beats B for 4 → A shows +4, B shows -4).
+                        'points' => $this->roundPoints(
+                            ($earned[(int) $player->id][(int) $opponent->id] ?? 0) - ($earned[(int) $opponent->id][(int) $player->id] ?? 0)
+                        ),
                         'wins' => $won,
                         'losses' => $lost,
                     ];
@@ -129,7 +135,7 @@ class GameStatisticsService
     }
 
     /**
-     * Points shown per opponent: whole numbers stay integers, an even split keeps two decimals at most.
+     * Points shown: whole numbers stay integers, an even split keeps two decimals at most.
      *
      * @param int|float $points Raw sum.
      * @return int|float Display value.

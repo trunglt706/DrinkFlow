@@ -1,7 +1,12 @@
 @php
+  // Old input (after a validation error) wins over the clone pre-fill, which wins over the empty defaults.
+  $prefill = $prefill ?? null;
   $oldPlayers = old('players');
-  $players = is_array($oldPlayers) && $oldPlayers !== [] ? array_values($oldPlayers) : array_fill(0, $defaultPlayers, '');
-  $selectedRuleSet = (int) old('rule_set_id', $ruleSets->first()?->id);
+  $players = is_array($oldPlayers) && $oldPlayers !== []
+      ? array_values($oldPlayers)
+      : ($prefill['players'] ?? array_fill(0, $defaultPlayers, ''));
+  $selectedRuleSet = (int) old('rule_set_id', $prefill['rule_set_id'] ?? $ruleSets->first()?->id);
+  $roomName = old('name', $prefill['name'] ?? '');
 @endphp
 <x-global.layout
   :title="'DrinkFlow - ' . __('games.create.title')"
@@ -17,6 +22,18 @@
       <p class="text-sm text-slate-500 mt-1">{{ __('games.create.subtitle') }} · {{ $game->name }}</p>
     </section>
 
+    @if($cloneSource ?? null)
+      <div class="flex items-start gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900" data-clone-notice>
+        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">content_copy</span>
+        <span>
+          {{ __('games.create.clone_notice', ['name' => $cloneSource->name]) }}
+          @if($prefill['rule_set_id'] === null)
+            <span class="mt-1 block font-semibold text-amber-800" data-clone-rule-set-missing>{{ __('games.create.clone_rule_set_missing') }}</span>
+          @endif
+        </span>
+      </div>
+    @endif
+
     <form method="POST" action="{{ route('user.me.games.rooms.store', $game) }}" class="space-y-5" data-room-create
           data-min="{{ $minPlayers }}" data-max="{{ $maxPlayers }}"
           data-i18n="{{ json_encode(['placeholder' => __('games.create.player_placeholder', ['number' => ':number'])], JSON_UNESCAPED_UNICODE) }}">
@@ -25,7 +42,7 @@
       <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs space-y-4">
         <div>
           <label for="room-name" class="block text-sm font-semibold text-slate-800">{{ __('games.create.room_name') }}</label>
-          <input id="room-name" name="name" type="text" maxlength="100" required value="{{ old('name') }}"
+          <input id="room-name" name="name" type="text" maxlength="100" required value="{{ $roomName }}"
                  placeholder="{{ __('games.create.room_name_placeholder') }}"
                  class="mt-1.5 h-12 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-4 text-base text-slate-900 focus:border-[#006948] focus:bg-white focus:ring-1 focus:ring-[#006948]">
         </div>

@@ -4,11 +4,11 @@
  * The visitor records a win of the player they picked: one screen, pick the category and the loser, confirm. The
  * winner is never sent (the server takes it from the session). Every opening of the sheet is a new result with its own
  * idempotency key, so several results of the same round are recorded one submission at a time. Texts come from the
- * data-i18n JSON of the sheet.
+ * data-i18n JSON of the sheet. The page reloads by itself when the owner starts or finishes the room (realtime).
  */
 import { initToastNotifications } from './shared/toast';
 import {
-    firstError, initConfirmForms, notify, postResult, readI18n, reloadWithToast, showPendingToast, startButtonLoading,
+    firstError, initConfirmForms, notify, postResult, readI18n, reloadIfStale, reloadWithToast, showPendingToast, startButtonLoading,
     stopButtonLoading, uuid,
 } from './shared/game-common';
 
@@ -83,8 +83,11 @@ function initRecordSheet() {
                 rule_item_id: Number(category()?.value),
                 loser_id: Number(loser()?.value),
                 idempotency_key: idempotencyKey,
+                round: dialog.dataset.round ? Number(dialog.dataset.round) : null,
             });
             if (!ok) {
+                // Out-of-date page (new round, room finished, player lost): reload and show why.
+                if (reloadIfStale(data)) return;
                 stopButtonLoading(submit);
                 render();
                 showError(firstError(data) || i18n.error);
@@ -135,8 +138,53 @@ function initShareDialog() {
     });
 }
 
+/**
+ * Live status: the page joins its room channel (game:{id}) and reloads when the owner starts / finishes the room or
+ * opens a new round.
+ * Tokens are short-lived; a refused reconnect asks for a fresh one.
+ */
+function initRealtimeReload() {
+    const { playRealtimeUrl: realtimeUrl, playSocketTokenUrl: tokenUrl } = document.body.dataset;
+    if (!realtimeUrl || !tokenUrl || typeof window.io !== 'function') return;
+    let socket = null;
+    let retry = null;
+    // Do not pull the page from under a visitor filling the record sheet: reload once it is closed (a result sent
+    // meanwhile for the old round is refused by the server anyway).
+    const reloadWhenIdle = () => {
+        const sheet = document.querySelector('[data-play-record-dialog]');
+        if (sheet?.open) {
+            sheet.addEventListener('close', () => window.location.reload(), { once: true });
+            return;
+        }
+        window.location.reload();
+    };
+
+    const connect = async () => {
+        clearTimeout(retry);
+        try {
+            const response = await fetch(tokenUrl, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+            // 404 / 410: the link was revoked or the room closed; reloading shows the right page.
+            if (response.status === 404 || response.status === 410) {
+                window.location.reload();
+                return;
+            }
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const { data } = await response.json();
+            socket?.disconnect();
+            socket = window.io(realtimeUrl, { auth: { token: data.token }, transports: ['websocket', 'polling'], reconnection: false });
+            socket.on('game_room.status_changed', reloadWhenIdle);
+            socket.on('disconnect', () => { retry = setTimeout(connect, 3000); });
+            socket.on('connect_error', () => { socket.disconnect(); retry = setTimeout(connect, 5000); });
+        } catch {
+            retry = setTimeout(connect, 10000);
+        }
+    };
+    connect();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initToastNotifications();
+    initRealtimeReload();
     initConfirmForms();
     initRecordSheet();
     initShareDialog();

@@ -33,6 +33,12 @@ Route::post('/play/{token}/results', [\App\Http\Controllers\Public\GameRoomContr
     ->where('token', '[A-Za-z0-9]{20,64}')
     ->middleware(['json.only', 'throttle:30,1'])
     ->name('public.games.rooms.results.store');
+// Short-lived realtime token of the room's public channel (game:{id}): the page reloads when the owner starts or
+// finishes the room.
+Route::get('/play/{token}/socket-token', [\App\Http\Controllers\Public\GameRoomController::class, 'socketToken'])
+    ->where('token', '[A-Za-z0-9]{20,64}')
+    ->middleware(['json.only', 'throttle:30,1'])
+    ->name('public.games.rooms.socket-token');
 
 // Hướng dẫn cho Đại lý (Agents) phải được đăng ký trước route động /guides/{slug} để không bị nuốt.
 Route::get('/guides/agent', [\App\Http\Controllers\Public\GuideController::class, 'agentIndex'])->name('public.guides.agent');

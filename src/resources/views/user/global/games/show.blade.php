@@ -75,22 +75,28 @@
               </span>
             </a>
             <div class="flex gap-2">
-              @if($room->status === \App\Enums\GameRoomStatus::Finished)
-                <span class="inline-flex h-10 items-center gap-1 px-1 text-xs text-slate-400">
-                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true">lock</span>
-                  {{ __('games.status.finished') }}
-                </span>
-              @elseif($room->publicUrl())
-                <button type="button" data-copy-link="{{ $room->publicUrl() }}" class="inline-flex h-10 flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                  <span class="material-symbols-outlined text-[17px]" aria-hidden="true">link</span>
-                  {{ __('games.history.copy_link') }}
-                </button>
-              @else
-                <span class="inline-flex h-10 items-center gap-1 px-1 text-xs text-slate-400">
-                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true">link_off</span>
-                  {{ __('games.history.link_revoked') }}
-                </span>
-              @endif
+              {{-- A finished room shows no link action: its status badge next to the name already says it is finished. --}}
+              @php $isFinishedRoom = $room->status === \App\Enums\GameRoomStatus::Finished; @endphp
+              @unless($isFinishedRoom)
+                @if($room->publicUrl())
+                  <button type="button" data-copy-link="{{ $room->publicUrl() }}" class="inline-flex h-10 flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                    <span class="material-symbols-outlined text-[17px]" aria-hidden="true">link</span>
+                    {{ __('games.history.copy_link') }}
+                  </button>
+                @else
+                  <span class="inline-flex h-10 items-center gap-1 px-1 text-xs text-slate-400">
+                    <span class="material-symbols-outlined text-[16px]" aria-hidden="true">link_off</span>
+                    {{ __('games.history.link_revoked') }}
+                  </span>
+                @endif
+              @endunless
+              {{-- Clone: opens the create form pre-filled with this room's rule set and players. --}}
+              <a href="{{ route('user.me.games.rooms.create', ['game' => $game->slug, 'from' => $room->id]) }}" data-clone-room
+                 class="inline-flex h-10 flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                 title="{{ __('games.history.clone_hint') }}">
+                <span class="material-symbols-outlined text-[17px]" aria-hidden="true">content_copy</span>
+                {{ __('games.history.clone') }}
+              </a>
               <a href="{{ route('user.me.games.rooms.show', [$game, $room]) }}" class="inline-flex h-10 flex-1 sm:flex-none items-center justify-center gap-1 rounded-xl bg-emerald-50 px-3 text-xs font-semibold text-[#006948] border border-emerald-100 hover:bg-emerald-100">
                 {{ __('games.history.open') }}
                 <span class="material-symbols-outlined text-[17px]" aria-hidden="true">arrow_forward</span>
