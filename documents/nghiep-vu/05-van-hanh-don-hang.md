@@ -33,15 +33,19 @@ flowchart TD
     D --> E["sponsor_amount = tính lại theo chính sách tài trợ\ncủa Campaign (xem bài 6)"]
     E --> F["final_amount = max(0, subtotal + delivery_amount − discount_amount − sponsor_amount)"]
     F --> G["Ghi Audit Log: order.price_adjusted\n(giá cũ/mới, lý do)"]
-    G --> H["Event OrderUpdated → Socket.IO → thông báo real-time cho User"]
+    G --> H["Thông báo order.price_adjusted cho chủ đơn\n+ Event OrderUpdated → Socket.IO cập nhật màn hình"]
 ```
 
-Server **luôn** tính lại `subtotal`/`sponsor_amount`/`final_amount` từ dữ liệu gốc — Admin chỉ được sửa `unit_price` từng dòng, không được ghi đè trực tiếp các trường tổng hợp, đảm bảo không lệch sổ sách.
+Trần `Campaign.max_budget` áp dụng cho **cả dòng** (đơn giá × số lượng + topping). Server **luôn** tính lại `subtotal`/`sponsor_amount`/`final_amount` từ dữ liệu gốc — Admin chỉ được sửa `unit_price` từng dòng, không được ghi đè trực tiếp các trường tổng hợp. Dòng **trả riêng** (`is_self_paid`) không tính vào phần được tài trợ.
 
-## 5.4. Xử lý hàng loạt
+## 5.4. Thanh toán ở cấp Order (`PaymentStatus`)
+
+Ngoài công nợ sau khi đóng chiến dịch ([bài 7](07-thanh-toan-cong-no.md)), thành viên có thể báo đã chuyển khoản cho **từng đơn** (`ConfirmOrderPaymentAction`): `payment_status` chuyển `Unpaid → Pending`, Admin nhận thông báo `order.payment_submitted` (lưu + realtime) và duyệt bằng `AdminApproveOrderPaymentAction`: hành động này tìm (hoặc tạo) khoản `Debt` của đơn trong chiến dịch rồi duyệt qua `ApproveDebtPaymentAction` — nghĩa là việc "đã trả" luôn được ghi nhận ở cấp công nợ.
+
+## 5.5. Xử lý hàng loạt
 
 `bulkStatus` và `bulkCancel` (Admin) áp dụng cùng `UpdateOrderStatusAction` cho nhiều Order được chọn trong 1 transaction, kèm ghi `AuditService` cho từng thay đổi.
 
 ## Tham chiếu mã nguồn
 
-`App\Models\Order`, `OrderItem`, `OrderItemTopping` · `App\Enums\OrderStatus` · `App\Actions\Order\UpdateOrderAction`, `UpdateOrderStatusAction`, `DeleteOrderAction`, `ConfirmOrderPaymentAction` · `App\Events\OrderCreated/Updated/Deleted` · Xem thao tác UI ở [Hướng dẫn Admin – bài 5](../guides/admin/05-quan-ly-don-hang.md) và [Hướng dẫn User – bài 4](../guides/user/04-theo-doi-don-hang.md).
+`App\Models\Order`, `OrderItem`, `OrderItemTopping` · `App\Enums\OrderStatus`, `PaymentStatus` · `App\Actions\Order\UpdateOrderAction`, `UpdateOrderItemsAction`, `UpdateOrderStatusAction`, `DeleteOrderAction`, `ConfirmOrderPaymentAction`, `AdminApproveOrderPaymentAction` · `App\Events\OrderCreated/Updated/Deleted` · Xem thao tác UI ở [Hướng dẫn Admin – bài 5](../../src/public/guide-content/admin/05-quan-ly-don-hang.md) và [Hướng dẫn User – bài 4](../../src/public/guide-content/user/04-theo-doi-don-hang.md).

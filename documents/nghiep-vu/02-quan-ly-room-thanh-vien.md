@@ -2,34 +2,37 @@
 
 [← Về Tổng quan nghiệp vụ](overview.md)
 
-**Room** là đơn vị tổ chức trung tâm của DrinkFlow — mỗi phòng ban/nhóm là một Room độc lập với thành viên, chiến dịch, công nợ và cấu hình riêng.
+**Room** là đơn vị tổ chức trung tâm của DrinkFlow — mỗi phòng ban/nhóm là một Room độc lập với thành viên, chiến dịch, công nợ và cấu hình riêng. Mỗi Room thuộc về **một Agent** (`rooms.owner_admin_id`).
 
 ## 2.1. Vòng đời Room
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Active: Superadmin tạo Room
-    Active --> Inactive: tạm ngưng hoạt động
+    [*] --> Active: Agent tạo Room (/admin/rooms, trong hạn mức gói)\nhoặc Superadmin tạo
+    Active --> Inactive: tạm ngưng (Superadmin)
     Inactive --> Active: kích hoạt lại
-    Active --> Archived: lưu trữ (ngừng vĩnh viễn)
+    Active --> Archived: Agent hoặc Superadmin lưu trữ
     Inactive --> Archived
-    Archived --> [*]
+    Archived --> Active: Agent khôi phục (nếu còn hạn mức)
 ```
 
-Chỉ **Superadmin** tạo/đổi trạng thái Room ([bài 11](11-quan-tri-he-thong-superadmin.md)); Admin chỉ vận hành bên trong Room đã được gán, không tạo Room mới được.
+- **Agent** tự tạo, sửa, lưu trữ và khôi phục Room của mình (`Admin\RoomController` → `ManageAgentRoomAction`). Số Room `Active` + `Inactive` bị giới hạn bởi gói dịch vụ (`RoomQuotaService`, `room_limit_snapshot` của thuê bao đang hiệu lực); Room `Archived` không tính vào hạn mức, nên khôi phục Room cũng phải còn chỗ trống.
+- **Superadmin** tạo/sửa/đổi trạng thái/xoá mọi Room (`Superadmin\RoomController`, `ManageRoomAction`) theo permission `room.manage`.
+- Chỉ Room `Active` mới vào được khu vực quản trị (`admin.room`) và được các lệnh nền (thống kê, nhắc nợ, thông báo) xử lý.
+- Agent có thể thêm Admin khác làm **cộng tác viên** của Room (`admin_rooms`); Superadmin cũng gán được qua `PUT /superadmin/admins/{admin}/rooms`.
 
 ## 2.2. Vòng đời thành viên (RoomUser)
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Active: Global User tham gia qua link mời
+    [*] --> Active: Global User tham gia qua link mời\nhoặc Admin thêm trực tiếp
     Active --> Blocked: Admin chặn (vi phạm / nợ quá hạn)
     Blocked --> Active: Admin duyệt lại
     Active --> Removed: Admin xoá khỏi Room
     Removed --> Active: Admin khôi phục
 ```
 
-Điểm quan trọng: **`RoomUserStatus` hoàn toàn độc lập với `GlobalUserStatus`** — bị `Blocked` tại 1 Room không ảnh hưởng quyền truy cập các Room khác hay Cổng thông tin cá nhân `/me` của Global User đó (`JoinRoomAction`, `SetRoomUserStatusAction`).
+Điểm quan trọng: **`RoomUserStatus` độc lập với `GlobalUserStatus`** — bị `Blocked` tại 1 Room không ảnh hưởng quyền truy cập các Room khác hay Cổng thông tin cá nhân `/me` của Global User đó (`JoinRoomAction`, `SetRoomUserStatusAction`). Ngược lại, Global User bị khoá/xoá thì không dùng được Room nào.
 
 ## 2.3. Luồng tham gia Room
 
@@ -50,7 +53,9 @@ sequenceDiagram
     end
 ```
 
-Mỗi `RoomUser` được cấp một **`user_code`** ngẫu nhiên — dùng làm định danh tra cứu khi đặt hộ ([bài 4](04-dat-mon-gio-hang.md)) và hiển thị trong bảng đối soát thay vì lộ email.
+Room có thể giới hạn truy cập theo **allowlist/blocklist IP** (cấu hình Room, kiểm tra ở `RoomAccessPolicy`) — IP người dùng phải được nhận đúng, xem [`documents/deploy/trusted-proxies.md`](../deploy/trusted-proxies.md).
+
+Mỗi `RoomUser` được cấp một **`user_code`** ngẫu nhiên — dùng làm định danh khi đặt hộ ([bài 4](04-dat-mon-gio-hang.md)), làm nội dung chuyển khoản "thanh toán tất cả" ([bài 7](07-thanh-toan-cong-no.md)) và hiển thị trong bảng đối soát thay vì lộ email.
 
 ## 2.4. Thiết bị tin cậy (Device Trust)
 
@@ -58,4 +63,4 @@ Mỗi lần đăng nhập trên thiết bị mới có thể tạo một bản g
 
 ## Tham chiếu mã nguồn
 
-`App\Models\Room`, `App\Models\RoomUser`, `App\Models\RoomUserDevice` · `App\Enums\RoomStatus`, `RoomUserStatus` · `App\Actions\User\JoinRoomAction`, `SetRoomUserStatusAction`, `RestoreRoomUserAction`, `AdminAddRoomUserAction` · `App\Events\RoomMembershipUpdated`.
+`App\Models\Room`, `App\Models\RoomUser`, `App\Models\RoomUserDevice` · `App\Enums\RoomStatus`, `RoomUserStatus` · `App\Policies\RoomPolicy` · `App\Services\Room\RoomQuotaService`, `RoomAccessPolicy` · `App\Actions\Room\ManageAgentRoomAction` · `App\Actions\User\JoinRoomAction`, `SetRoomUserStatusAction`, `RestoreRoomUserAction`, `AdminAddRoomUserAction` · `App\Actions\Superadmin\ManageRoomAction` · `App\Events\RoomMembershipUpdated`.

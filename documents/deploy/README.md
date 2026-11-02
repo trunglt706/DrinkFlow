@@ -1,85 +1,79 @@
 # Hướng dẫn Triển khai DrinkFlow lên Máy chủ VPS (Deployment Guides)
 
-Chào mừng bạn đến với tài liệu hướng dẫn triển khai chính thức của hệ thống **DrinkFlow Enterprise**. Thư mục này cung cấp các hướng dẫn chi tiết từng bước (step-by-step) để đưa ứng dụng từ môi trường phát triển lên máy chủ ảo (VPS/Cloud Server) trên môi trường Production thực tế.
+Thư mục này chứa hướng dẫn chính thức để đưa DrinkFlow lên VPS production. DrinkFlow chạy **trực tiếp trên hệ điều hành** (không dùng Docker) với **MySQL** là database duy nhất, theo quy định trong [AGENTS.md](../../AGENTS.md).
 
 ---
 
-## 📑 Danh mục Tài liệu Triển khai
+## 📑 Danh mục Tài liệu
 
-| Tài liệu | Phương thức triển khai | Đối tượng & Trường hợp sử dụng |
-| :--- | :--- | :--- |
-| 🐳 [**Docker Compose Deployment**](./docker-vps-deployment.md) | **Container hóa (Docker Compose)** | ⭐ **Khuyến nghị**. Triển khai nhanh, đóng gói đồng nhất, dễ scale, quản lý trọn gói MySQL, PHP-FPM, Socket.IO. |
-| 🛠️ [**Standalone VPS Deployment**](./standalone-vps-deployment.md) | **Cài đặt từng dịch vụ (Native Services)** | Dành cho người muốn kiểm soát toàn bộ tài nguyên bare-metal, tối ưu hóa hiệu năng tối đa của PHP-FPM, Nginx, MySQL, Redis, Supervisor trên hệ điều hành Ubuntu. |
+| Tài liệu | Nội dung |
+| :--- | :--- |
+| 🛠️ [**Standalone VPS Deployment**](./standalone-vps-deployment.md) | Cài đặt từ đầu trên Ubuntu 22.04/24.04: Nginx, PHP 8.3-FPM, MySQL 8, Redis, Node.js 22, Supervisor, Certbot; cấu hình `.env`, worker, scheduler, script deploy, sao lưu, rollback. |
+| 🔁 [**Sao lưu & Di chuyển VPS / Domain**](./vps-migration-backup.md) | Chuyển hệ thống sang VPS khác, domain hoặc subdomain mới (Cloudflare DNS) không mất dữ liệu; sao lưu định kỳ sang VPS dự phòng; rollback. |
+| 🌐 [**Trusted Proxies**](./trusted-proxies.md) | Cấu hình `TRUSTED_PROXIES` khi chạy trực tiếp hoặc sau Cloudflare để IP người dùng được nhận đúng. |
 
----
-
-## 📊 So sánh 2 Phương thức Triển khai
-
-| Tiêu chí | 🐳 Docker Compose | 🛠️ Standalone (Native Services) |
-| :--- | :--- | :--- |
-| **Độ phức tạp cài đặt** | Thấp (chỉ cần Docker & Compose) | Trung bình (cài đặt từng package) |
-| **Mức tiêu hao tài nguyên** | +5-10% overhead | Tối ưu tối đa phần cứng |
-| **Mức độ cô lập (Isolation)** | Hoàn toàn cô lập qua container | Chia sẻ môi trường OS chung |
-| **Bảo trì & Nâng cấp** | Rất dễ (`docker compose pull/up`) | Cần quản lý apt, ppa, service updates |
-| **Khả năng sao lưu/khôi phục** | Dễ dàng (Volume snapshot, docker volume) | Cần backup riêng db, storage, config |
-| **Môi trường khuyến nghị** | Ubuntu 22.04 / 24.04, Debian 12 | Ubuntu 22.04 / 24.04 LTS |
+> `docker-compose.yml` ở thư mục gốc repo là cấu hình cũ dùng PostgreSQL, **không** dùng cho production và không được hỗ trợ.
 
 ---
 
-## 💻 Yêu cầu Phần cứng Tối thiểu (System Requirements)
+## 💻 Yêu cầu Phần cứng Tối thiểu
 
 | Quy mô sử dụng | CPU | RAM | Ổ cứng SSD/NVMe | Băng thông mạng |
 | :--- | :--- | :--- | :--- | :--- |
 | **Demo / Văn phòng nhỏ** (< 50 users, 2-5 rooms) | 1 vCPU | 2 GB RAM (kèm 2GB Swap) | 25 GB SSD | 100 Mbps |
 | **Doanh nghiệp tiêu chuẩn** (50 - 300 users, 10-20 rooms) | 2 vCPU | 4 GB RAM (kèm 4GB Swap) | 50 GB SSD/NVMe | 1 Gbps |
-| **Doanh nghiệp lớn / Tập đoàn** (> 300 users, realtime cao) | 4 vCPU | 8 GB RAM | 100 GB NVMe | 1 Gbps |
+| **Doanh nghiệp lớn** (> 300 users, realtime cao) | 4 vCPU | 8 GB RAM | 100 GB NVMe | 1 Gbps |
+
+Bật Food Crawler (Google Chrome headless) cần thêm khoảng 0,5–1 GB RAM khi đang nhập menu.
 
 ---
 
-## 🌐 Sơ đồ Cổng Mạng (Network Ports) & Tường lửa (UFW)
-
-Để ứng dụng hoạt động thông suốt và an toàn, cấu hình tường lửa chỉ mở các cổng công khai cần thiết:
+## 🌐 Sơ đồ Cổng Mạng & Tường lửa (UFW)
 
 ```text
-INTERNET / USERS
+INTERNET / USERS  (tùy chọn: qua Cloudflare proxy)
        │
-       ├──► Port 80 (HTTP)  ───► Chuyển hướng sang HTTPS
-       ├──► Port 443 (HTTPS) ──► Nginx Reverse Proxy (SSL / TLS)
+       ├──► Port 80 (HTTP)  ───► Nginx: chuyển hướng sang HTTPS
+       ├──► Port 443 (HTTPS) ──► Nginx (SSL/TLS)
        │                              │
-       │                              ├──► Port 8080 / PHP-FPM (Laravel Application)
-       │                              └──► Port 3001 / WebSocket (/socket.io/)
+       │                              ├──► PHP-FPM qua unix socket /var/run/php/php8.3-fpm.sock (Laravel)
+       │                              └──► 127.0.0.1:3001 Socket.IO Realtime Gateway (/socket.io/)
        │
-       └──► Port 22 (SSH)   ───► Quản trị viên (Khuyến nghị đổi port & dùng SSH Key)
+       └──► Port 22 (SSH)   ───► Quản trị viên (chỉ SSH Key)
+
+Nội bộ (chỉ 127.0.0.1): MySQL 3306 · Redis 6379 · Realtime 3001
+Supervisor: drinkflow-worker (queue redis) · drinkflow-worker-db (queue database: sự kiện realtime) · drinkflow-realtime
+Cron: schedule:run mỗi phút (giờ lịch chạy theo UTC)
 ```
 
-### Bảng Port Chi tiết:
-
-| Cổng (Port) | Giao thức | Phạm vi | Mục đích |
+| Cổng | Giao thức | Phạm vi | Mục đích |
 | :--- | :--- | :--- | :--- |
-| `22` (hoặc custom) | TCP | Public (Giới hạn IP nếu có) | Truy cập quản trị SSH |
-| `80` | TCP | Public | HTTP (Tự động redirect sang 443) |
-| `443` | TCP | Public | HTTPS an toàn (Web + Realtime WSS) |
-| `3306` | TCP | **Internal / Localhost Only** | MySQL Database (Không mở ra ngoài) |
-| `3001` | TCP | **Internal / Reverse Proxy** | Socket.IO Realtime Gateway |
-| `6379` | TCP | **Internal / Localhost Only** | Redis Cache & Queue (nếu sử dụng) |
+| `22` (hoặc custom) | TCP | Public (giới hạn IP nếu có) | SSH quản trị |
+| `80` | TCP | Public | HTTP (tự động redirect sang 443) |
+| `443` | TCP | Public | HTTPS (web + WebSocket WSS) |
+| `3306` | TCP | **Chỉ localhost** | MySQL |
+| `3001` | TCP | **Chỉ localhost** (Nginx proxy vào) | Socket.IO Realtime Gateway |
+| `6379` | TCP | **Chỉ localhost** | Redis (session, cache, queue) |
 
 ---
 
-## 🔒 Checklist An ninh & Trước khi Go-Live
+## 🔒 Checklist Trước khi Go-Live
 
-Xem [cấu hình trusted proxy](./trusted-proxies.md). Với mô hình hiện tại không có proxy, giữ `TRUSTED_PROXIES` trống.
+- [ ] `APP_ENV=production` và `APP_DEBUG=false` trong `src/.env`; quyền file `640`, chủ `$USER:www-data`.
+- [ ] Khóa đăng nhập SSH bằng mật khẩu và root; chỉ dùng SSH Key.
+- [ ] UFW chỉ mở cổng 22, 80, 443; MySQL/Redis/Realtime chỉ nghe `127.0.0.1`.
+- [ ] Chứng chỉ SSL hoạt động (Let's Encrypt hoặc Cloudflare Origin Certificate với chế độ *Full (strict)*).
+- [ ] Đứng sau Cloudflare proxy: đã cấu hình `TRUSTED_PROXIES` theo [trusted-proxies.md](./trusted-proxies.md) và bật WebSockets.
+- [ ] Google OAuth có đúng Redirect URI: `https://your-domain.com/auth/google/callback`.
+- [ ] Đã chạy `php artisan db:seed --force` (danh mục quyền, role `full`) và tạo Superadmin thật (không có tài khoản `@drinkflow.local`).
+- [ ] Supervisor chạy đủ 3 chương trình: `drinkflow-worker`, `drinkflow-worker-db`, `drinkflow-realtime`.
+- [ ] Cron `schedule:run` cho `www-data`; `php artisan schedule:list` hiện đủ tác vụ.
+- [ ] SMTP gửi được email (OTP quên mật khẩu).
+- [ ] Đã chạy `php artisan config:cache`, `route:cache`, `view:cache`, `event:cache`.
+- [ ] Sao lưu hằng ngày DB + `storage/app` + `storage/fonts` + `.env`, có bản sao **ngoài VPS** và đã diễn tập khôi phục.
+- [ ] Toàn bộ test PASS trên máy phát triển trước khi push:
 
-Trước khi công bố đường dẫn cho người dùng nội bộ, hãy chắc chắn hoàn thành các mục kiểm tra an toàn sau:
-
-- [ ] `APP_ENV=production` và `APP_DEBUG=false` trong file `.env`.
-- [ ] Khóa tài khoản root SSH và chỉ đăng nhập bằng SSH Key.
-- [ ] Cấu hình UFW Firewall chỉ mở cổng 22, 80, 443.
-- [ ] Cơ sở dữ liệu MySQL đặt mật khẩu mạnh, không listen ra public IP.
-- [ ] Chứng chỉ SSL (Let's Encrypt) hoạt động với điểm đánh giá SSL Labs hạng A.
-- [ ] Thiết lập Google OAuth Credentials với đúng Redirect URL: `https://your-domain.com/auth/google/callback`.
-- [ ] Chạy `php artisan config:cache`, `route:cache`, `view:cache`.
-- [ ] Thiết lập Cronjob tự động backup Database hàng ngày sang thư mục riêng hoặc Cloud Storage.
-- [ ] Đã kiểm tra toàn bộ tính năng và chạy test pass 100%:
   ```bash
+  cd src
   php artisan test
   ```

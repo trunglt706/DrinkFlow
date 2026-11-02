@@ -2,53 +2,66 @@
 
 [← Về Tổng quan nghiệp vụ](overview.md)
 
-DrinkFlow có **hai hệ thống xác thực độc lập** dùng chung một database nhưng khác guard Laravel: guard `web` cho Global User, guard `admin` cho Admin/Superadmin.
+DrinkFlow có **ba hệ thống xác thực độc lập** dùng chung một database nhưng khác guard Laravel và khác bảng tài khoản:
 
-## 1.1. Global User — Google Workspace SSO
+| Guard | Model / bảng | Đăng nhập | Trang đăng nhập |
+| --- | --- | --- | --- |
+| `web` | `GlobalUser` / `global_users` | Google OAuth | `/auth/google` (callback `/auth/google/callback`) |
+| `admin` | `Admin` / `admins` (Agent) | Email + mật khẩu (+ 2FA tuỳ chọn) | `/admin/login` |
+| `superadmin` | `Superadmin` / `superadmins` | Email + mật khẩu (+ 2FA tuỳ chọn) | `/superadmin/login` |
 
-- Đăng nhập qua OAuth 2.0 (`GoogleAuthController`), không lưu mật khẩu.
-- `GlobalUserStatus`: `Active` → `Blocked` (nợ quá hạn hoặc vi phạm) → có thể `Disabled` (tự xoá tài khoản).
+Đăng nhập ở guard này không cho phép truy cập khu vực của guard khác.
+
+## 1.1. Global User — Google SSO
+
+- Đăng nhập qua OAuth 2.0 (`App\Http\Controllers\Auth\GoogleAuthController`), không lưu mật khẩu. Có thể giới hạn domain email bằng `GOOGLE_ALLOWED_DOMAINS`.
+- `GlobalUserStatus`:
+  - `Active` — dùng bình thường.
+  - `Blocked` — bị khoá (vi phạm, nợ quá hạn); chỉ truy cập được `/blocked`, `/blocked/appeal`, `/logout` (403 JSON hoặc redirect).
+  - `Disabled` — người dùng tự vô hiệu hoá tài khoản (`UserProfileService`); bị từ chối nếu còn công nợ.
+  - `Deleted` — Superadmin xoá mềm: giữ lại lịch sử đơn/nợ, không cho đăng nhập.
 - Middleware `ResolveGlobalUser` (`global.user`) resolve user từ session **hoặc** cookie thiết bị tin cậy (`drinkflow_device_uuid` + `drinkflow_trusted_token`), tự động đăng xuất nếu thiết bị đã bị thu hồi (xem [bài 10](10-bao-mat-thiet-bi-audit.md)).
-- Tài khoản `Blocked` chỉ được phép truy cập `/blocked`, `/blocked/appeal`, `/logout` — mọi route khác bị chặn (403 JSON hoặc redirect).
 
-## 1.2. Admin/Superadmin — Email + Mật khẩu + 2FA tuỳ chọn
-
-- Đăng nhập qua `AdminAuthService` (guard `admin`), có OTP quên mật khẩu (15 phút hiệu lực) và 2FA tuỳ chọn bật qua Google Workspace re-auth.
-- `AdminStatus`: `Active` (ngầm định) → `Inactive` / `Suspended`.
-- `AdminRole`: `Admin` (giới hạn theo Room được gán) hoặc `SuperAdmin` (không giới hạn Room, middleware `superadmin` thêm một lớp kiểm tra trên middleware `admin`).
+## 1.2. Admin (Agent) — đăng ký, duyệt, đăng nhập
 
 ```mermaid
-sequenceDiagram
-    participant B as Trình duyệt
-    participant Auth as AdminAuthController
-    participant Svc as AdminAuthService
-    B->>Auth: POST /admin/login (email, password)
-    Auth->>Svc: attempt()
-    alt 2FA đang bật
-        Svc-->>Auth: cần xác thực Google
-        Auth-->>B: hiển thị nút "Đăng nhập bằng Google Workspace"
-        B->>Auth: GET /auth/google → callback
-        Auth->>Svc: xác nhận danh tính Google khớp Admin
-        Svc-->>Auth: OK
-    end
-    Auth-->>B: session guard admin, redirect /admin
+stateDiagram-v2
+    [*] --> Pending: Tự đăng ký /admin/register (xác minh email)\nhoặc Superadmin mời (InviteAgentAction)
+    Pending --> Active: Superadmin duyệt + chọn gói (ReviewAgentRegistrationAction)
+    Pending --> Rejected: Superadmin từ chối
+    Active --> Suspended: tạm khoá (thủ công hoặc quá hạn hoá đơn)
+    Suspended --> Active: mở lại
+    Active --> Cancelled: đóng tài khoản
 ```
 
-## 1.3. Phân quyền theo Room (Admin ↔ Room)
+- Chỉ `AdminStatus::Active` được đăng nhập (`AdminStatus::canSignIn()`).
+- Đăng nhập tại `Admin\AuthController` (captcha + rate limit), có OTP quên mật khẩu qua email và 2FA tuỳ chọn (`two_factor_enabled`, bật ở trang hồ sơ).
+- Khi được duyệt, Agent nhận một thuê bao (`AdminSubscription`) với hạn mức số Room (`room_limit_snapshot`) — xem [bài 12](12-goi-dich-vu-thue-bao-hoa-don.md).
 
-Middleware `admin.room` kiểm tra Admin đang truy cập một Room nằm trong danh sách được phân quyền (bảng quan hệ nhiều-nhiều Admin↔Room, quản lý bởi Superadmin — xem [bài 11](11-quan-tri-he-thong-superadmin.md)). Admin **không thể** truy cập Room ngoài danh sách này dù biết slug/URL.
+## 1.3. Phân quyền Admin theo Room
 
-## 1.4. Bảng so sánh ranh giới quyền hạn
+Middleware `admin.room` (`EnsureAdminRoomAccess`) gọi `RoomPolicy::operate`: Admin chỉ vào được Room khi **đang Active** và là **chủ sở hữu** (`rooms.owner_admin_id`) **hoặc cộng tác viên** (bảng `admin_rooms`) của Room đó; Room phải ở trạng thái `Active`. Biết slug/URL của Room khác cũng không truy cập được.
 
-| Hành động | Global User | Admin | Superadmin |
+## 1.4. Superadmin — role & permission
+
+- Model và guard riêng; `SuperadminStatus`: `Active` / `Suspended`.
+- Mỗi Superadmin gắn một `SuperadminRole` (role mặc định `full` do `DatabaseSeeder` tạo) và danh sách permission có phạm vi (`PermissionScope`), đồng bộ từ enum `App\Enums\Permission` (`PermissionCatalogService`).
+- Mọi route `/superadmin/*` kiểm tra permission cụ thể qua middleware `permission:<key>` (ví dụ `room.manage`, `agent.manage`, `settings.manage`, `revenue.view`). Dữ liệu nhạy cảm bị che (`superadmin.mask`) trừ khi có quyền xem.
+
+## 1.5. Bảng so sánh ranh giới quyền hạn
+
+| Hành động | Global User | Admin (Agent) | Superadmin |
 | --- | :-: | :-: | :-: |
-| Đặt món, xem đơn của mình | ✅ | — | — |
-| Quản lý chiến dịch/đơn/nợ của Room được gán | — | ✅ | ✅ (mọi Room) |
-| Tạo/xoá Room, gán Admin cho Room | — | — | ✅ |
-| Khoá tài khoản Global User toàn hệ thống | — | — | ✅ |
-| Duyệt Feedback công khai, quản lý Version | — | — | ✅ |
-| Xem Audit Log / Security Event toàn hệ thống | — | — | ✅ |
+| Đặt món, xem đơn/nợ của mình | ✅ | — | — |
+| Tạo Room (trong hạn mức gói), lưu trữ/khôi phục Room của mình | — | ✅ | ✅ (mọi Room) |
+| Quản lý chiến dịch/đơn/nợ/thành viên của Room mình sở hữu hoặc cộng tác | — | ✅ | — (chỉ force-close/force-cancel) |
+| Duyệt/mời/khoá Agent, gán Room cho Agent | — | — | ✅ (theo permission) |
+| Khoá/xoá/gộp Global User toàn hệ thống | — | — | ✅ (theo permission) |
+| Gói dịch vụ, hoá đơn, doanh thu nền tảng | — (xem hoá đơn của mình) | ✅ (của mình) | ✅ |
+| Duyệt Feedback, quản lý Version, hướng dẫn, trò chơi | — | — | ✅ |
+| Xem Audit Log của Room | — | ✅ (Room mình) | ✅ (toàn hệ thống) |
+| Xem Security Event | — | — | ✅ |
 
 ## Tham chiếu mã nguồn
 
-`App\Enums\GlobalUserStatus`, `App\Enums\AdminStatus`, `App\Enums\AdminRole` · `App\Http\Middleware\ResolveGlobalUser`, `EnsureAdminRoomAccess` · `App\Services\Auth\AdminAuthService`, `DeviceTrustService` · `routes/user.php`, `routes/admin.php`, `routes/superadmin.php`.
+`App\Enums\GlobalUserStatus`, `AdminStatus`, `SuperadminStatus`, `Permission`, `PermissionScope` · `App\Models\Admin`, `Superadmin`, `SuperadminRole` · `App\Http\Middleware\ResolveGlobalUser`, `EnsureAdminRoomAccess`, `EnsureSuperadmin`, `EnsureSuperadminPermission` · `App\Policies\RoomPolicy` · `App\Actions\Admin\RegisterAdminAction`, `App\Actions\Superadmin\ReviewAgentRegistrationAction`, `InviteAgentAction`, `AgentLifecycleAction` · `App\Services\Auth\AdminAuthService`, `SuperadminAuthService`, `DeviceTrustService` · `config/auth.php`.

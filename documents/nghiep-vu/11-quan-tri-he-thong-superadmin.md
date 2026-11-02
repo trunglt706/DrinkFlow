@@ -1,54 +1,62 @@
-# 11. Quản trị hệ thống (Superadmin)
+# 11. Quản trị nền tảng (Superadmin)
 
 [← Về Tổng quan nghiệp vụ](overview.md)
 
-Superadmin là `AdminRole::SuperAdmin` — không bị middleware `admin.room` giới hạn, thao tác được trên **toàn bộ** Room/Admin/Global User/hệ thống (`routes/superadmin.php`).
+Superadmin là tài khoản của **bảng và guard riêng** (`App\Models\Superadmin`, guard `superadmin`), không phải một vai trò của Admin. Mỗi route `/superadmin/*` (`routes/superadmin.php`) yêu cầu một permission cụ thể qua middleware `permission:<key>`; quyền được gán qua `SuperadminRole` (role mặc định `full` = mọi quyền) và có phạm vi (`PermissionScope`). Superadmin **không** vận hành chiến dịch/đơn/nợ hằng ngày của Room — việc đó thuộc Agent ([bài 1](01-xac-thuc-phan-quyen.md)).
+
+Hướng dẫn thao tác: [`src/resources/guide-content/superadmin/`](../../src/resources/guide-content/superadmin/README.md).
 
 ## 11.1. Bản đồ chức năng
 
 ```mermaid
 mindmap
   root((Superadmin))
-    Rooms
+    Agent
+      Duyệt / từ chối đăng ký
+      Mời Agent
+      Khoá / mở / đóng tài khoản
+      Gán Room cộng tác, reset mật khẩu
+    Superadmin & phân quyền
+      Tài khoản Superadmin
+      Role + permission theo phạm vi
+    Gói & tài chính
+      Gói dịch vụ (room_limit, giá)
+      Thuê bao của Agent
+      Hoá đơn, thanh toán thủ công, doanh thu
+    Room & Global User
       Tạo/sửa/đổi trạng thái/xoá Room
-    Admins
-      Tạo tài khoản Admin
-      Gán vai trò Admin/SuperAdmin
-      Gán danh sách Room được quản lý
-      Reset mật khẩu hộ Admin
-    Global Users
-      Xem/khoá toàn hệ thống
-      Gỡ 1 thành viên khỏi 1 Room cụ thể
-      Thu hồi thiết bị
-      Gộp 2 tài khoản trùng lặp
-    Campaigns
-      Force-close / Force-cancel bất kỳ chiến dịch nào
+      Khoá / xoá mềm / gộp Global User
+      Gỡ thành viên, thu hồi thiết bị
+      Force-close / Force-cancel chiến dịch
     Vận hành
-      Debts toàn hệ thống chỉ-xem + export
-      Audit Log + Security Event toàn cục
-      Giám sát Socket.IO
-      Quản lý Failed Jobs (queue)
+      Dashboard nền tảng
+      Audit Log + Security Event
+      Giám sát Socket.IO, Failed Jobs
     Hệ thống
-      Cấu hình chung + Maintenance mode
+      Cấu hình chung, mail, lưu trữ
+      Maintenance mode
+      Kênh thông báo của nền tảng
       Reset toàn bộ hệ thống
-      Test gửi mail
     Nội dung
-      Duyệt Feedback công khai
-      Quản lý Version phát hành
+      Duyệt Feedback, Version phát hành
+      Hướng dẫn, danh mục Trò chơi
 ```
 
-## 11.2. Gán quyền Admin cho Room
+## 11.2. Gán Room cho Agent
 
-Quan hệ nhiều-nhiều Admin↔Room được Superadmin thiết lập qua `PUT /superadmin/admins/{admin}/rooms` (`ManageAdminAction`) — đây là **nguồn dữ liệu duy nhất** mà middleware `admin.room` dùng để quyết định một Admin có được vào một Room hay không (xem [bài 1](01-xac-thuc-phan-quyen.md)).
+Quyền vào Room của một Agent đến từ **hai nguồn** (`RoomPolicy::operate`): Agent là **chủ sở hữu** (`rooms.owner_admin_id`, tự tạo trong hạn mức gói) **hoặc** là **cộng tác viên** trong bảng `admin_rooms`. Superadmin chỉnh danh sách cộng tác qua `PUT /superadmin/admins/{admin}/rooms` (`ManageAdminAction`, permission `agent.manage`).
 
 ## 11.3. Gộp tài khoản Global User trùng lặp
 
 Dùng khi một nhân sự vô tình tạo 2 danh tính (ví dụ đăng nhập bằng 2 domain email khác nhau). `MergeGlobalUsersAction`:
 
-1. Từ chối nếu `source` và `target` cùng là thành viên của **một Room nào đó** (xung đột membership — cần xử lý thủ công trước).
-2. Từ chối nếu 2 tài khoản có cùng một danh tính OAuth (không nên xảy ra).
-3. Chuyển toàn bộ `OAuthIdentity` và `RoomUser` từ `source` sang `target`, sau đó **xoá vĩnh viễn** `source`.
-4. Ghi `AuditLog` sự kiện `global_user.merged`.
+1. Từ chối gộp một tài khoản vào chính nó.
+2. Từ chối nếu `source` và `target` cùng là thành viên của **một Room nào đó** (xung đột membership — cần xử lý thủ công trước).
+3. Từ chối nếu 2 tài khoản xung đột danh tính OAuth.
+4. Chuyển toàn bộ `OAuthIdentity` và `RoomUser` từ `source` sang `target`, sau đó **xoá vĩnh viễn** `source`.
+5. Ghi `AuditLog` sự kiện `global_user.merged`.
+
+Khác với gộp, **xoá** Global User (`DeleteGlobalUserAction`) chỉ đặt trạng thái `Deleted` (xoá mềm), giữ nguyên lịch sử đơn/nợ.
 
 ## 11.4. Reset toàn bộ hệ thống — thao tác không thể hoàn tác
 
@@ -58,19 +66,23 @@ flowchart TD
     B -->|Sai| Fail1["Từ chối"]
     B -->|Đúng| C{"Gõ đúng cụm xác nhận\n'RESET DRINKFLOW' ?"}
     C -->|Sai| Fail2["Từ chối"]
-    C -->|Đúng| D["Xoá TOÀN BỘ dữ liệu nghiệp vụ:\nOrder, Debt, Campaign, Room,\nRoomUser, PaymentAccount,\nGlobalUser, NotificationChannel,\nVersion, Job queue..."]
-    D --> E["Xoá mọi tài khoản Admin\n(role = admin, GIỮ LẠI role = superadmin)"]
-    E --> F["Ghi 1 Audit Log 'system.reset'\n(bản ghi duy nhất còn sót lại\nvề mặt lịch sử)"]
+    C -->|Đúng| D["Xoá 24 bảng nghiệp vụ trong 1 transaction:\nOrder, Debt, Campaign, Room, RoomUser,\nPaymentAccount, GlobalUser, NotificationChannel,\nVersion, jobs, failed_jobs..."]
+    D --> E["Xoá TOÀN BỘ tài khoản Agent (bảng admins)"]
+    E --> F["Ghi Audit Log 'system.reset'"]
 ```
 
-> **Cảnh báo**: `ResetSystemAction` xoá dữ liệu ở **23 bảng** trong một transaction — không có cơ chế khôi phục nào trong ứng dụng. Đây là chức năng dành cho môi trường thử nghiệm/demo, không phải thao tác vận hành thông thường.
+- Yêu cầu permission `settings.manage`. Tài khoản **Superadmin** (bảng riêng), Audit Log, Security Event và các bảng không có trong danh sách (`ResetSystemAction`) được **giữ lại**.
+- Danh sách bảng được viết cứng trong `ResetSystemAction`; các module thêm sau (thuê bao, trò chơi, thống kê nhà tài trợ, tổng kết năm...) phụ thuộc vào ràng buộc khoá ngoại `cascadeOnDelete` để bị xoá theo. Khi thêm bảng mới gắn với Room/Agent, kiểm tra lại thao tác này.
+- ⚠️ **Hạn chế hiện tại**: `admin_invoices` và `admin_payments` khoá ngoại `admin_id` với `restrictOnDelete` và không có trong danh sách xoá. Khi đã có Agent phát sinh hoá đơn, bước xoá Agent bị MySQL từ chối và **toàn bộ reset bị rollback**.
+- Dành cho môi trường thử nghiệm/demo, không phải thao tác vận hành; không có cơ chế khôi phục trong ứng dụng (chỉ khôi phục từ bản sao lưu DB).
 
 ## 11.5. Vận hành nền
 
-- **Queue thất bại** (`/superadmin/queue/failed`): xem, retry hoặc xoá hẳn (`forget`) các job Laravel bị lỗi — ví dụ job gửi realtime event/thông báo thất bại nhiều lần.
-- **Giám sát Socket** (`/superadmin/socket`): theo dõi tình trạng kết nối của service Node.js realtime ([bài 8](08-thong-bao-realtime.md)).
-- **Chế độ bảo trì** (`system.maintenance`): bật/tắt để chặn truy cập tạm thời khi triển khai.
+- **Queue thất bại** (`/superadmin/queue/failed`, permission `queue.view`/`queue.manage`): xem, retry hoặc xoá hẳn (`forget`) các job lỗi — ví dụ job đẩy realtime thất bại nhiều lần.
+- **Giám sát Socket** (`/superadmin/socket`): kiểm tra kết nối tới service Node.js realtime ([bài 8](08-thong-bao-realtime.md)); lý do lỗi phân loại theo `SocketHealthReason`.
+- **Chế độ bảo trì** (`/superadmin/system/maintenance`): bật/tắt chặn truy cập tạm thời; phát sự kiện `system.maintenance` tới mọi kết nối.
+- **Thẻ Supervisor** trên dashboard (tuỳ chọn, `SUPERVISOR_ENABLED`): đọc trạng thái worker qua `supervisorctl status`.
 
 ## Tham chiếu mã nguồn
 
-`routes/superadmin.php` · `App\Actions\Superadmin\ManageAdminAction`, `ManageRoomAction`, `MergeGlobalUsersAction`, `ResetSystemAction` · `App\Models\AdminAccount` (`AdminRole`, `AdminStatus`) · Middleware `superadmin`.
+`routes/superadmin.php` · `App\Models\Superadmin`, `SuperadminRole`, `SuperadminPermission` · `App\Enums\Permission`, `PermissionScope`, `SuperadminStatus` · `App\Services\Authorization\PermissionCatalogService` · `App\Actions\Superadmin\ManageAdminAction`, `ManageRoomAction`, `ManageSuperadminAction`, `ManageSuperadminRoleAction`, `ReviewAgentRegistrationAction`, `InviteAgentAction`, `AgentLifecycleAction`, `MergeGlobalUsersAction`, `DeleteGlobalUserAction`, `ForceArchiveCampaignAction`, `ResetSystemAction` · Middleware `superadmin`, `permission`, `superadmin.mask`.

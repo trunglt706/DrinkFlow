@@ -8,7 +8,7 @@ DrinkFlow ghi vết theo **hai bảng riêng biệt** với mục đích khác n
 | --- | --- | --- |
 | Mục đích | Lưu vết **thay đổi nghiệp vụ** (before/after) | Lưu vết **sự kiện bảo mật** (mức độ nghiêm trọng `severity`) |
 | Ví dụ | `order.price_adjusted`, `campaign.closed`, `room_user.blocked` | Đăng nhập sai nhiều lần, thiết bị lạ, thu hồi token |
-| Ai xem được | Admin (phạm vi Room mình quản lý) qua [Nhật ký hoạt động](../guides/admin/11-nhat-ky-hoat-dong.md) | Chỉ **Superadmin**, toàn hệ thống (`/superadmin/security-events`) |
+| Ai xem được | Admin (phạm vi Room mình quản lý) qua [Nhật ký hoạt động](../../src/public/guide-content/admin/11-nhat-ky-hoat-dong.md) | Chỉ **Superadmin** có permission `security.view`, toàn hệ thống (`/superadmin/security-events`) |
 | Model | `App\Models\AuditLog` (`actor_type/id`, `target_type/id`, `room_id`, `before_data`, `after_data`) | `App\Models\SecurityEvent` (`type`, `severity`, `actor_type/id`, `room_id`, `device_uuid`) |
 
 ## 10.1. Ghi Audit Log — mẫu dùng chung
@@ -55,8 +55,8 @@ sequenceDiagram
 ## 10.3. Ai được xem gì
 
 - **Admin**: chỉ xem Audit Log trong **phạm vi Room mình quản lý** (`admin.audit.page`), không thấy Security Event hay Audit Log của Room khác.
-- **Superadmin**: xem toàn bộ Audit Log + Security Event + trang giám sát Socket/Queue hệ thống (xem [bài 11](11-quan-tri-he-thong-superadmin.md)).
-- **User**: tự quản lý thiết bị của chính mình qua [Bảo mật & thiết bị](../guides/user/08-bao-mat-thiet-bi.md), không xem được Audit Log hay Security Event.
+- **Superadmin**: tuỳ permission được cấp — Audit Log toàn hệ thống (`audit.view`), Security Event (`security.view`), giám sát Socket/Queue (`queue.view`, `queue.manage`) (xem [bài 11](11-quan-tri-he-thong-superadmin.md)). Dữ liệu nhạy cảm (email, số điện thoại...) bị che mặc định, chỉ mở qua `superadmin.sensitive.reveal`.
+- **User**: tự quản lý thiết bị của chính mình qua [Bảo mật & thiết bị](../../src/public/guide-content/user/08-bao-mat-thiet-bi.md), không xem được Audit Log hay Security Event.
 
 ## Tham chiếu mã nguồn
 

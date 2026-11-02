@@ -2,18 +2,25 @@
 
 [← Về Tổng quan nghiệp vụ](overview.md)
 
-Nghiệp vụ đặt món thuộc phía **Global User/Room User**, xử lý tại `CreateOrderAction` (đặt cho chính mình) và `CreateProxyOrdersAction` (đặt kèm đặt hộ đồng nghiệp).
+Nghiệp vụ đặt món xử lý tại `CreateOrderAction`, với ba cách đặt (`OrderPlacementType`):
+
+| Kiểu | Action | Ai thao tác |
+| --- | --- | --- |
+| `self` | `CreateOrderAction` | Thành viên đặt cho chính mình |
+| `proxy` | `CreateProxyOrdersAction` | Thành viên đặt kèm món cho đồng nghiệp (mục 4.2) |
+| `admin` | `PlaceOrderOnBehalfAction` | Admin của Room đặt thay một thành viên; Order đứng tên thành viên, áp dụng cùng quy tắc giá/tài trợ/hạn mức nợ, ghi thêm Admin đã đặt + Audit Log. Vẫn đặt được khi chiến dịch đang **khoá nhận đơn** |
 
 ## 4.1. Điều kiện để tạo được Order
 
 `CreateOrderAction::execute()` kiểm tra tuần tự:
 
 1. Campaign thuộc đúng Room của Room User (`campaign.room_id === roomUser.room_id`).
-2. Campaign đang **"orderable"** (thường là `Active` và chưa quá `deadline`).
+2. Campaign **nhận đơn**: `Campaign::isOrderable()` (`Active`, chưa quá `deadline`, **không bị khoá nhận đơn**); riêng Admin đặt hộ dùng `isOpenForOrders()` (bỏ qua khoá).
 3. `RoomUser.status === Active` **và** `GlobalUser.status === Active` — bị chặn ở 1 trong 2 cấp đều không đặt được.
-4. Danh sách `items` hợp lệ (không rỗng, trừ trường hợp tạo Order rỗng làm Parent cho đặt hộ).
+4. Danh sách `items` hợp lệ (không rỗng, trừ trường hợp tạo Order rỗng làm Parent cho đặt hộ); giá tính lại ở `OrderPricingService::priceLines()`.
+5. **Hạn mức nợ** của Room (nếu bật): tổng nợ đang dùng + giá trị đơn mới không được vượt trần (`OrderPricingService::enforceDebtPolicy()`).
 
-Toàn bộ được bọc trong `DB::transaction` với `lockForUpdate()` trên Campaign và Room để tránh race-condition khi nhiều người đặt cùng lúc (đặc biệt quan trọng với đánh số thứ tự đơn hàng theo ngày).
+Toàn bộ được bọc trong `DB::transaction` với `lockForUpdate()` trên Campaign và Room (và RoomUser khi kiểm tra hạn mức nợ) để tránh race-condition khi nhiều người đặt cùng lúc — quan trọng với mã đơn `ORD{room_id}-YYYYMMDD-{số thứ tự}` đánh theo ngày.
 
 ## 4.2. Đặt hộ (Proxy Order) — mô hình Parent/Child
 
@@ -47,8 +54,12 @@ stateDiagram-v2
 
 ## 4.4. Tuỳ chỉnh món & Giỏ hàng phía client
 
-Giỏ hàng (size, topping, số lượng, ghi chú) được giữ ở phía client cho tới khi checkout; server chỉ nhận payload cuối và **luôn tính lại giá từ `CampaignItem`/`CampaignItemSize`/`CampaignItemTopping` trong CSDL** — không tin tưởng giá client gửi lên, chống gian lận giá.
+Giỏ hàng (size, topping, số lượng, ghi chú) được giữ ở phía client cho tới khi checkout; server chỉ nhận payload cuối và **luôn tính lại giá từ `CampaignItem`/`CampaignItemSize`/`CampaignItemTopping` trong CSDL** (`OrderPricingService`) — không tin tưởng giá client gửi lên, chống gian lận giá.
+
+### Món "trả riêng"
+
+Một dòng món có thể được đánh dấu **trả riêng** (`order_items.is_self_paid`): dòng đó **không bao giờ được tài trợ**, người đặt tự trả kể cả khi chiến dịch được tài trợ toàn bộ. Phần phí ship/giảm giá của dòng trả riêng tính theo `Campaign.self_paid_price_basis` (`original` hoặc `campaign_prorated`) — xem [bài 6](06-chinh-sach-tai-tro.md).
 
 ## Tham chiếu mã nguồn
 
-`App\Actions\Order\CreateOrderAction`, `CreateProxyOrdersAction` · `App\Services\Order\ProxyOrderPolicy` · `App\Models\CampaignParticipant` · `App\Actions\Campaign\DeclineCampaignAction`, `RejoinCampaignAction` · `App\Events\OrderCreated`, `ProxyOrdersCreated` · Xem thao tác UI ở [Hướng dẫn User – bài 3](../guides/user/03-dat-mon-chien-dich.md).
+`App\Actions\Order\CreateOrderAction`, `CreateProxyOrdersAction`, `PlaceOrderOnBehalfAction` · `App\Services\Order\OrderPricingService`, `ProxyOrderPolicy` · `App\Enums\OrderPlacementType` · `App\Models\CampaignParticipant` · `App\Actions\Campaign\DeclineCampaignAction`, `RejoinCampaignAction` · `App\Events\OrderCreated`, `ProxyOrdersCreated` · Xem thao tác UI ở [Hướng dẫn User – bài 3](../../src/public/guide-content/user/03-dat-mon-chien-dich.md).

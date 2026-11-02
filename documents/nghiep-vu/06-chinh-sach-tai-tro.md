@@ -2,41 +2,45 @@
 
 [← Về Tổng quan nghiệp vụ](overview.md)
 
-Model `Campaign` định nghĩa **4 kiểu tài trợ** (`Campaign::SPONSOR_TYPE_*`), áp dụng để bù một phần/toàn bộ chi phí đặt món cho thành viên.
+Model `Campaign` khai báo 4 hằng số kiểu tài trợ (`Campaign::SPONSOR_TYPES`), nhưng **chỉ 2 kiểu dùng được**:
 
-| Hằng số | Giá trị | Ý nghĩa |
+| Hằng số | Giá trị | Trạng thái |
 | --- | --- | --- |
-| `SPONSOR_TYPE_NONE` | `none` | Không tài trợ |
-| `SPONSOR_TYPE_FULL` | `full` | Tài trợ 100% — có thể chỉ định nhiều Sponsor chia theo % |
-| `SPONSOR_TYPE_PER_ITEM` | `per_item` | Trợ giá cố định trên mỗi đơn (ví dụ "hỗ trợ tối đa 20.000đ/đơn") |
-| `SPONSOR_TYPE_BUDGET` | `budget` | Trích từ **một quỹ chung có hạn mức**, ai đặt trước dùng trước |
+| `SPONSOR_TYPE_NONE` | `none` | ✅ Không tài trợ — từng thành viên tự trả |
+| `SPONSOR_TYPE_FULL` | `full` | ✅ Tài trợ toàn bộ — một hoặc nhiều Sponsor chia theo % (`sponsor_allocations`) |
+| `SPONSOR_TYPE_PER_ITEM` | `per_item` | ⛔ Không tạo được: `StoreCampaignRequest`/`UpdateCampaignRequest` chỉ chấp nhận `none,full` |
+| `SPONSOR_TYPE_BUDGET` | `budget` | ⛔ Như trên |
 
-> **Ghi chú kỹ thuật**: màn hình **"Tạo Chiến Dịch Nhanh"** hiện tại của Admin chỉ có 2 lựa chọn khả dụng trong dropdown là *Không tài trợ* và *Tài trợ toàn bộ* (xem [Hướng dẫn Admin – bài 4](../guides/admin/04-quan-ly-chien-dich.md#43-chính-sách-tài-trợ-sponsor)); `per_item` và `budget` **có logic tính toán đầy đủ ở tầng backend** (`CreateOrderAction`) nhưng chưa có UI để Admin chọn trực tiếp trong luồng tạo nhanh — cần xác nhận với đội phát triển UI/API nào đang set 2 giá trị này trước khi coi là tính năng "đã hoàn thiện end-to-end".
+`per_item` và `budget` chỉ còn là hằng số + nhánh tính toán cũ trong `OrderPricingService::sponsorAmount()` (trợ giá cố định/đơn và quỹ dùng chung theo thứ tự đặt, giới hạn bởi `max_budget`) để đọc đúng dữ liệu cũ, bộ lọc danh sách chiến dịch và nội dung thông báo. Không xây tính năng mới dựa trên hai kiểu này khi chưa mở lại validation và UI.
 
-## 6.1. Công thức tính sponsor **lúc đặt món** (`CreateOrderAction`)
+## 6.1. Sponsor lúc đặt món
 
-```mermaid
-flowchart TD
-    Charge["charge = tổng giá món + topping trong đơn"] --> Type{sponsor_type}
-    Type -->|none| Z["sponsor = 0"]
-    Type -->|full| F["sponsor = charge (tài trợ hết)"]
-    Type -->|per_item| P["sponsor = min(charge, mức cố định/đơn đã cấu hình)"]
-    Type -->|budget| B["sponsor = min(charge, max_budget − Σ sponsor_amount\ncủa các Order trước đó trong campaign)"]
-```
+Khi đặt món, `OrderPricingService::sponsorAmount()` tính `sponsor_amount` dự kiến của đơn để hiển thị cho thành viên. Dòng **trả riêng** (`order_items.is_self_paid`) không bao giờ được tài trợ. Số chốt cuối cùng do lúc đóng chiến dịch quyết định (mục 6.2).
 
-Với `budget`, quỹ là **dùng chung theo thứ tự đặt món** — thành viên đặt sau khi quỹ đã cạn sẽ không còn được trợ giá (`sponsor = 0` khi phần dư ≤ 0).
+## 6.2. Quyết toán lúc đóng chiến dịch (`CloseCampaignAction`)
 
-## 6.2. Công thức quyết toán **lúc đóng chiến dịch** (`CloseCampaignAction`)
+### Tài trợ toàn bộ (`full` + có ít nhất một allocation)
 
-Khi tài trợ **toàn bộ (Full) với danh sách Sponsor theo %** — nợ được ghi cho **Sponsor**, không phải cho từng người đặt món:
+Dùng chung `CampaignSponsorshipCalculator` với mọi màn hình hiển thị số tài trợ, nên con số trên màn hình đúng bằng công nợ được tạo:
 
 ```
-netCampaignTotal = max(0, Σsubtotal + delivery_fee − discount)
-sponsorAmount[i] = round(netCampaignTotal × percentage[i] / 100)
+1. Phí ship và giảm giá của chiến dịch chia cho từng đơn theo tỉ lệ subtotal (phân bổ chính xác tới từng đồng).
+2. Mỗi đơn tách phần "trả riêng" và phần được tài trợ; phần ship/giảm giá của phần trả riêng
+   tính theo Campaign.self_paid_price_basis:
+     - original          : phần trả riêng tính theo giá gốc, không chịu ship/giảm giá
+     - campaign_prorated : ship/giảm giá chia theo tỉ lệ giữa phần trả riêng và phần được tài trợ
+3. pool = Σ phần được tài trợ (đã gồm ship − giảm giá tương ứng)
+4. share[i] = round(pool × percentage[i] / 100); sai số làm tròn dồn vào Sponsor đầu tiên
 ```
-Sai số làm tròn dồn vào Sponsor đầu tiên trong danh sách. Mọi Order trong campaign được set `final_amount = 0` (người đặt không phải trả).
 
-Khi **không tài trợ hoặc tài trợ một phần** — nợ được ghi cho **từng thành viên**, theo tỉ lệ đóng góp vào tổng đơn:
+Kết quả:
+- Mỗi Order: `sponsor_amount` = phần được tài trợ, `final_amount` = **phần trả riêng** (bằng 0 nếu không có món trả riêng), `status = Completed`.
+- Mỗi Sponsor: một `Debt` với `original_amount` (tiền món) + `adjustment_amount` (ship − giảm giá) = `remaining_amount`.
+- Người có món trả riêng: một `Debt` cho phần đó. Nếu Sponsor cũng tự đặt món trả riêng, hai khoản được gộp vào **một** Debt.
+
+### Không tài trợ (`none`)
+
+Nợ ghi cho **từng thành viên** theo tỉ lệ đóng góp vào tổng đơn:
 
 ```
 ratio[user]        = subtotal[user] / grossSubtotal
@@ -44,16 +48,18 @@ deliveryFee[user]  = round(delivery_fee × ratio[user])
 discount[user]     = round(discount × ratio[user])
 finalAmount[user]  = max(0, subtotal[user] + deliveryFee[user] − discount[user] − sponsorAmount[user])
 ```
-`sponsorAmount[user]` ở công thức này là **tổng đã cộng dồn từ lúc đặt món** (mục 6.1), không tính lại theo rule mới — nghĩa là thay đổi chính sách tài trợ sau khi thành viên đã đặt **không** hồi tố cho các đơn cũ.
+
+Sai số làm tròn được bù vào người đầu tiên để tổng khớp chính xác hoá đơn.
 
 ## 6.3. Bảng quyết định: ai bị ghi nợ?
 
 | Chính sách | Ai nợ? | Khi nào phát sinh |
 | --- | --- | --- |
-| `none` | Từng thành viên (100% giá trị đơn) | Lúc đóng chiến dịch |
-| `full` | Sponsor (theo % cam kết) | Lúc đóng chiến dịch |
-| `per_item` / `budget` | Từng thành viên (phần chưa được trợ giá) | Lúc đóng chiến dịch, dựa trên `sponsor_amount` đã chốt từ lúc đặt món |
+| `none` | Từng thành viên (100% giá trị đơn + phần ship/giảm giá) | Lúc đóng chiến dịch |
+| `full` | Sponsor (theo % cam kết) + người đặt cho phần **trả riêng** | Lúc đóng chiến dịch |
+
+Chọn nhà tài trợ ngẫu nhiên: [bài 14 – Vòng quay may mắn](14-vong-quay-may-man.md). Thống kê và huy hiệu Top 3 nhà tài trợ mỗi tháng: [bài 15](15-huy-hieu-nha-tai-tro-thanh-tich.md).
 
 ## Tham chiếu mã nguồn
 
-`App\Models\Campaign` (hằng số `SPONSOR_TYPE_*`, cột `sponsor_allocations`) · `App\Actions\Order\CreateOrderAction::recalculateSponsor` (đặt tên nội bộ tương tự nhưng khác class với `UpdateOrderAction`) · `App\Actions\Campaign\CloseCampaignAction` · Xem thêm hệ quả công nợ ở [bài 7](07-thanh-toan-cong-no.md).
+`App\Models\Campaign` (hằng số `SPONSOR_TYPE_*`, `SELF_PAID_PRICE_BASIS_*`, cột `sponsor_allocations`) · `App\Services\Campaign\CampaignSponsorshipCalculator` · `App\Services\Order\OrderPricingService::sponsorAmount()` · `App\Actions\Campaign\CloseCampaignAction` · `App\Http\Requests\StoreCampaignRequest`, `UpdateCampaignRequest` · Xem thêm hệ quả công nợ ở [bài 7](07-thanh-toan-cong-no.md).

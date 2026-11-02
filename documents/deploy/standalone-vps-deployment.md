@@ -2,7 +2,7 @@
 
 Tài liệu này hướng dẫn chi tiết cách cài đặt và cấu hình từng dịch vụ riêng biệt trực tiếp trên hệ điều hành **Ubuntu 22.04 / 24.04 LTS** mà không sử dụng Docker, nhằm tối ưu hóa 100% hiệu năng phần cứng cho hệ thống **DrinkFlow Enterprise**.
 
-> **Cập nhật:** tài liệu đã được đối chiếu với code hiện tại (nhánh `master`). Các điểm khác so với bản cũ: không chạy `db:seed` đầy đủ trên production, có cấu hình SMTP cho email OTP, cấu hình Chrome cho Food Crawler, bảo mật `.env`/Redis/session, và script deploy có sao lưu DB + chế độ bảo trì.
+> **Cập nhật 2026-11-02:** đối chiếu lại với code nhánh `master`. Thay đổi chính: `db:seed --force` đầy đủ là an toàn trên production (không tạo tài khoản demo) và bắt buộc để có danh mục quyền; tạo Superadmin bằng model `Superadmin` + role `full`; thêm worker cho queue `database` (sự kiện realtime/socket); app chạy giờ **UTC** (`APP_DISPLAY_TIMEZONE` chỉ dùng để hiển thị); health check realtime cần header bí mật; sao lưu cả `storage/app/private`, `storage/fonts` và `.env`.
 
 ---
 
@@ -221,7 +221,7 @@ sudo mysql
 Trong dấu nhắc lệnh `mysql`, thay `MAT_KHAU_DATABASE_THAT_MANH` bằng mật khẩu vừa tạo:
 
 ```sql
-CREATE DATABASE drinkflow CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE drinkflow_prod CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE USER 'drinkflow_user'@'127.0.0.1'
     IDENTIFIED BY 'MAT_KHAU_DATABASE_THAT_MANH';
@@ -334,24 +334,16 @@ repo là **`master`** (không phải `main`).
    git status --short
    ```
 
-   Mọi file có dấu `??` mà code đang dùng **phải được `git add` + commit**. Đặc biệt
-   `src/app/Http/Middleware/SecurityHeaders.php` được `bootstrap/app.php` tham chiếu:
-   nếu thiếu file này trên server, **toàn bộ website sẽ lỗi 500**. Các file mới hiện có
-   gồm (không đầy đủ): `src/app/Support/Security/`, `src/app/Exports/Concerns/`,
-   `src/app/Enums/PaymentMethod.php`, `src/app/Services/FoodCrawler/Browser/network-guard.cjs`,
-   `src/resources/js/shared/escape-html.js`, `src/resources/views/admin/partials/`.
+   Mọi file có dấu `??` mà code đang dùng **phải được `git add` + commit** (class, migration,
+   view, JS mới...). Thiếu một class được tham chiếu (ví dụ middleware trong `bootstrap/app.php`)
+   sẽ làm **toàn bộ website lỗi 500** trên server.
 
-2. Chạy toàn bộ test:
+2. Chạy toàn bộ test và chỉ deploy khi tất cả PASS:
 
    ```bash
    cd src
    php artisan test
    ```
-
-   Hiện `NormalizeDongSignMigrationTest` thất bại vì thiếu file migration
-   `database/migrations/2026_09_20_000000_normalize_dong_sign_in_stored_texts.php`.
-   Nếu đây là migration cần chạy trên production, hãy thêm nó vào repo trước khi push;
-   nếu không, xử lý test đó trước khi deploy.
 
 3. Push:
 
@@ -367,7 +359,7 @@ sudo chown -R $USER:www-data /var/www/drinkflow
 cd /var/www/drinkflow
 
 # Repo private: dùng deploy key hoặc Personal Access Token khi git hỏi thông tin
-git clone https://github.com/trungthk/Drinkflow-New.git .
+git clone https://github.com/trunglt706/DrinkFlow.git .
 git checkout master
 ```
 
@@ -416,7 +408,7 @@ APP_ENV=production          # BẮT BUỘC là production: nếu để "local", 
 APP_KEY=
 APP_DEBUG=false             # BẮT BUỘC false
 APP_URL=https://drinkflow.yourcompany.com
-APP_TIMEZONE=Asia/Ho_Chi_Minh
+APP_DISPLAY_TIMEZONE=Asia/Ho_Chi_Minh   # Chỉ dùng để hiển thị; DB và scheduler luôn chạy UTC (config/app.php)
 APP_LOCALE=vi
 
 LOG_CHANNEL=daily
@@ -480,18 +472,24 @@ FOOD_CRAWLER_USER_DATA_DIR=/var/www/drinkflow/src/storage/app/chrome-profile
 PLATFORM_DEFAULT_PACKAGE=starter
 PLATFORM_INVOICE_DUE_DAYS=7
 PLATFORM_INVOICE_GRACE_DAYS=7
-# Chỉ bật khi đã cấu hình cron `platform:enforce-overdue` và muốn tạm khoá tự động
+# Chỉ bật khi muốn lệnh `billing:enforce-overdue` (scheduler, 01:45 UTC) tạm khoá tự động
 PLATFORM_AUTO_SUSPEND=false
 PLATFORM_PAYMENTS_ENABLED=false
 PLATFORM_PAYMENTS_CHECKOUT_URL=
 PLATFORM_PAYMENTS_WEBHOOK_SECRET=
 
-# Tài khoản chủ nền tảng do `php artisan db:seed` tạo (chỉ chạy ở môi trường không phải production)
-# Giá trị đăng nhập không nằm trong mã nguồn: để trống sẽ sinh ngẫu nhiên và in một lần ra console.
-PLATFORM_SEED_OWNER_EMAIL=superadmin@drinkflow.local
-PLATFORM_SEED_OWNER_NAME="DrinkFlow Superadmin"
-PLATFORM_SEED_OWNER_VALUE=
+# Thẻ trạng thái Supervisor trên dashboard giám sát của Superadmin (tùy chọn).
+# Chỉ bật khi www-data được phép chạy `supervisorctl status` (socket của Supervisor mặc định chỉ root dùng được).
+SUPERVISOR_ENABLED=false
+SUPERVISOR_PROGRAM="drinkflow-worker:*"
+
+# Font Nhật cho hoá đơn PDF tiếng Nhật (tùy chọn): đặt NotoSansJP-Regular.ttf vào storage/fonts/
+# (thư mục này không nằm trong Git). Thiếu font thì hoá đơn tiếng Nhật in nhãn tiếng Anh.
+# PDF_CJK_FONT_PATH=/var/www/drinkflow/src/storage/fonts/NotoSansJP-Regular.ttf
 ```
+
+> Không cần khai báo `PLATFORM_SEED_OWNER_*` trên production: `DatabaseSeeder` chỉ tạo tài khoản chủ nền tảng
+> khi `APP_ENV` khác `production`.
 
 Khóa quyền đọc `.env` (chỉ chủ sở hữu và `www-data` được đọc; Realtime Gateway cũng đọc file này):
 
@@ -522,9 +520,10 @@ php artisan key:generate --force
 sudo -u www-data php artisan package:discover --ansi
 sudo -u www-data php artisan migrate --force
 
-# Chỉ nạp dữ liệu tham chiếu (phiên bản hệ thống). KHÔNG chạy `db:seed` đầy đủ trên production
-# vì seeder demo tạo tài khoản admin/superadmin với mật khẩu công khai (xem 4.5).
-sudo -u www-data php artisan db:seed --class=VersionSeeder --force
+# Dữ liệu tham chiếu: danh mục quyền + role "full", gói dịch vụ mẫu, phiên bản hệ thống, danh mục trò chơi.
+# BẮT BUỘC: thiếu danh mục quyền thì Superadmin tạo ở 4.5 không có quyền nào.
+# An toàn khi chạy lại; với APP_ENV=production seeder KHÔNG tạo tài khoản đăng nhập nào.
+sudo -u www-data php artisan db:seed --force
 
 # Tạo symlink public/storage (chạy bằng user hiện tại vì thư mục public/ thuộc user này)
 php artisan storage:link
@@ -536,13 +535,10 @@ sudo -u www-data php artisan view:cache
 sudo -u www-data php artisan event:cache
 ```
 
-> Từ phiên bản này, `DatabaseSeeder` tự bỏ qua dữ liệu demo khi `APP_ENV=production` và
-> chỉ gọi `VersionSeeder`. Chạy `db:seed --class=VersionSeeder` vẫn là cách rõ ràng nhất.
-
 ### 4.5. Tạo tài khoản Superadmin đầu tiên
 
-Không dùng tài khoản demo trong seeder (`superadmin@drinkflow.local` / `drinkflow2026`).
-Tạo tài khoản thật với mật khẩu mạnh (tối thiểu 12 ký tự); mật khẩu được nhập ẩn, không lưu vào lịch sử shell:
+Trên production không có tài khoản nào được seed. Tạo Superadmin thật với mật khẩu mạnh (tối thiểu 12 ký tự),
+gán role `full` và toàn bộ quyền; mật khẩu được nhập ẩn, không lưu vào lịch sử shell:
 
 ```bash
 cd /var/www/drinkflow/src
@@ -551,21 +547,24 @@ read -rp "Email superadmin: " SA_EMAIL
 read -rsp "Mật khẩu (>= 12 ký tự): " SA_PASS; echo
 
 SA_EMAIL="$SA_EMAIL" SA_PASS="$SA_PASS" sudo -E -u www-data php artisan tinker --execute='
-App\Models\AdminAccount::create([
+$role = App\Models\SuperadminRole::where("code", "full")->firstOrFail();
+$sa = App\Models\Superadmin::create([
     "name" => "Superadmin",
     "email" => strtolower(getenv("SA_EMAIL")),
     "password" => getenv("SA_PASS"),
-    "role" => "superadmin",
     "status" => "active",
 ]);
+$sa->forceFill(["superadmin_role_id" => $role->id])->save();
+app(App\Services\Authorization\PermissionCatalogService::class)->grantAll($sa);
+$sa->flushPermissionCache();
 echo "OK\n";
 '
 
 unset SA_EMAIL SA_PASS
 ```
 
-Sau khi đăng nhập lần đầu tại `/admin/login`, tạo các admin phòng từ trang Superadmin,
-và bật xác thực 2 bước (Google Workspace) trong trang hồ sơ admin nếu tổ chức dùng Google Workspace.
+Đăng nhập Superadmin tại `/superadmin/login` (Admin phòng đăng nhập tại `/admin/login`), sau đó tạo
+Agent/Admin phòng từ trang Superadmin.
 
 ---
 
@@ -725,8 +724,9 @@ curl -s -o /dev/null -D - -H "Accept-Encoding: gzip" "https://drinkflow.yourcomp
 > Các header bảo mật của trang (`X-Frame-Options`, `Content-Security-Policy: frame-ancestors`,
 > `Referrer-Policy`, `Permissions-Policy`, HSTS khi chạy HTTPS) do **ứng dụng Laravel** gắn vào
 > (middleware `SecurityHeaders`), không cần thêm trong Nginx.
-> Nếu đặt website sau Cloudflare hoặc reverse proxy khác, cần cấu hình Trusted Proxies của
-> Laravel để IP client (dùng cho rate limit) và scheme HTTPS được nhận đúng.
+> Nếu đặt website sau Cloudflare (đám mây cam) hoặc reverse proxy khác, phải cấu hình `TRUSTED_PROXIES`
+> theo [trusted-proxies.md](./trusted-proxies.md) để IP client (rate limit, allowlist/blocklist IP của Room)
+> được nhận đúng.
 
 Kích hoạt site:
 
@@ -792,7 +792,25 @@ numprocs=2
 redirect_stderr=true
 stdout_logfile=/var/www/drinkflow/src/storage/logs/worker.log
 stopwaitsecs=3600
+
+[program:drinkflow-worker-db]
+process_name=%(program_name)s_%(process_num)02d
+command=php /var/www/drinkflow/src/artisan queue:work database --sleep=1 --tries=3 --max-time=3600
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=www-data
+numprocs=1
+redirect_stderr=true
+stdout_logfile=/var/www/drinkflow/src/storage/logs/worker-db.log
+stopwaitsecs=60
 ```
+
+> **Bắt buộc có cả 2 worker.** Các listener đẩy sự kiện realtime (`PublishRealtimeEvent`,
+> `PublishSuperadminNotification`) luôn dùng kết nối queue `database` (bảng `jobs`), bất kể
+> `QUEUE_CONNECTION=redis`. Thiếu `drinkflow-worker-db` thì thông báo vẫn lưu trong DB nhưng
+> **không được đẩy qua socket**, bảng `jobs` phình dần.
 
 ### 6.3. Cấu hình Node.js Socket.IO Realtime Server
 
@@ -849,6 +867,11 @@ Kiểm tra danh sách tác vụ đã lên lịch:
 ```bash
 sudo -u www-data php /var/www/drinkflow/src/artisan schedule:list
 ```
+
+> Giờ trong `routes/console.php` là **UTC** (`config/app.php` cố định `timezone = UTC`), không phụ thuộc
+> timezone của VPS. Ví dụ `drinkflow:calculate-monthly-sponsors` (thống kê + thông báo top 3 nhà tài trợ)
+> chạy 00:15 UTC ngày 1 = 07:15 giờ Việt Nam. Các lệnh theo "giờ của phòng" (sinh nhật, dịp lễ, nhắc nợ,
+> tổng kết năm) chạy mỗi giờ và tự đối chiếu timezone của từng phòng.
 
 ---
 
@@ -917,7 +940,7 @@ artisan event:cache
 echo "🔄 [8/9] Khởi động lại Worker, Realtime & PHP-FPM..."
 artisan queue:restart
 sudo supervisorctl restart drinkflow-realtime
-sudo supervisorctl restart 'drinkflow-worker:*'
+sudo supervisorctl restart 'drinkflow-worker:*' 'drinkflow-worker-db:*'
 # BẮT BUỘC: opcache.validate_timestamps=0 nên PHP-FPM chỉ nhận code, route và config mới sau khi reload.
 # Thiếu bước này, web vẫn chạy bản cũ (ví dụ /captcha/api/contact trả 404) dù `php artisan route:list` đã đúng.
 sudo systemctl reload php8.3-fpm
@@ -1037,20 +1060,23 @@ Cách đọc kết quả:
 
 ## 9. Sao lưu Định kỳ
 
-Sao lưu hằng ngày cơ sở dữ liệu và ảnh người dùng tải lên (`storage/app/public`):
+Sao lưu hằng ngày cơ sở dữ liệu, file tải lên (`storage/app/public` **và** `storage/app/private`),
+font PDF (`storage/fonts`, không có trong Git) và `.env` (chứa `APP_KEY` – thiếu khoá này thì dữ liệu
+đã mã hoá như cấu hình kênh thông báo, tích hợp ngân hàng không giải mã được):
 
 ```bash
-sudo mkdir -p /var/backups/drinkflow
+sudo mkdir -p /var/backups/drinkflow && sudo chmod 700 /var/backups/drinkflow
 sudo crontab -e
 ```
 
 ```cron
-30 2 * * * mysqldump --single-transaction --routines drinkflow_prod | gzip > /var/backups/drinkflow/db-$(date +\%Y\%m\%d).sql.gz
-40 2 * * * tar -czf /var/backups/drinkflow/uploads-$(date +\%Y\%m\%d).tar.gz -C /var/www/drinkflow/src/storage/app public
+30 2 * * * mysqldump --single-transaction --quick --routines --triggers drinkflow_prod | gzip > /var/backups/drinkflow/db-$(date +\%Y\%m\%d).sql.gz
+40 2 * * * tar -czf /var/backups/drinkflow/files-$(date +\%Y\%m\%d).tar.gz -C /var/www/drinkflow/src --exclude=storage/app/chrome-profile storage/app storage/fonts .env
 50 2 * * * find /var/backups/drinkflow -type f -mtime +14 -delete
 ```
 
-Nên đồng bộ thư mục `/var/backups/drinkflow` sang nơi lưu trữ ngoài VPS, và thử khôi phục định kỳ.
+Bản sao lưu nằm trên cùng VPS sẽ mất theo VPS. Đồng bộ sang VPS/kho lưu trữ khác và diễn tập khôi phục
+định kỳ theo [vps-migration-backup.md](./vps-migration-backup.md) (mục 9).
 
 ---
 
@@ -1065,8 +1091,12 @@ sudo ss -ltnp | grep -E ':(3306|6379|3001)\b'
 # 2. Tiến trình nền đang RUNNING
 sudo supervisorctl status
 
-# 3. Realtime Gateway phản hồi nội bộ
-curl -s http://127.0.0.1:3001/health
+# 3. Realtime Gateway phản hồi nội bộ (endpoint /health yêu cầu header bí mật; thiếu header sẽ trả 401)
+RT_SECRET=$(sudo grep -E '^REALTIME_INTERNAL_SECRET=' /var/www/drinkflow/src/.env | cut -d= -f2- | tr -d '"')
+curl -s -H "X-Realtime-Secret: $RT_SECRET" http://127.0.0.1:3001/health; echo; unset RT_SECRET
+
+# 3a. Không còn job realtime tồn đọng ở queue database (kỳ vọng số nhỏ, giảm dần). Nếu tăng: kiểm tra drinkflow-worker-db
+sudo mysql drinkflow_prod -N -e "SELECT COUNT(*) FROM jobs;"
 
 # 3b. File client Socket.IO đi qua Nginx tới Realtime (kỳ vọng HTTP 200). Nếu 404: thiếu `^~` ở location /socket.io/
 curl -sI https://drinkflow.yourcompany.com/socket.io/socket.io.js | head -n1
@@ -1075,8 +1105,8 @@ curl -sI https://drinkflow.yourcompany.com/socket.io/socket.io.js | head -n1
 #    X-Content-Type-Options, Referrer-Policy và Strict-Transport-Security)
 curl -sI https://drinkflow.yourcompany.com/admin/login | grep -iE 'x-frame|content-security|nosniff|referrer|strict-transport'
 
-# 5. Không còn tài khoản demo (kỳ vọng in ra 0)
-sudo -u www-data php /var/www/drinkflow/src/artisan tinker --execute='echo App\Models\AdminAccount::where("email", "like", "%@drinkflow.local")->count();'
+# 5. Không có tài khoản seed/demo (kỳ vọng in ra 0)
+sudo -u www-data php /var/www/drinkflow/src/artisan tinker --execute='echo App\Models\Superadmin::where("email", "like", "%@drinkflow.local")->count() + App\Models\Admin::where("email", "like", "%@drinkflow.local")->count();'
 
 # 6. Gửi thử email (thay địa chỉ nhận) - cần thiết để OTP quên mật khẩu hoạt động
 sudo -u www-data php /var/www/drinkflow/src/artisan tinker --execute='Mail::raw("DrinkFlow mail test", fn ($m) => $m->to("you@yourcompany.com")->subject("DrinkFlow mail test")); echo "sent";'
@@ -1091,8 +1121,8 @@ sudo -u www-data google-chrome-stable --headless=new --no-sandbox \
 
 Kiểm tra thủ công trên trình duyệt:
 
-1. Mở `/admin/login`: có hiển thị captcha (nếu không, `APP_ENV` đang là `local`).
-2. Đăng nhập superadmin, mở một phòng, thực hiện một thao tác ghi (ví dụ đổi trạng thái order).
+1. Mở `/admin/login` và `/superadmin/login`: có hiển thị captcha (nếu không, `APP_ENV` đang là `local`).
+2. Đăng nhập admin phòng, mở một phòng, thực hiện một thao tác ghi (ví dụ đổi trạng thái order).
    Nếu gặp lỗi `419 Page Expired`, tải lại trang; CSRF hiện đã được bắt buộc cho toàn bộ
    khu vực admin.
 3. Mở DevTools > Network > WS: kết nối `/socket.io/` thành công (mã 101).
@@ -1125,7 +1155,7 @@ gunzip -c /var/backups/drinkflow/pre-deploy-YYYYMMDD-HHMMSS.sql.gz | sudo mysql 
 
 # 4. Làm mới cache, khởi động lại tiến trình, tắt bảo trì
 sudo -u www-data php src/artisan optimize:clear
-sudo supervisorctl restart drinkflow-realtime 'drinkflow-worker:*'
+sudo supervisorctl restart drinkflow-realtime 'drinkflow-worker:*' 'drinkflow-worker-db:*'
 sudo systemctl reload php8.3-fpm
 sudo -u www-data php src/artisan up
 ```
