@@ -93,7 +93,19 @@ class MonthlySponsorStatisticsService
      */
     public function previousMonthHonors(Room $room): array
     {
-        $month = $this->previousMonth();
+        return $this->monthHonors($room, $this->previousMonth());
+    }
+
+    /**
+     * Persisted top 3 sponsors of one room/month (same ordering as the dashboard podium).
+     *
+     * @param Room $room Room.
+     * @param CarbonImmutable $month Any day of the month.
+     * @return array{month: string, sponsors: list<array{name: string, amount: int, campaigns: int}>}
+     */
+    public function monthHonors(Room $room, CarbonImmutable $month): array
+    {
+        $month = $month->startOfMonth();
         $sponsors = $this->podiumQuery($room, $month)
             ->with('roomUser.globalUser')
             ->get()

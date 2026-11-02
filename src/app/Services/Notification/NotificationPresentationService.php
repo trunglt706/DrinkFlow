@@ -379,6 +379,7 @@ class NotificationPresentationService
             str_starts_with($type, 'payment.'), str_starts_with($type, 'debt.') => 'payments',
             str_starts_with($type, 'security.'), $type === NotificationType::DeviceNew->value => 'security',
             $type === NotificationType::YearRecap->value => 'auto_awesome',
+            $type === NotificationType::SponsorHonors->value => 'military_tech',
             default => 'notifications',
         };
     }

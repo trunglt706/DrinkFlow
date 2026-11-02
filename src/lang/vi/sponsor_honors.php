@@ -34,4 +34,9 @@ return [
     'recalculated' => 'Đã thống kê lại: :count nhà tài trợ.',
     'recalculated_empty' => 'Đã thống kê lại nhưng tháng trước chưa có nhà tài trợ nào.',
     'recalculate_rate_limited' => 'Bạn đã thống kê lại quá nhiều lần. Vui lòng thử lại sau :minutes phút.',
+    'notify_title' => '🏅 Top 3 nhà tài trợ tháng :month',
+    'notify_body' => 'Cảm ơn những người đã tiếp năng lượng cho phòng :room:',
+    'notify_channel' => '🏅 Top 3 nhà tài trợ tháng :month của phòng :room đã nhận huy hiệu:',
+    'notify_line' => ':medal TOP :rank · :name · :amount',
+    'notify_link' => 'Xem bảng vinh danh: :url',
 ];

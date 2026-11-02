@@ -365,6 +365,67 @@ class MonthlySponsorStatisticsTest extends TestCase
         return $admin;
     }
 
+    public function test_command_announces_top_three_via_web_socket_and_channels_once_per_room_and_month(): void
+    {
+        $this->travelTo(now()->setDate(2026, 10, 1)->setTime(0, 15));
+        $room = Room::create(['name' => 'Coffee', 'slug' => 'honors-notify', 'status' => 'active']);
+        foreach ([10000, 40000, 30000, 20000] as $index => $amount) {
+            $this->sponsorship($room, $this->member($room, 'Sponsor '.$index), $amount, '2026-09-15');
+        }
+        $this->member($room, 'Watcher');
+        $left = $this->member($room, 'Left');
+        $left->update(['status' => 'removed']);
+        $quiet = Room::create(['name' => 'Quiet', 'slug' => 'honors-quiet', 'status' => 'active']);
+        $this->member($quiet, 'Nobody');
+        $sent = [];
+        $this->mock(\App\Services\Notification\RoomNotificationChannelDispatcher::class, function ($mock) use (&$sent): void {
+            $mock->shouldReceive('dispatch')->andReturnUsing(function (Room $room, array $payload) use (&$sent): int {
+                $sent[] = $payload;
+
+                return 2;
+            });
+        });
+        \Illuminate\Support\Facades\Event::fake([\App\Events\UserNotificationCreated::class]);
+
+        $this->artisan('drinkflow:calculate-monthly-sponsors')
+            ->expectsOutput('Announced the top 3 sponsors in 1 room(s).')->assertSuccessful();
+        $this->artisan('drinkflow:calculate-monthly-sponsors')
+            ->expectsOutput('Announced the top 3 sponsors in 0 room(s).')->assertSuccessful();
+
+        // One gateway message listing the podium in medal order; the 4th sponsor is not listed.
+        $this->assertCount(1, $sent);
+        $this->assertSame('sponsor.honors', $sent[0]['event']);
+        $this->assertSame(route('user.dashboard', $room), $sent[0]['url']);
+        $this->assertMatchesRegularExpression('/TOP 1 · Sponsor 1.*\n.*TOP 2 · Sponsor 2.*\n.*TOP 3 · Sponsor 3/u', $sent[0]['message']);
+        $this->assertStringNotContainsString('Sponsor 0', $sent[0]['message']);
+
+        // One in-app notification (pushed over the socket) per active member, none in the empty room.
+        $notifications = \App\Models\UserNotification::query()->where('type', 'sponsor.honors')->get();
+        $this->assertCount(5, $notifications);
+        $this->assertNotContains($left->id, $notifications->pluck('room_user_id')->all());
+        $this->assertStringContainsString('Sponsor 1', (string) $notifications->first()->body);
+        $this->assertSame('2026-09', $notifications->first()->data['month']);
+        \Illuminate\Support\Facades\Event::assertDispatchedTimes(\App\Events\UserNotificationCreated::class, 5);
+        $this->assertDatabaseHas('room_sponsor_honor_notifications', [
+            'room_id' => $room->id, 'month' => '2026-09-01', 'member_count' => 5, 'channel_count' => 2,
+        ]);
+        $this->assertDatabaseMissing('room_sponsor_honor_notifications', ['room_id' => $quiet->id]);
+    }
+
+    public function test_no_notify_option_only_rebuilds_the_statistics(): void
+    {
+        $room = Room::create(['name' => 'Silent', 'slug' => 'honors-silent', 'status' => 'active']);
+        $this->sponsorship($room, $this->member($room, 'Sponsor'), 10000, '2026-09-10');
+        $this->mock(\App\Services\Notification\RoomNotificationChannelDispatcher::class)->shouldNotReceive('dispatch');
+
+        $this->artisan('drinkflow:calculate-monthly-sponsors', ['--month' => '2026-09', '--no-notify' => true])
+            ->doesntExpectOutputToContain('Announced')->assertSuccessful();
+
+        $this->assertDatabaseCount('monthly_sponsor_statistics', 1);
+        $this->assertDatabaseCount('room_sponsor_honor_notifications', 0);
+        $this->assertSame(0, \App\Models\UserNotification::query()->where('type', 'sponsor.honors')->count());
+    }
+
     private function member(Room $room, string $name): RoomUser
     {
         $user = GlobalUser::create(['name' => $name, 'email' => uniqid('honors-', true).'@example.test', 'status' => 'active']);

@@ -34,4 +34,9 @@ return [
     'recalculated' => '再集計しました：スポンサー :count 人。',
     'recalculated_empty' => '再集計しましたが、先月のスポンサーはいませんでした。',
     'recalculate_rate_limited' => '再集計の回数が多すぎます。:minutes 分後にもう一度お試しください。',
+    'notify_title' => '🏅 :month のトップ3スポンサー',
+    'notify_body' => ':room を盛り上げてくれた皆さん、ありがとうございます：',
+    'notify_channel' => '🏅 :room の :month トップ3スポンサーがバッジを獲得しました：',
+    'notify_line' => ':medal TOP :rank · :name · :amount',
+    'notify_link' => '感謝の殿堂を見る：:url',
 ];

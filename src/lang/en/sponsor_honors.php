@@ -34,4 +34,9 @@ return [
     'recalculated' => 'Recalculated: :count sponsors.',
     'recalculated_empty' => 'Recalculated, but there were no sponsors last month.',
     'recalculate_rate_limited' => 'You have recalculated too many times. Please try again in :minutes minutes.',
+    'notify_title' => '🏅 Top 3 sponsors of :month',
+    'notify_body' => 'Thank you to the people who fueled :room:',
+    'notify_channel' => '🏅 :room\'s top 3 sponsors of :month have earned their badges:',
+    'notify_line' => ':medal TOP :rank · :name · :amount',
+    'notify_link' => 'See the hall of thanks: :url',
 ];
