@@ -37,6 +37,15 @@ class VersionSeeder extends Seeder
                 'important' => true,
                 'created_by_superadmin_id' => $superadmin?->id,
             ],
+            [
+                'version' => 'v2.4.1',
+                'title' => 'Utilities, Room Fund, Bank Sync & Monthly Sponsor Honors',
+                'changelog' => 'Bản phát hành v2.4.1: khu Tiện ích (trước là Trò chơi, đường dẫn mới /me/utilities) với Game vui — room chơi, bộ luật tính điểm, trang chơi công khai, điểm tổng bằng 0, kênh thông báo riêng (Slack/Telegram/Chatwork/Webhook) tự gửi bảng xếp hạng khi kết thúc room và nút gửi lại kết quả; quỹ phòng và tự đối soát chuyển khoản qua SePay; nhắc nợ tự động 1-3-7 ngày có tạm hoãn; tường lời chúc, nhạc nền tải lên cho trang sự kiện; đánh giá món; tổng kết năm; thông báo Top 3 nhà tài trợ tháng trước qua web, socket và kênh ngoài; biểu đồ tổng quan theo tháng; thực đơn dạng lưới/danh sách và nhiều cải tiến khác.',
+                'release_date' => Carbon::createFromFormat('d/m/Y', '02/11/2026')->toDateString(),
+                'force_refresh' => false,
+                'important' => true,
+                'created_by_superadmin_id' => $superadmin?->id,
+            ],
         ];
 
         foreach ($versions as $item) {

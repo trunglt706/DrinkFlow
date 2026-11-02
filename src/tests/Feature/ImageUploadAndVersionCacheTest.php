@@ -69,8 +69,12 @@ class ImageUploadAndVersionCacheTest extends TestCase
             'version' => 'v2.4.0',
             'title' => 'Room Events, Lucky Draw & Yearly Achievements',
         ]);
+        $this->assertDatabaseHas('versions', [
+            'version' => 'v2.4.1',
+            'title' => 'Utilities, Room Fund, Bank Sync & Monthly Sponsor Honors',
+        ]);
 
-        $this->assertSame('v2.4.0', Version::getLatestVersionString());
+        $this->assertSame('v2.4.1', Version::getLatestVersionString());
     }
 
     public function test_version_model_latest_string_caches_and_invalidates_on_crud(): void
