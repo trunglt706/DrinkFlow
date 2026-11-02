@@ -531,7 +531,6 @@ Tài liệu triển khai chi tiết nằm trong thư mục `documents/deploy/`:
 - [Tổng quan triển khai](documents/deploy/README.md)
 - [Triển khai standalone trên VPS](documents/deploy/standalone-vps-deployment.md)
 - [Sao lưu & di chuyển VPS / domain](documents/deploy/vps-migration-backup.md)
-- [Ghi chú Docker Compose](documents/deployment-docker-compose.md)
 
 Checklist production tối thiểu:
 
