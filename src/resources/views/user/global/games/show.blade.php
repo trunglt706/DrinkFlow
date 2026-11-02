@@ -18,11 +18,15 @@
         </div>
       </div>
       <div class="flex flex-wrap gap-2">
-        <a href="{{ route('user.me.games.rule-sets.index', $game) }}" class="inline-flex h-11 flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+        <a href="{{ route('user.me.utilities.rule-sets.index', $game) }}" class="inline-flex h-11 flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
           <span class="material-symbols-outlined text-[18px]" aria-hidden="true">rule</span>
           {{ __('games.history.rule_sets') }}
         </a>
-        <a href="{{ route('user.me.games.rooms.create', $game) }}" data-create-room class="inline-flex h-11 flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl bg-[#006948] px-5 text-sm font-semibold text-white shadow-xs hover:bg-[#005137]">
+        <a href="{{ route('user.me.utilities.channels.index') }}" class="inline-flex h-11 flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">campaign</span>
+          {{ __('games.channels.title') }}
+        </a>
+        <a href="{{ route('user.me.utilities.rooms.create', $game) }}" data-create-room class="inline-flex h-11 flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl bg-[#006948] px-5 text-sm font-semibold text-white shadow-xs hover:bg-[#005137]">
           <span class="material-symbols-outlined text-[18px]" aria-hidden="true">add</span>
           {{ __('games.history.create') }}
         </a>
@@ -32,7 +36,7 @@
     <nav class="flex gap-2 overflow-x-auto" aria-label="{{ __('global.common.filter') }}">
       @foreach([null => __('games.history.filter_all'), 'active' => __('games.history.filter_active'), 'finished' => __('games.history.filter_finished')] as $value => $label)
         @php $isCurrent = ($filter ?? '') === (string) $value; @endphp
-        <a href="{{ route('user.me.games.show', array_filter(['game' => $game->slug, 'status' => $value ?: null])) }}"
+        <a href="{{ route('user.me.utilities.show', array_filter(['game' => $game->slug, 'status' => $value ?: null])) }}"
            @if($isCurrent) aria-current="page" @endif
            class="inline-flex h-9 shrink-0 items-center rounded-full border px-4 text-xs font-semibold transition-colors {{ $isCurrent ? 'border-[#006948] bg-[#006948] text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50' }}">
           {{ $label }}
@@ -48,7 +52,7 @@
         @else
           <p class="text-sm font-semibold text-slate-700 mt-2">{{ __('games.history.empty') }}</p>
           <p class="text-xs text-slate-500 mt-1">{{ __('games.history.empty_desc') }}</p>
-          <a href="{{ route('user.me.games.rooms.create', $game) }}" class="mt-4 inline-flex h-11 items-center gap-1.5 rounded-xl bg-[#006948] px-5 text-sm font-semibold text-white hover:bg-[#005137]">
+          <a href="{{ route('user.me.utilities.rooms.create', $game) }}" class="mt-4 inline-flex h-11 items-center gap-1.5 rounded-xl bg-[#006948] px-5 text-sm font-semibold text-white hover:bg-[#005137]">
             <span class="material-symbols-outlined text-[18px]" aria-hidden="true">add</span>
             {{ __('games.history.create') }}
           </a>
@@ -58,7 +62,7 @@
       <ul class="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs" data-room-list>
         @foreach($rooms as $room)
           <li class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-5 sm:px-5">
-            <a href="{{ route('user.me.games.rooms.show', [$game, $room]) }}" class="min-w-0 flex-1 group">
+            <a href="{{ route('user.me.utilities.rooms.show', [$game, $room]) }}" class="min-w-0 flex-1 group">
               <span class="flex flex-wrap items-center gap-2">
                 <span class="text-base font-bold text-slate-900 group-hover:text-[#006948] break-words">{{ $room->name }}</span>
                 <x-game.status-badge :status="$room->status" />
@@ -91,13 +95,13 @@
                 @endif
               @endunless
               {{-- Clone: opens the create form pre-filled with this room's rule set and players. --}}
-              <a href="{{ route('user.me.games.rooms.create', ['game' => $game->slug, 'from' => $room->id]) }}" data-clone-room
+              <a href="{{ route('user.me.utilities.rooms.create', ['game' => $game->slug, 'from' => $room->id]) }}" data-clone-room
                  class="inline-flex h-10 flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                  title="{{ __('games.history.clone_hint') }}">
                 <span class="material-symbols-outlined text-[17px]" aria-hidden="true">content_copy</span>
                 {{ __('games.history.clone') }}
               </a>
-              <a href="{{ route('user.me.games.rooms.show', [$game, $room]) }}" class="inline-flex h-10 flex-1 sm:flex-none items-center justify-center gap-1 rounded-xl bg-emerald-50 px-3 text-xs font-semibold text-[#006948] border border-emerald-100 hover:bg-emerald-100">
+              <a href="{{ route('user.me.utilities.rooms.show', [$game, $room]) }}" class="inline-flex h-10 flex-1 sm:flex-none items-center justify-center gap-1 rounded-xl bg-emerald-50 px-3 text-xs font-semibold text-[#006948] border border-emerald-100 hover:bg-emerald-100">
                 {{ __('games.history.open') }}
                 <span class="material-symbols-outlined text-[17px]" aria-hidden="true">arrow_forward</span>
               </a>

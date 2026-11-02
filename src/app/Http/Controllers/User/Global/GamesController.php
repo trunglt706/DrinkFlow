@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
 class GamesController extends Controller
 {
     /**
-     * List the games (/me/games).
+     * List the games (/me/utilities).
      *
      * @param Request $request Current request.
      * @return View Games page.
@@ -28,13 +28,13 @@ class GamesController extends Controller
             'games' => Game::query()->listed()->get(),
             'breadcrumbs' => [
                 ['label' => __('global.rooms.breadcrumb_personal'), 'url' => route('user.me.dashboard')],
-                ['label' => __('games.page_title'), 'url' => route('user.me.games')],
+                ['label' => __('games.page_title'), 'url' => route('user.me.utilities')],
             ],
         ]);
     }
 
     /**
-     * Rooms the user created for a game (/me/games/{game}), filterable by active / finished.
+     * Rooms the user created for a game (/me/utilities/{game}), filterable by active / finished.
      *
      * @param Request $request Current request.
      * @param Game $game Game (by slug).
@@ -56,8 +56,8 @@ class GamesController extends Controller
             'rooms' => $rooms->listForOwner($game, $user, $filter),
             'breadcrumbs' => [
                 ['label' => __('global.rooms.breadcrumb_personal'), 'url' => route('user.me.dashboard')],
-                ['label' => __('games.page_title'), 'url' => route('user.me.games')],
-                ['label' => $game->name, 'url' => route('user.me.games.show', $game)],
+                ['label' => __('games.page_title'), 'url' => route('user.me.utilities')],
+                ['label' => $game->name, 'url' => route('user.me.utilities.show', $game)],
             ],
         ]);
     }

@@ -30,7 +30,7 @@
         </div>
         <div class="flex flex-wrap gap-2">
           @if($isWaiting)
-            <form method="POST" action="{{ route('user.me.games.rooms.start', $routeArgs) }}" data-confirm="{{ __('games.room.start_confirm') }}" class="flex-1 sm:flex-none">
+            <form method="POST" action="{{ route('user.me.utilities.rooms.start', $routeArgs) }}" data-confirm="{{ __('games.room.start_confirm') }}" class="flex-1 sm:flex-none">
               @csrf
               <button type="submit" data-start-room class="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-[#006948] px-5 text-sm font-semibold text-white hover:bg-[#005137]">
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true">play_arrow</span>{{ __('games.room.start') }}
@@ -38,7 +38,7 @@
             </form>
           @endif
           @if($isPlaying)
-            <form method="POST" action="{{ route('user.me.games.rooms.rounds.store', $routeArgs) }}" data-confirm="{{ __('games.room.new_round_confirm') }}" class="flex-1 sm:flex-none">
+            <form method="POST" action="{{ route('user.me.utilities.rooms.rounds.store', $routeArgs) }}" data-confirm="{{ __('games.room.new_round_confirm') }}" class="flex-1 sm:flex-none">
               @csrf
               <input type="hidden" name="current_round" value="{{ $summary['current_round'] }}">
               <button type="submit" class="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
@@ -47,7 +47,7 @@
             </form>
           @endif
           @unless($isFinished)
-            <form method="POST" action="{{ route('user.me.games.rooms.finish', $routeArgs) }}" data-confirm="{{ __('games.room.finish_confirm') }}" class="flex-1 sm:flex-none">
+            <form method="POST" action="{{ route('user.me.utilities.rooms.finish', $routeArgs) }}" data-confirm="{{ __('games.room.finish_confirm') }}" class="flex-1 sm:flex-none">
               @csrf
               <button type="submit" class="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-700 hover:bg-rose-50">
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true">flag</span>{{ __('games.room.finish') }}
@@ -91,14 +91,14 @@
         @endif
         @unless($isFinished)
         <div class="mt-3 flex flex-wrap gap-2">
-          <form method="POST" action="{{ route('user.me.games.rooms.public-link.regenerate', $routeArgs) }}" @if($publicUrl) data-confirm="{{ __('games.room.regenerate_confirm') }}" @endif>
+          <form method="POST" action="{{ route('user.me.utilities.rooms.public-link.regenerate', $routeArgs) }}" @if($publicUrl) data-confirm="{{ __('games.room.regenerate_confirm') }}" @endif>
             @csrf
             <button type="submit" class="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50">
               <span class="material-symbols-outlined text-[16px]" aria-hidden="true">autorenew</span>{{ __('games.room.regenerate_link') }}
             </button>
           </form>
           @if($publicUrl)
-            <form method="POST" action="{{ route('user.me.games.rooms.public-link.revoke', $routeArgs) }}" data-confirm="{{ __('games.room.revoke_confirm') }}">
+            <form method="POST" action="{{ route('user.me.utilities.rooms.public-link.revoke', $routeArgs) }}" data-confirm="{{ __('games.room.revoke_confirm') }}">
               @csrf
               @method('DELETE')
               <button type="submit" class="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50">
@@ -108,6 +108,55 @@
           @endif
         </div>
         @endunless
+      </div>
+
+      {{-- Notification channel: receives the final leaderboard when the room finishes; can be sent again. --}}
+      @php $roomChannel = $room->notificationChannel; @endphp
+      <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4" data-room-channel>
+        <div class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <span class="material-symbols-outlined text-[18px] text-[#006948]" aria-hidden="true">campaign</span>{{ __('games.room.channel') }}
+        </div>
+        <p class="mt-0.5 text-xs text-slate-500">{{ __('games.room.channel_hint') }}</p>
+        @if($roomChannel && ! $roomChannel->is_active)
+          <p class="mt-2 text-xs font-medium text-amber-800">{{ __('games.room.channel_inactive', ['name' => $roomChannel->name]) }}</p>
+        @endif
+        <form method="POST" action="{{ route('user.me.utilities.rooms.notification-channel.update', $routeArgs) }}" class="mt-3 flex flex-col gap-2 sm:flex-row">
+          @csrf
+          @method('PUT')
+          <label for="room-channel" class="sr-only">{{ __('games.room.channel') }}</label>
+          <select id="room-channel" name="notification_channel_id" class="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:border-[#006948] focus:ring-1 focus:ring-[#006948]">
+            <option value="">{{ __('games.create.no_channel') }}</option>
+            @foreach($channels as $channel)
+              <option value="{{ $channel->id }}" @selected((int) $room->game_notification_channel_id === (int) $channel->id)>{{ $channel->name }} · {{ __('games.channels.types.'.$channel->type) }}</option>
+            @endforeach
+          </select>
+          <div class="flex gap-2">
+            <button type="submit" class="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+              <span class="material-symbols-outlined text-[17px]" aria-hidden="true">save</span>{{ __('games.room.channel_save') }}
+            </button>
+            <a href="{{ route('user.me.utilities.channels.index') }}" class="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50" title="{{ __('games.channels.title') }}">
+              <span class="material-symbols-outlined text-[17px]" aria-hidden="true">settings</span><span class="sr-only">{{ __('games.channels.title') }}</span>
+            </a>
+          </div>
+        </form>
+        @if($isFinished)
+          <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p class="text-xs text-slate-600" data-results-notified>
+              @if($room->results_notified_at)
+                {{ __('games.room.results_sent_at', ['time' => $room->results_notified_at->copy()->setTimezone((string) config('app.display_timezone', config('app.timezone')))->format('d/m/Y H:i')]) }}
+              @else
+                {{ __('games.room.results_not_sent') }}
+              @endif
+            </p>
+            <form method="POST" action="{{ route('user.me.utilities.rooms.results.notify', $routeArgs) }}">
+              @csrf
+              <button type="submit" data-resend-results @disabled(! $roomChannel || ! $roomChannel->is_active)
+                      class="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-[#006948] px-4 text-xs font-semibold text-white hover:bg-[#005137] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                <span class="material-symbols-outlined text-[17px]" aria-hidden="true">send</span>{{ __('games.room.resend_results') }}
+              </button>
+            </form>
+          </div>
+        @endif
       </div>
     </section>
 
@@ -129,7 +178,7 @@
           <span class="material-symbols-outlined text-[20px]" aria-hidden="true">new_releases</span>
           <span>{{ __('games.room.new_version_available', ['name' => $room->ruleSet->name, 'version' => $latestRuleVersion]) }}</span>
         </span>
-        <form method="POST" action="{{ route('user.me.games.rooms.rule-version', $routeArgs) }}" data-confirm="{{ __('games.room.apply_version_confirm') }}">
+        <form method="POST" action="{{ route('user.me.utilities.rooms.rule-version', $routeArgs) }}" data-confirm="{{ __('games.room.apply_version_confirm') }}">
           @csrf
           <button type="submit" class="inline-flex h-10 items-center gap-1.5 rounded-xl bg-sky-700 px-4 text-xs font-semibold text-white hover:bg-sky-800">
             <span class="material-symbols-outlined text-[17px]" aria-hidden="true">sync</span>{{ __('games.room.apply_version') }}
@@ -169,7 +218,7 @@
           :head-to-head="$headToHead"
           :history="$history"
           :can-void="$isPlaying"
-          :void-url="route('user.me.games.rooms.results.void', [$game, $room, '__RESULT__'])"
+          :void-url="route('user.me.utilities.rooms.results.void', [$game, $room, '__RESULT__'])"
         />
       </div>
 
@@ -189,7 +238,7 @@
                   <span class="text-sm font-semibold text-slate-800">{{ $player->display_name }}</span>
                   @unless($player->is_active)<span class="ml-1 text-xs text-slate-500">({{ __('games.leaderboard.inactive') }})</span>@endunless
                 @else
-                  <form method="POST" action="{{ route('user.me.games.rooms.players.update', [$game, $room, $player]) }}" class="flex items-center gap-2">
+                  <form method="POST" action="{{ route('user.me.utilities.rooms.players.update', [$game, $room, $player]) }}" class="flex items-center gap-2">
                     @csrf
                     @method('PATCH')
                     <input type="text" name="display_name" value="{{ $player->display_name }}" maxlength="50" required aria-label="{{ __('games.create.player_name') }}"
@@ -205,7 +254,7 @@
             @endforeach
           </ul>
           @unless($isFinished)
-            <form method="POST" action="{{ route('user.me.games.rooms.players.store', $routeArgs) }}" class="flex gap-2 border-t border-slate-100 px-5 py-4">
+            <form method="POST" action="{{ route('user.me.utilities.rooms.players.store', $routeArgs) }}" class="flex gap-2 border-t border-slate-100 px-5 py-4">
               @csrf
               <input type="text" name="display_name" maxlength="50" required placeholder="{{ __('games.players.add_placeholder') }}" aria-label="{{ __('games.players.add_placeholder') }}"
                      class="h-10 min-w-0 flex-1 rounded-lg border border-slate-200 bg-slate-50/70 px-3 text-sm focus:border-[#006948] focus:bg-white focus:ring-1 focus:ring-[#006948]">
@@ -221,7 +270,7 @@
 
   {{-- Record result sheet --}}
   @if($isPlaying)
-    <dialog data-record-dialog data-url="{{ route('user.me.games.rooms.results.store', $routeArgs) }}" data-round="{{ $summary['current_round'] }}"
+    <dialog data-record-dialog data-url="{{ route('user.me.utilities.rooms.results.store', $routeArgs) }}" data-round="{{ $summary['current_round'] }}"
             data-i18n="{{ json_encode([
                 'needCategory' => __('games.record.need_category'),
                 'needWinner' => __('games.record.need_winner'),

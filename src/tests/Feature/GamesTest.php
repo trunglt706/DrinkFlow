@@ -47,8 +47,8 @@ class GamesTest extends TestCase
     private function ruleSet(GlobalUser $owner, array $items = [['name' => 'Thắng thường', 'points' => 1, 'is_active' => '1'], ['name' => 'Thắng lớn', 'points' => 3, 'is_active' => '1']]): GameRuleSet
     {
         $this->actingAs($owner, 'web')
-            ->post(route('user.me.games.rule-sets.store', $this->game), ['name' => 'Luật chuẩn', 'items' => $items])
-            ->assertRedirect(route('user.me.games.rule-sets.index', $this->game));
+            ->post(route('user.me.utilities.rule-sets.store', $this->game), ['name' => 'Luật chuẩn', 'items' => $items])
+            ->assertRedirect(route('user.me.utilities.rule-sets.index', $this->game));
 
         return GameRuleSet::where('owner_id', $owner->id)->latest('id')->firstOrFail();
     }
@@ -56,7 +56,7 @@ class GamesTest extends TestCase
     private function room(GlobalUser $owner, GameRuleSet $ruleSet, array $players = ['An', 'Bình', 'Chi', 'Dũng']): GameRoom
     {
         $this->actingAs($owner, 'web')
-            ->post(route('user.me.games.rooms.store', $this->game), ['name' => 'Bàn cuối tuần', 'players' => $players, 'rule_set_id' => $ruleSet->id])
+            ->post(route('user.me.utilities.rooms.store', $this->game), ['name' => 'Bàn cuối tuần', 'players' => $players, 'rule_set_id' => $ruleSet->id])
             ->assertRedirect();
 
         return GameRoom::where('owner_id', $owner->id)->latest('id')->firstOrFail();
@@ -65,7 +65,7 @@ class GamesTest extends TestCase
     private function startedRoom(GlobalUser $owner): GameRoom
     {
         $room = $this->room($owner, $this->ruleSet($owner));
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.start', [$this->game, $room]))->assertRedirect();
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rooms.start', [$this->game, $room]))->assertRedirect();
 
         return $room->refresh();
     }
@@ -75,7 +75,7 @@ class GamesTest extends TestCase
         $players = $room->players()->pluck('id', 'display_name');
         $itemId = $room->ruleVersion()->firstOrFail()->items()->where('name', $item)->value('id');
 
-        return $this->actingAs($owner, 'web')->postJson(route('user.me.games.rooms.results.store', [$this->game, $room]), [
+        return $this->actingAs($owner, 'web')->postJson(route('user.me.utilities.rooms.results.store', [$this->game, $room]), [
             'rule_item_id' => $itemId,
             'winner_id' => $players[$winner],
             'loser_ids' => array_map(static fn (string $name): int => $players[$name], $losers),
@@ -88,17 +88,17 @@ class GamesTest extends TestCase
         $this->actingAs($this->user(), 'web')->get('/me')
             ->assertOk()
             ->assertSee(__('games.banner.title'))
-            ->assertSee(route('user.me.games'), false);
+            ->assertSee(route('user.me.utilities'), false);
     }
 
     public function test_games_list_shows_seeded_game_and_guest_is_redirected(): void
     {
-        $this->get(route('user.me.games'))->assertRedirect('/');
+        $this->get(route('user.me.utilities'))->assertRedirect('/');
 
-        $this->actingAs($this->user(), 'web')->get(route('user.me.games'))
+        $this->actingAs($this->user(), 'web')->get(route('user.me.utilities'))
             ->assertOk()
             ->assertSee('Game vui')
-            ->assertSee(route('user.me.games.show', $this->game), false);
+            ->assertSee(route('user.me.utilities.show', $this->game), false);
     }
 
     public function test_owner_creates_room_and_sees_it_in_history_while_others_cannot_open_it(): void
@@ -110,15 +110,15 @@ class GamesTest extends TestCase
         $this->assertSame(4, $room->players()->count());
         $this->assertNotNull($room->public_token);
 
-        $this->actingAs($owner, 'web')->get(route('user.me.games.show', $this->game))
+        $this->actingAs($owner, 'web')->get(route('user.me.utilities.show', $this->game))
             ->assertOk()->assertSee('Bàn cuối tuần')->assertSee(__('games.status.waiting'));
-        $this->actingAs($owner, 'web')->get(route('user.me.games.rooms.show', [$this->game, $room]))
+        $this->actingAs($owner, 'web')->get(route('user.me.utilities.rooms.show', [$this->game, $room]))
             ->assertOk()->assertSee('Bàn cuối tuần');
 
         $other = $this->user('other@company.com');
-        $this->actingAs($other, 'web')->get(route('user.me.games.show', $this->game))->assertOk()->assertDontSee('Bàn cuối tuần');
-        $this->actingAs($other, 'web')->get(route('user.me.games.rooms.show', [$this->game, $room]))->assertForbidden();
-        $this->actingAs($other, 'web')->post(route('user.me.games.rooms.start', [$this->game, $room]))->assertForbidden();
+        $this->actingAs($other, 'web')->get(route('user.me.utilities.show', $this->game))->assertOk()->assertDontSee('Bàn cuối tuần');
+        $this->actingAs($other, 'web')->get(route('user.me.utilities.rooms.show', [$this->game, $room]))->assertForbidden();
+        $this->actingAs($other, 'web')->post(route('user.me.utilities.rooms.start', [$this->game, $room]))->assertForbidden();
     }
 
     public function test_room_cannot_use_another_owners_rule_set_and_blank_player_names_are_numbered(): void
@@ -127,7 +127,7 @@ class GamesTest extends TestCase
         $foreign = $this->ruleSet($this->user('other@company.com'));
 
         $this->actingAs($owner, 'web')
-            ->post(route('user.me.games.rooms.store', $this->game), ['name' => 'X', 'players' => ['A', 'B'], 'rule_set_id' => $foreign->id])
+            ->post(route('user.me.utilities.rooms.store', $this->game), ['name' => 'X', 'players' => ['A', 'B'], 'rule_set_id' => $foreign->id])
             ->assertSessionHasErrors('rule_set_id');
 
         $room = $this->room($owner, $this->ruleSet($owner), ['An', '', '']);
@@ -141,7 +141,7 @@ class GamesTest extends TestCase
 
         $this->record($owner, $room, 'Thắng thường', 'An', ['Bình'])->assertStatus(422);
 
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.start', [$this->game, $room]))->assertRedirect();
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rooms.start', [$this->game, $room]))->assertRedirect();
         $room->refresh();
         $this->assertSame(GameRoomStatus::Playing, $room->status);
         $this->assertSame([1], $room->rounds()->pluck('number')->all());
@@ -185,7 +185,7 @@ class GamesTest extends TestCase
         $other = $this->startedRoom($this->user('other@company.com'));
         $players = $room->players()->pluck('id', 'display_name');
         $itemId = $room->ruleVersion()->firstOrFail()->items()->value('id');
-        $url = route('user.me.games.rooms.results.store', [$this->game, $room]);
+        $url = route('user.me.utilities.rooms.results.store', [$this->game, $room]);
         $payload = fn (array $overrides): array => $overrides + ['rule_item_id' => $itemId, 'winner_id' => $players['An'], 'loser_ids' => [$players['Bình']], 'idempotency_key' => (string) Str::uuid()];
 
         // Winner in the loser list.
@@ -302,8 +302,8 @@ class GamesTest extends TestCase
         $this->assertSame($room->id, $claims['game_room_id']);
         $this->assertArrayNotHasKey('global_user_id', $claims);
 
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.start', [$this->game, $room]))->assertRedirect();
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.finish', [$this->game, $room]))->assertRedirect();
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rooms.start', [$this->game, $room]))->assertRedirect();
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rooms.finish', [$this->game, $room]))->assertRedirect();
 
         $sent = Http::recorded()->map(fn (array $pair) => $pair[0])->filter(fn (HttpRequest $request) => str_ends_with($request->url(), '/internal/emit'))->values();
         $this->assertCount(2, $sent);
@@ -323,7 +323,7 @@ class GamesTest extends TestCase
     {
         $owner = $this->user();
         $room = $this->startedRoom($owner);
-        $url = route('user.me.games.rooms.rounds.store', [$this->game, $room]);
+        $url = route('user.me.utilities.rooms.rounds.store', [$this->game, $room]);
 
         // Two submits of the same form (both saw round 1): only the first opens round 2.
         $this->actingAs($owner, 'web')->post($url, ['current_round' => 1])->assertRedirect()->assertSessionHas('status');
@@ -332,7 +332,7 @@ class GamesTest extends TestCase
         $this->assertSame([1, 2], $room->rounds()->orderBy('number')->pluck('number')->all());
 
         // The owner page sends the round it shows.
-        $this->actingAs($owner, 'web')->get(route('user.me.games.rooms.show', [$this->game, $room]))
+        $this->actingAs($owner, 'web')->get(route('user.me.utilities.rooms.show', [$this->game, $room]))
             ->assertOk()->assertSee('name="current_round" value="2"', false);
     }
 
@@ -343,10 +343,10 @@ class GamesTest extends TestCase
         $binh = $room->players()->where('display_name', 'Bình')->value('id');
         $players = $room->players()->pluck('id', 'display_name');
         $itemId = $room->ruleVersion()->firstOrFail()->items()->where('name', 'Thắng thường')->value('id');
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.rounds.store', [$this->game, $room]), ['current_round' => 1])->assertRedirect();
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rooms.rounds.store', [$this->game, $room]), ['current_round' => 1])->assertRedirect();
 
         // Owner dashboard still showing round 1.
-        $this->actingAs($owner, 'web')->postJson(route('user.me.games.rooms.results.store', [$this->game, $room]), [
+        $this->actingAs($owner, 'web')->postJson(route('user.me.utilities.rooms.results.store', [$this->game, $room]), [
             'rule_item_id' => $itemId, 'winner_id' => $players['An'], 'loser_ids' => [$players['Bình']],
             'idempotency_key' => (string) Str::uuid(), 'round' => 1,
         ])->assertStatus(422)->assertJsonPath('message', __('games.errors.round_changed', ['number' => 2]))->assertJsonPath('reload', true);
@@ -445,10 +445,10 @@ class GamesTest extends TestCase
         $result = GameResult::firstOrFail();
 
         $this->actingAs($owner, 'web')
-            ->post(route('user.me.games.rooms.results.void', [$this->game, $room, $result]), [])
+            ->post(route('user.me.utilities.rooms.results.void', [$this->game, $room, $result]), [])
             ->assertSessionHasErrors('reason');
         $this->actingAs($owner, 'web')
-            ->post(route('user.me.games.rooms.results.void', [$this->game, $room, $result]), ['reason' => 'Ghi nhầm'])
+            ->post(route('user.me.utilities.rooms.results.void', [$this->game, $room, $result]), ['reason' => 'Ghi nhầm'])
             ->assertRedirect();
 
         $result->refresh();
@@ -465,7 +465,7 @@ class GamesTest extends TestCase
 
         // A second void is refused.
         $this->actingAs($owner, 'web')
-            ->post(route('user.me.games.rooms.results.void', [$this->game, $room, $result]), ['reason' => 'Lần nữa'])
+            ->post(route('user.me.utilities.rooms.results.void', [$this->game, $room, $result]), ['reason' => 'Lần nữa'])
             ->assertSessionHas('error', __('games.errors.already_voided'));
         $this->assertSame(1, GameScoreTransaction::where('type', GameScoreTransactionType::Reversal->value)->count());
     }
@@ -474,7 +474,7 @@ class GamesTest extends TestCase
     {
         $owner = $this->user();
         $room = $this->startedRoom($owner);
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.finish', [$this->game, $room]))->assertRedirect();
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rooms.finish', [$this->game, $room]))->assertRedirect();
 
         // Owner sheet still open on the old page.
         $this->record($owner, $room, 'Thắng lớn', 'An', ['Bình'])
@@ -497,7 +497,7 @@ class GamesTest extends TestCase
         $this->record($owner, $room, 'Thắng thường', 'An', ['Bình'])->assertCreated();
         $ruleSet = $room->ruleSet()->firstOrFail();
 
-        $this->actingAs($owner, 'web')->put(route('user.me.games.rule-sets.update', [$this->game, $ruleSet]), [
+        $this->actingAs($owner, 'web')->put(route('user.me.utilities.rule-sets.update', [$this->game, $ruleSet]), [
             'name' => 'Luật chuẩn',
             'items' => [['name' => 'Thắng thường', 'points' => 2, 'is_active' => '1'], ['name' => 'Thắng lớn', 'points' => 3]],
         ])->assertRedirect();
@@ -505,10 +505,10 @@ class GamesTest extends TestCase
         $ruleSet->refresh();
         $this->assertSame(2, $ruleSet->currentVersion->version);
         $this->assertSame(1, $room->refresh()->ruleVersion->version);
-        $this->actingAs($owner, 'web')->get(route('user.me.games.rooms.show', [$this->game, $room]))
+        $this->actingAs($owner, 'web')->get(route('user.me.utilities.rooms.show', [$this->game, $room]))
             ->assertSee(__('games.room.apply_version'));
 
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.rule-version', [$this->game, $room]))->assertRedirect();
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rooms.rule-version', [$this->game, $room]))->assertRedirect();
         $this->assertSame(2, $room->refresh()->ruleVersion->version);
 
         $this->record($owner, $room, 'Thắng thường', 'An', ['Bình'])->assertCreated();
@@ -522,12 +522,12 @@ class GamesTest extends TestCase
     public function test_negative_points_need_the_switch(): void
     {
         $owner = $this->user();
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rule-sets.store', $this->game), [
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rule-sets.store', $this->game), [
             'name' => 'Phạt',
             'items' => [['name' => 'Phạt', 'points' => -1, 'is_active' => '1']],
         ])->assertSessionHasErrors('items.0.points');
 
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rule-sets.store', $this->game), [
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rule-sets.store', $this->game), [
             'name' => 'Phạt',
             'allow_negative_points' => '1',
             'items' => [['name' => 'Phạt', 'points' => -1, 'is_active' => '1']],
@@ -537,13 +537,13 @@ class GamesTest extends TestCase
     public function test_penalty_category_is_zero_sum_and_voided_penalty_no_longer_counts(): void
     {
         $owner = $this->user();
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rule-sets.store', $this->game), [
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rule-sets.store', $this->game), [
             'name' => 'Có phạt',
             'allow_negative_points' => '1',
             'items' => [['name' => 'Thắng lớn', 'points' => 3, 'is_active' => '1'], ['name' => 'Phạt', 'points' => -2, 'is_active' => '1']],
         ])->assertSessionHasNoErrors();
         $room = $this->room($owner, GameRuleSet::where('owner_id', $owner->id)->latest('id')->firstOrFail());
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.start', [$this->game, $room]))->assertRedirect();
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rooms.start', [$this->game, $room]))->assertRedirect();
 
         $this->record($owner, $room, 'Thắng lớn', 'An', ['Bình'])->assertCreated();
         $this->record($owner, $room, 'Phạt', 'Bình', ['An'])->assertCreated();
@@ -555,7 +555,7 @@ class GamesTest extends TestCase
 
         // A voided penalty no longer counts.
         $penalty = GameResult::where('points', '<', 0)->orderByDesc('id')->firstOrFail();
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.results.void', [$this->game, $room, $penalty]), ['reason' => 'Nhầm'])->assertRedirect();
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rooms.results.void', [$this->game, $room, $penalty]), ['reason' => 'Nhầm'])->assertRedirect();
         $rows = collect(app(GameStatisticsService::class)->dashboard($room)['leaderboard'])->keyBy('name');
         $this->assertSame([5, -5, 0], [$rows['An']['points'], $rows['Bình']['points'], $rows['Chi']['points']]);
     }
@@ -575,7 +575,7 @@ class GamesTest extends TestCase
         $this->assertSame(-3, $binhVersus['An']['points']);
 
         // Leaderboard and head-to-head totals: +3 / -3 / 0, opponent detail: +3 / -3.
-        $this->actingAs($owner, 'web')->get(route('user.me.games.rooms.show', [$this->game, $room]))->assertOk()
+        $this->actingAs($owner, 'web')->get(route('user.me.utilities.rooms.show', [$this->game, $room]))->assertOk()
             ->assertSee('data-leaderboard-points>+3<', false)
             ->assertSee('data-leaderboard-points>-3<', false)
             ->assertSee('data-leaderboard-points>0<', false)
@@ -598,13 +598,13 @@ class GamesTest extends TestCase
         $this->record($owner, $room, 'Thắng lớn', 'An', ['Bình'])->assertCreated();
         $dung = $room->players()->where('display_name', 'Dũng')->firstOrFail();
         $this->actingAs($owner, 'web')
-            ->patch(route('user.me.games.rooms.players.update', [$this->game, $room, $dung]), ['display_name' => 'Dũng'])
+            ->patch(route('user.me.utilities.rooms.players.update', [$this->game, $room, $dung]), ['display_name' => 'Dũng'])
             ->assertRedirect();
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.finish', [$this->game, $room]))->assertRedirect();
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rooms.finish', [$this->game, $room]))->assertRedirect();
 
         // The room list offers Clone.
-        $cloneUrl = route('user.me.games.rooms.create', ['game' => $this->game->slug, 'from' => $room->id]);
-        $this->actingAs($owner, 'web')->get(route('user.me.games.show', $this->game))->assertOk()
+        $cloneUrl = route('user.me.utilities.rooms.create', ['game' => $this->game->slug, 'from' => $room->id]);
+        $this->actingAs($owner, 'web')->get(route('user.me.utilities.show', $this->game))->assertOk()
             ->assertSee('data-clone-room', false)
             ->assertSee(e($cloneUrl), false);
 
@@ -617,7 +617,7 @@ class GamesTest extends TestCase
             ->assertSee('value="'.$room->game_rule_set_id.'" checked', false);
 
         // Submitting creates a fresh waiting room with no results.
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.store', $this->game), [
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rooms.store', $this->game), [
             'name' => __('games.create.clone_name', ['name' => 'Bàn cuối tuần']),
             'players' => ['An', 'Bình', 'Chi'],
             'rule_set_id' => $room->game_rule_set_id,
@@ -638,10 +638,10 @@ class GamesTest extends TestCase
         $other = $this->user('other@company.com');
 
         $this->actingAs($other, 'web')
-            ->get(route('user.me.games.rooms.create', ['game' => $this->game->slug, 'from' => $room->id]))
+            ->get(route('user.me.utilities.rooms.create', ['game' => $this->game->slug, 'from' => $room->id]))
             ->assertForbidden();
         $this->actingAs($owner, 'web')
-            ->get(route('user.me.games.rooms.create', ['game' => $this->game->slug, 'from' => 999999]))
+            ->get(route('user.me.utilities.rooms.create', ['game' => $this->game->slug, 'from' => 999999]))
             ->assertNotFound();
     }
 
@@ -653,12 +653,12 @@ class GamesTest extends TestCase
         $an = $room->players()->where('display_name', 'An')->firstOrFail();
 
         $this->actingAs($owner, 'web')
-            ->patch(route('user.me.games.rooms.players.update', [$this->game, $room, $an]), ['display_name' => 'An Nguyễn', 'is_active' => '1'])
+            ->patch(route('user.me.utilities.rooms.players.update', [$this->game, $room, $an]), ['display_name' => 'An Nguyễn', 'is_active' => '1'])
             ->assertRedirect();
         $this->assertSame($an->id, GameResult::firstOrFail()->winner_player_id);
         $this->assertSame('An Nguyễn', GameResult::firstOrFail()->winner->display_name);
 
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.finish', [$this->game, $room]))->assertRedirect();
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rooms.finish', [$this->game, $room]))->assertRedirect();
         $this->assertSame(GameRoomStatus::Finished, $room->refresh()->status);
         $this->record($owner, $room, 'Thắng thường', 'Bình', ['Chi'])->assertStatus(422);
     }
@@ -684,13 +684,13 @@ class GamesTest extends TestCase
             ->assertSee(__('games.play.record'))
             ->assertDontSee('data-play-new-round', false);
 
-        $this->actingAs($owner, 'web')->delete(route('user.me.games.rooms.public-link.revoke', [$this->game, $room]))->assertRedirect();
+        $this->actingAs($owner, 'web')->delete(route('user.me.utilities.rooms.public-link.revoke', [$this->game, $room]))->assertRedirect();
         auth('web')->logout();
         $this->get(route('public.games.rooms.show', $token))
             ->assertNotFound()
             ->assertSee(__('games.public.invalid_title'));
 
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.public-link.regenerate', [$this->game, $room]))->assertRedirect();
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rooms.public-link.regenerate', [$this->game, $room]))->assertRedirect();
         $this->assertNotNull($room->refresh()->public_token);
         $this->assertNotSame($token, $room->public_token);
     }
@@ -750,7 +750,7 @@ class GamesTest extends TestCase
         $room = $this->startedRoom($owner);
         $an = $room->players()->where('display_name', 'An')->firstOrFail();
         $this->actingAs($owner, 'web')
-            ->patch(route('user.me.games.rooms.players.update', [$this->game, $room, $an]), ['display_name' => 'An'])
+            ->patch(route('user.me.utilities.rooms.players.update', [$this->game, $room, $an]), ['display_name' => 'An'])
             ->assertRedirect();
         auth('web')->logout();
 
@@ -760,13 +760,13 @@ class GamesTest extends TestCase
 
         $chi = $room->players()->where('display_name', 'Chi')->value('id');
         $this->get(route('public.games.rooms.show', ['token' => $room->public_token, 'player' => $chi]))->assertOk();
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.finish', [$this->game, $room]))->assertRedirect();
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rooms.finish', [$this->game, $room]))->assertRedirect();
         auth('web')->logout();
         // A finished room is closed: the public link no longer accepts anything.
         $this->publicRecord($room, 'Bình')->assertStatus(410);
 
         $token = $room->public_token;
-        $this->actingAs($owner, 'web')->delete(route('user.me.games.rooms.public-link.revoke', [$this->game, $room]))->assertRedirect();
+        $this->actingAs($owner, 'web')->delete(route('user.me.utilities.rooms.public-link.revoke', [$this->game, $room]))->assertRedirect();
         auth('web')->logout();
         $this->postJson(route('public.games.rooms.results.store', $token), [
             'rule_item_id' => 1, 'loser_id' => 1, 'idempotency_key' => (string) Str::uuid(),
@@ -815,9 +815,9 @@ class GamesTest extends TestCase
         $this->get($url)->assertOk();
 
         // Room finished: closed, also for the owner; the owner still sees the history in /me.
-        $this->actingAs($owner, 'web')->post(route('user.me.games.rooms.finish', [$this->game, $room]))->assertRedirect();
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rooms.finish', [$this->game, $room]))->assertRedirect();
         $this->actingAs($owner, 'web')->get($url)->assertStatus(410)->assertSee(__('games.public.closed_desc'));
-        $this->actingAs($owner, 'web')->get(route('user.me.games.rooms.show', [$this->game, $room]))
+        $this->actingAs($owner, 'web')->get(route('user.me.utilities.rooms.show', [$this->game, $room]))
             ->assertOk()->assertSee(__('games.room.link_closed'));
     }
 
@@ -830,9 +830,9 @@ class GamesTest extends TestCase
         $this->actingAs($owner, 'web')->get($url)->assertOk()
             ->assertSee('data-play-new-round', false)
             ->assertSee('data-play-back', false)
-            ->assertSee(route('user.me.games.rooms.show', [$this->game, $room]), false)
+            ->assertSee(route('user.me.utilities.rooms.show', [$this->game, $room]), false)
             ->assertSee('data-play-language', false);
-        $this->actingAs($owner, 'web')->from($url)->post(route('user.me.games.rooms.rounds.store', [$this->game, $room]))->assertRedirect($url);
+        $this->actingAs($owner, 'web')->from($url)->post(route('user.me.utilities.rooms.rounds.store', [$this->game, $room]))->assertRedirect($url);
         $this->assertSame(2, $room->rounds()->count());
 
         $this->actingAs($this->user('other@company.com'), 'web')->get($url)->assertOk()->assertDontSee('data-play-new-round', false)->assertDontSee('data-play-back', false);

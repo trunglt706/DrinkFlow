@@ -7,6 +7,7 @@ namespace App\Services\Game;
 use App\Enums\GameRoomStatus;
 use App\Exceptions\GameActionException;
 use App\Models\Game;
+use App\Models\GameNotificationChannel;
 use App\Models\GamePlayer;
 use App\Models\GameRoom;
 use App\Models\GameRound;
@@ -74,12 +75,17 @@ class GameRoomService
      * @param string $name Room name.
      * @param array<int, string|null> $playerNames Player names in order; a blank name gets a numbered default.
      * @param GameRuleSet $ruleSet Rule set of the owner for this game.
+     * @param GameNotificationChannel|null $channel Owner's channel receiving the results, null for none.
      * @return GameRoom Created room.
      *
-     * @throws GameActionException When the rule set does not belong to the game or the player count is out of bounds.
+     * @throws GameActionException When the rule set does not belong to the game, the channel is not the owner's, or
+     *                             the player count is out of bounds.
      */
-    public function create(Game $game, GlobalUser $owner, string $name, array $playerNames, GameRuleSet $ruleSet): GameRoom
+    public function create(Game $game, GlobalUser $owner, string $name, array $playerNames, GameRuleSet $ruleSet, ?GameNotificationChannel $channel = null): GameRoom
     {
+        if ($channel !== null && (int) $channel->owner_id !== (int) $owner->id) {
+            throw new GameActionException(__('games.channels.errors.invalid'));
+        }
         if ((int) $ruleSet->game_id !== (int) $game->id || $ruleSet->current_version_id === null) {
             throw new GameActionException(__('games.errors.rule_set_invalid'));
         }
@@ -88,7 +94,7 @@ class GameRoomService
             throw new GameActionException(__('games.errors.player_count', ['min' => self::MIN_PLAYERS, 'max' => self::MAX_PLAYERS]));
         }
 
-        return DB::transaction(function () use ($game, $owner, $name, $names, $ruleSet): GameRoom {
+        return DB::transaction(function () use ($game, $owner, $name, $names, $ruleSet, $channel): GameRoom {
             $room = GameRoom::create([
                 'game_id' => $game->id,
                 'owner_id' => $owner->id,
@@ -96,6 +102,7 @@ class GameRoomService
                 'status' => GameRoomStatus::Waiting,
                 'game_rule_set_id' => $ruleSet->id,
                 'game_rule_version_id' => $ruleSet->current_version_id,
+                'game_notification_channel_id' => $channel?->id,
                 'public_token' => $this->newToken(),
                 'last_activity_at' => now(),
             ]);
@@ -116,7 +123,7 @@ class GameRoomService
      * is taken so the form starts valid. The new room applies the current version of the rule set (create()).
      *
      * @param GameRoom $source Room being cloned (the caller checked that the user manages it).
-     * @return array{name: string, players: list<string>, rule_set_id: int} Form values.
+     * @return array{name: string, players: list<string>, rule_set_id: int, channel_id: int|null} Form values.
      */
     public function clonePrefill(GameRoom $source): array
     {
@@ -132,7 +139,29 @@ class GameRoomService
             'name' => Str::limit(__('games.create.clone_name', ['name' => $source->name]), 100, ''),
             'players' => $names,
             'rule_set_id' => (int) $source->game_rule_set_id,
+            'channel_id' => $source->game_notification_channel_id === null ? null : (int) $source->game_notification_channel_id,
         ];
+    }
+
+    /**
+     * Change (or clear) the channel that receives the room's results. Allowed at any status, so a finished room can
+     * still be given a channel and its results sent again.
+     *
+     * @param GameRoom $room Room.
+     * @param GameNotificationChannel|null $channel Owner's channel, null for none.
+     * @return void
+     *
+     * @throws GameActionException When the channel is not the room owner's.
+     */
+    public function setNotificationChannel(GameRoom $room, ?GameNotificationChannel $channel): void
+    {
+        if ($channel !== null && (int) $channel->owner_id !== (int) $room->owner_id) {
+            throw new GameActionException(__('games.channels.errors.invalid'));
+        }
+        $before = $room->game_notification_channel_id;
+        $room->forceFill(['game_notification_channel_id' => $channel?->id])->save();
+        $this->audit->record('game_room.channel_changed', 'game_room', (int) $room->id, null,
+            ['channel_id' => $before], ['channel_id' => $channel?->id]);
     }
 
     /**

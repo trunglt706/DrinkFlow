@@ -15,8 +15,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class GameRoom extends Model
 {
     protected $fillable = [
-        'game_id', 'owner_id', 'name', 'status', 'game_rule_set_id', 'game_rule_version_id', 'public_token',
-        'started_at', 'finished_at', 'last_activity_at',
+        'game_id', 'owner_id', 'name', 'status', 'game_rule_set_id', 'game_rule_version_id', 'game_notification_channel_id',
+        'public_token', 'started_at', 'finished_at', 'results_notified_at', 'last_activity_at',
     ];
 
     /** The token is a capability: never serialize it by accident. */
@@ -28,6 +28,7 @@ class GameRoom extends Model
             'status' => GameRoomStatus::class,
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
+            'results_notified_at' => 'datetime',
             'last_activity_at' => 'datetime',
         ];
     }
@@ -50,6 +51,11 @@ class GameRoom extends Model
     public function ruleVersion(): BelongsTo
     {
         return $this->belongsTo(GameRuleVersion::class, 'game_rule_version_id');
+    }
+
+    public function notificationChannel(): BelongsTo
+    {
+        return $this->belongsTo(GameNotificationChannel::class, 'game_notification_channel_id');
     }
 
     public function players(): HasMany

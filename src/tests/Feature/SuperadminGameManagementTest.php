@@ -65,8 +65,10 @@ class SuperadminGameManagementTest extends TestCase
         $this->assertTrue($game->is_active);
         $this->assertSame('casino', $game->icon);
 
-        // Slug stays unique.
+        // Slug stays unique, and "channels" is reserved for the notification channels page of /me/utilities.
         $this->actingAs($this->owner, 'superadmin')->post(route('superadmin.games.store'), $this->payload(['name' => 'Khác']))
+            ->assertSessionHasErrors('slug');
+        $this->actingAs($this->owner, 'superadmin')->post(route('superadmin.games.store'), $this->payload(['name' => 'Kênh', 'slug' => 'channels']))
             ->assertSessionHasErrors('slug');
 
         $this->actingAs($this->owner, 'superadmin')
@@ -109,11 +111,11 @@ class SuperadminGameManagementTest extends TestCase
     public function test_inactive_game_is_hidden_from_users_and_menu_links_to_games(): void
     {
         $user = GlobalUser::create(['name' => 'U', 'normalized_name' => 'U', 'email' => 'u@company.com', 'status' => 'active']);
-        $this->actingAs($user, 'web')->get(route('user.me.games'))
+        $this->actingAs($user, 'web')->get(route('user.me.utilities'))
             ->assertOk()->assertSee('data-nav-games', false)->assertSee('Game vui');
 
         Game::where('slug', Game::SLUG_FUN)->update(['is_active' => false]);
-        $this->actingAs($user, 'web')->get(route('user.me.games'))->assertOk()->assertDontSee('Game vui');
-        $this->actingAs($user, 'web')->get(route('user.me.games.show', Game::SLUG_FUN))->assertNotFound();
+        $this->actingAs($user, 'web')->get(route('user.me.utilities'))->assertOk()->assertDontSee('Game vui');
+        $this->actingAs($user, 'web')->get(route('user.me.utilities.show', Game::SLUG_FUN))->assertNotFound();
     }
 }

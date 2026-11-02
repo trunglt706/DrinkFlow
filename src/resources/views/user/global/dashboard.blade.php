@@ -109,7 +109,7 @@
 
     <!-- Banner: Trò chơi -->
     <section>
-      <a href="{{ route('user.me.games') }}" data-games-banner
+      <a href="{{ route('user.me.utilities') }}" data-games-banner
          style="background-image: linear-gradient(90deg, #006948, #059669);"
          class="group relative flex items-center gap-4 sm:gap-5 overflow-hidden rounded-2xl border border-emerald-200/70 bg-[#006948] p-5 sm:p-6 text-white shadow-xs transition-all hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2">
         <span class="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" aria-hidden="true"></span>

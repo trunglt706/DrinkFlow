@@ -1,6 +1,6 @@
-# Trò chơi (Game vui)
+# Tiện ích: Trò chơi (Game vui) & Kênh thông báo
 
-Người dùng vào **"Trò chơi"** từ hai chỗ: banner trên trang `/me`, hoặc mục **Trò chơi** trên menu User Global. Cả hai dẫn tới `/me/games`, nơi liệt kê các trò chơi trong bảng `games`.
+Người dùng vào khu **"Tiện ích"** (trước đây là "Trò chơi") từ hai chỗ: banner trên trang `/me`, hoặc mục **Tiện ích** trên menu User Global. Cả hai dẫn tới `/me/utilities`, nơi liệt kê các trò chơi trong bảng `games`. Link cũ `/me/games/...` được chuyển hướng **301** sang `/me/utilities/...`.
 
 - Trò chơi do Superadmin quản lý. Mặc định seed sẵn **"Game vui"** (`slug = game-vui`).
 - Chọn một game sẽ mở lịch sử các room mà người dùng đã tạo cho game đó.
@@ -13,12 +13,13 @@ Giao diện ưu tiên mobile và hỗ trợ vi/en/ja (`src/lang/{vi,en,ja}/games
 
 | URL | Mô tả |
 | --- | --- |
-| `/me` | Banner "Trò chơi" nằm dưới phần chào. Menu User Global có mục **Trò chơi** (`data-nav-games`). |
-| `/me/games` | Danh sách game đang bật (`is_active`), sắp xếp theo `sort_order`. |
-| `/me/games/{slug}` | Lịch sử room của Owner: tên, trạng thái, số người chơi, thời gian hoạt động gần nhất. Có bộ lọc *Tất cả / Đang hoạt động / Đã kết thúc* và nút sao chép link công khai (room đã kết thúc thì không có nút này). |
-| `/me/games/{slug}/rooms/create` | Tạo room trên một màn hình: tên room → số người chơi (mặc định 4, từ 2 đến 20) → tên người chơi → chọn bộ luật → xem lại → tạo. Tên người chơi thêm/xóa dòng được; để trống thì tự đặt "Người chơi N". |
-| `/me/games/{slug}/rooms/{id}` | Dashboard room của Owner. Header gồm tên, trạng thái, link công khai, QR, tạo link mới/thu hồi, và các nút Bắt đầu / Vòng mới / Kết thúc. Bên dưới là tóm tắt, bảng xếp hạng, đối đầu, lịch sử kết quả, quản lý người chơi và nút **Ghi kết quả**. |
-| `/me/games/{slug}/rule-sets` | Bộ luật tính điểm của Owner; tạo/sửa bộ luật tại `/create` và `/{id}/edit`. |
+| `/me` | Banner "Tiện ích" nằm dưới phần chào. Menu User Global có mục **Tiện ích** (`data-nav-games`; khoá ẩn menu nội bộ vẫn là `games`). |
+| `/me/utilities` | Danh sách game đang bật (`is_active`), sắp xếp theo `sort_order`, và nút **Kênh thông báo**. |
+| `/me/utilities/channels` | Kênh thông báo của riêng người dùng (Slack / Telegram / Chatwork / Webhook): thêm, sửa, bật/tắt, gửi thử, xoá. Tạo/sửa tại `/create` và `/{id}/edit`. |
+| `/me/utilities/{slug}` | Lịch sử room của Owner: tên, trạng thái, số người chơi, thời gian hoạt động gần nhất. Có bộ lọc *Tất cả / Đang hoạt động / Đã kết thúc* và nút sao chép link công khai (room đã kết thúc thì không có nút này). |
+| `/me/utilities/{slug}/rooms/create` | Tạo room trên một màn hình: tên room → số người chơi (mặc định 4, từ 2 đến 20) → tên người chơi → chọn bộ luật → **chọn kênh nhận kết quả** (tuỳ chọn) → xem lại → tạo. Tên người chơi thêm/xóa dòng được; để trống thì tự đặt "Người chơi N". |
+| `/me/utilities/{slug}/rooms/{id}` | Dashboard room của Owner. Header gồm tên, trạng thái, link công khai, QR, tạo link mới/thu hồi, **kênh nhận kết quả** (đổi được bất cứ lúc nào), **Gửi lại kết quả** (khi room đã kết thúc), và các nút Bắt đầu / Vòng mới / Kết thúc. Bên dưới là tóm tắt, bảng xếp hạng, đối đầu, lịch sử kết quả, quản lý người chơi và nút **Ghi kết quả**. |
+| `/me/utilities/{slug}/rule-sets` | Bộ luật tính điểm của Owner; tạo/sửa bộ luật tại `/create` và `/{id}/edit`. |
 | `/play/{token}` | Trang công khai của room, xem chi tiết ở mục dưới. |
 | `/superadmin/games` | Superadmin quản lý danh sách trò chơi: thêm, sửa, xóa. |
 
@@ -118,11 +119,20 @@ Modal **Ghi kết quả** của Owner trên dashboard vẫn có 4 bước: danh 
 - Gửi lại cùng key (ví dụ khi mất mạng) nhận `200` với kết quả cũ thay vì `201`, nên không bị ghi trùng.
 - Kết quả, danh sách người thua, giao dịch điểm và audit log được ghi trong một transaction. Transaction khóa dòng `game_rooms` và kiểm tra lại room vẫn `playing` trước khi ghi.
 
+### Kênh thông báo & gửi kết quả (BR-11)
+
+- Mỗi Global User có danh sách kênh riêng (`game_notification_channels`), độc lập với kênh của Room đặt đồ uống. Room chọn **một** kênh (`game_rooms.game_notification_channel_id`, có thể để trống) giống như chọn bộ luật; Clone giữ nguyên kênh nếu kênh còn bật.
+- Cấu hình kênh được **mã hoá bằng `APP_KEY`** (cast `encrypted`) và không bao giờ trả lại trình duyệt; khi sửa, để trống ô bí mật thì giữ giá trị cũ. Mỗi loại kênh bắt buộc đủ thông tin: Slack `webhook_url` (chỉ `hooks.slack.com`), Telegram `bot_token` + `chat_id`, Chatwork `api_token` + `room_id`, Webhook `webhook_url` (+ `secret_token` tuỳ chọn). URL phải là HTTPS công khai (`OutboundUrlGuard`, chống SSRF).
+- **Kết thúc room** → tự gửi bảng xếp hạng cuối (hạng, điểm, thắng/thua) tới kênh của room nếu kênh đang bật. Gửi lỗi **không** huỷ việc kết thúc room: Owner thấy thông báo lỗi và bấm **Gửi lại kết quả** sau khi sửa kênh.
+- **Gửi lại kết quả** chỉ cho room đã kết thúc và có kênh đang bật; mỗi lần gửi thành công cập nhật `results_notified_at` và ghi audit `game_room.results_notified`.
+- Xoá kênh: các room đang dùng tự bỏ liên kết (`nullOnDelete`). Chỉ chủ kênh mới xem/sửa/xoá/gửi thử/chọn kênh (`GameNotificationChannelPolicy`).
+- Slug game `channels` bị cấm vì trùng đường dẫn trang kênh.
+
 ## Quản lý trò chơi (Superadmin)
 
 - **Vị trí**: menu **Nội dung → Trò chơi** (`/superadmin/games`).
 - **Quyền**: `game.view` để xem, `game.manage` để thêm/sửa/xóa. Hai quyền này có trong catalog `App\Enums\Permission`.
-- **Trường dữ liệu**: tên, slug (dùng trong URL `/me/games/{slug}`, unique), icon (tên Material Symbols, có link mở trang tra cứu icon trên Google Fonts), thứ tự, mô tả, trạng thái **Đang bật**.
+- **Trường dữ liệu**: tên, slug (dùng trong URL `/me/utilities/{slug}`, unique, không được là `channels`), icon (tên Material Symbols, có link mở trang tra cứu icon trên Google Fonts), thứ tự, mô tả, trạng thái **Đang bật**.
 - **Tắt trò chơi**: trò chơi bị ẩn khỏi danh sách và các trang của người dùng (404), và mọi link công khai của game bị đóng (410). Dữ liệu được giữ nguyên.
 - **Xóa trò chơi**: chỉ xóa được trò chơi **chưa có room hoặc bộ luật nào**. Trò chơi đã dùng thì phải tắt thay vì xóa.
 - **Audit**: các thao tác ghi sự kiện `game.created`, `game.updated`, `game.deleted`.
@@ -131,14 +141,14 @@ Modal **Ghi kết quả** của Owner trên dashboard vẫn có 4 bước: danh 
 
 | Thành phần | Vị trí |
 | --- | --- |
-| Migration | `2026_10_30_090000_create_games_tables.php`, `2026_10_30_100000_add_recorded_by_player_to_game_results_table.php` |
+| Migration | `2026_10_30_090000_create_games_tables.php`, `2026_10_30_100000_add_recorded_by_player_to_game_results_table.php`, `2026_10_31_090000_add_claim_to_game_players_table.php`, `2026_11_02_100000_create_game_notification_channels_table.php` |
 | Seeder | `GameSeeder` (gọi từ `DatabaseSeeder`, chạy lại nhiều lần vẫn an toàn) |
-| Model | `Game`, `GameRuleSet`, `GameRuleVersion`, `GameRuleItem`, `GameRoom`, `GamePlayer`, `GameRound`, `GameResult`, `GameScoreTransaction` |
+| Model | `Game`, `GameRuleSet`, `GameRuleVersion`, `GameRuleItem`, `GameRoom`, `GamePlayer`, `GameRound`, `GameResult`, `GameScoreTransaction`, `GameNotificationChannel` |
 | Enum | `GameRoomStatus`, `GameResultStatus`, `GameScoreTransactionType`; quyền `Permission::GameView`, `Permission::GameManage` |
-| Service | `App\Services\Game\GameRoomService`, `GameResultService`, `GameRuleSetService`, `GameStatisticsService`, `GamePublicAccessService`, `GameCatalogService` |
-| Controller | Owner: `User\Global\Games*Controller`. Công khai: `Public\GameRoomController`. Superadmin: `Superadmin\GameController` |
+| Service | `App\Services\Game\GameRoomService`, `GameResultService`, `GameRuleSetService`, `GameStatisticsService`, `GamePublicAccessService`, `GameCatalogService`, `GameNotificationService` (kênh + gửi kết quả, dùng chung trait `SendsNotificationChannelPayloads` với kênh Room) |
+| Controller | Owner: `User\Global\Games*Controller`, `User\Global\GameNotificationChannelsController`. Công khai: `Public\GameRoomController`. Superadmin: `Superadmin\GameController` |
 | FormRequest | `App\Http\Requests\Game\*` |
-| Policy | `GameRoomPolicy`, `GameRuleSetPolicy` |
+| Policy | `GameRoomPolicy`, `GameRuleSetPolicy`, `GameNotificationChannelPolicy` |
 | View | `user/global/games/*`, `components/game/{status-badge,scoreboard,play-layout}`, `public/game-room*.blade.php`, `superadmin/games/*` |
 | JS | `resources/js/global/games.js` (trang `/me`), `resources/js/game-play.js` (entry Vite riêng của trang công khai), `resources/js/shared/game-common.js` (hộp xác nhận, loading, uuid, toast) |
 
@@ -158,11 +168,11 @@ Sau `permissions:sync`, cấp quyền `game.view` / `game.manage` cho vai trò h
 ## Kiểm thử
 
 ```bash
-php artisan test --filter="GamesTest|SuperadminGameManagementTest"
+php artisan test --filter="GamesTest|GameNotificationChannelsTest|SuperadminGameManagementTest"
 php artisan test
 ```
 
 ## Giới hạn MVP
 
-- Không có realtime: muốn thấy kết quả mới thì phải tải lại trang.
+- Realtime chỉ báo thay đổi trạng thái/vòng (`game_room.status_changed` trên kênh `game:{id}`, các trang công khai đang mở tự tải lại); kết quả mới của người khác vẫn cần tải lại trang.
 - Trang công khai không yêu cầu đăng nhập; danh tính người chơi dựa trên lựa chọn trong session.

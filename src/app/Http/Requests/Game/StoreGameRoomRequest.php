@@ -30,6 +30,7 @@ class StoreGameRoomRequest extends FormRequest
             'players' => ['required', 'array', 'min:'.GameRoomService::MIN_PLAYERS, 'max:'.GameRoomService::MAX_PLAYERS],
             'players.*' => ['nullable', 'string', 'max:50'],
             'rule_set_id' => ['required', 'integer'],
+            'notification_channel_id' => ['nullable', 'integer', 'min:1'],
         ];
     }
 

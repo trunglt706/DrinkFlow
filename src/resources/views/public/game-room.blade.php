@@ -5,7 +5,7 @@
   $playerUrl = fn ($id) => route('public.games.rooms.show', ['token' => $token, 'player' => $id]);
   $showBottomBar = $isPlaying && ($canRecord || $isOwner || ! $selected);
 @endphp
-<x-game.play-layout :title="$room->name" :back-url="$isOwner ? route('user.me.games.rooms.show', [$room->game, $room]) : null" :socket-token-url="route('public.games.rooms.socket-token', $token)">
+<x-game.play-layout :title="$room->name" :back-url="$isOwner ? route('user.me.utilities.rooms.show', [$room->game, $room]) : null" :socket-token-url="route('public.games.rooms.socket-token', $token)">
   <main class="mx-auto max-w-3xl space-y-4 px-4 pt-2 {{ $showBottomBar ? 'pb-28' : 'pb-10' }}" data-play-page>
     {{-- Room header --}}
     <section class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
@@ -141,7 +141,7 @@
           </a>
         @endif
         @if($isOwner)
-          <form method="POST" action="{{ route('user.me.games.rooms.rounds.store', [$room->game, $room]) }}" data-confirm="{{ __('games.room.new_round_confirm') }}" class="flex flex-1">
+          <form method="POST" action="{{ route('user.me.utilities.rooms.rounds.store', [$room->game, $room]) }}" data-confirm="{{ __('games.room.new_round_confirm') }}" class="flex flex-1">
             @csrf
             <input type="hidden" name="current_round" value="{{ $summary['current_round'] }}">
             <button type="submit" data-play-new-round class="flex h-12 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">

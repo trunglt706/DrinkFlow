@@ -12,7 +12,7 @@
         <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{{ __('games.rules.title') }}</h1>
         <p class="text-sm text-slate-500 mt-1">{{ __('games.rules.subtitle') }}</p>
       </div>
-      <a href="{{ route('user.me.games.rule-sets.create', $game) }}" class="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-[#006948] px-5 text-sm font-semibold text-white hover:bg-[#005137]">
+      <a href="{{ route('user.me.utilities.rule-sets.create', $game) }}" class="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-[#006948] px-5 text-sm font-semibold text-white hover:bg-[#005137]">
         <span class="material-symbols-outlined text-[18px]" aria-hidden="true">add</span>{{ __('games.rules.create') }}
       </a>
     </section>
@@ -35,7 +35,7 @@
                   @if($ruleSet->allow_negative_points) · {{ __('games.rules.allow_negative') }} @endif
                 </p>
               </div>
-              <a href="{{ route('user.me.games.rule-sets.edit', [$game, $ruleSet]) }}" class="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+              <a href="{{ route('user.me.utilities.rule-sets.edit', [$game, $ruleSet]) }}" class="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50">
                 <span class="material-symbols-outlined text-[16px]" aria-hidden="true">edit</span>{{ __('games.rules.edit') }}
               </a>
             </div>

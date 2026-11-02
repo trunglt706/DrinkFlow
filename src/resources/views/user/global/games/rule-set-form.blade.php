@@ -2,7 +2,7 @@
   $oldItems = old('items');
   $rows = is_array($oldItems) ? array_values($oldItems) : $items;
   $isEdit = $ruleSet !== null;
-  $action = $isEdit ? route('user.me.games.rule-sets.update', [$game, $ruleSet]) : route('user.me.games.rule-sets.store', $game);
+  $action = $isEdit ? route('user.me.utilities.rule-sets.update', [$game, $ruleSet]) : route('user.me.utilities.rule-sets.store', $game);
 @endphp
 <x-global.layout
   :title="'DrinkFlow - ' . ($isEdit ? __('games.rules.edit_title') : __('games.rules.create_title'))"

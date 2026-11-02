@@ -1,5 +1,5 @@
 {{-- Public game room that has not started yet: basic room info, the waiting status and a reload action only. --}}
-<x-game.play-layout :title="$room->name" :back-url="$isOwner ? route('user.me.games.rooms.show', [$room->game, $room]) : null" :socket-token-url="route('public.games.rooms.socket-token', $token)">
+<x-game.play-layout :title="$room->name" :back-url="$isOwner ? route('user.me.utilities.rooms.show', [$room->game, $room]) : null" :socket-token-url="route('public.games.rooms.socket-token', $token)">
   <main class="mx-auto max-w-md px-4 py-10" data-play-waiting>
     <section class="rounded-2xl border border-slate-200/80 bg-white p-6 text-center shadow-xs">
       <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-[#006948]">

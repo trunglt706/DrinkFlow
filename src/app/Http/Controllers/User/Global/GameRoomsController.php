@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\User\Global;
 
+use App\Enums\GameRoomStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Game\StoreGameRoomRequest;
 use App\Models\Game;
+use App\Models\GameNotificationChannel;
 use App\Models\GameRoom;
 use App\Models\GameRuleSet;
 use App\Models\GlobalUser;
+use App\Services\Game\GameNotificationService;
 use App\Services\Game\GameRoomService;
 use App\Services\Game\GameRuleSetService;
 use App\Services\Game\GameStatisticsService;
@@ -23,7 +26,10 @@ use Illuminate\Support\Facades\Gate;
  */
 class GameRoomsController extends Controller
 {
-    public function __construct(private readonly GameRoomService $rooms) {}
+    public function __construct(
+        private readonly GameRoomService $rooms,
+        private readonly GameNotificationService $notifications,
+    ) {}
 
     /**
      * Create-room form: name, players and rule set on one screen. With ?from={room id} (the "Clone" action of the
@@ -51,17 +57,22 @@ class GameRoomsController extends Controller
             // The cloned room's rule set is no longer available to the owner: let them pick another one.
             $prefill['rule_set_id'] = null;
         }
+        $channels = $this->notifications->forOwner($user)->where('is_active', true)->values();
+        if ($prefill !== null && ! $channels->contains('id', $prefill['channel_id'])) {
+            $prefill['channel_id'] = null;
+        }
 
         return view('user.global.games.create', [
             'user' => $user,
             'game' => $game,
             'ruleSets' => $ownedRuleSets,
+            'channels' => $channels,
             'cloneSource' => $source,
             'prefill' => $prefill,
             'defaultPlayers' => GameRoomService::DEFAULT_PLAYERS,
             'minPlayers' => GameRoomService::MIN_PLAYERS,
             'maxPlayers' => GameRoomService::MAX_PLAYERS,
-            'breadcrumbs' => $this->breadcrumbs($game, ['label' => __('games.create.title'), 'url' => route('user.me.games.rooms.create', $game)]),
+            'breadcrumbs' => $this->breadcrumbs($game, ['label' => __('games.create.title'), 'url' => route('user.me.utilities.rooms.create', $game)]),
         ]);
     }
 
@@ -80,10 +91,14 @@ class GameRoomsController extends Controller
         if ($ruleSet === null || ! $user->can('manage', $ruleSet)) {
             return back()->withInput()->withErrors(['rule_set_id' => __('games.errors.rule_set_invalid')]);
         }
+        $channel = $this->ownedActiveChannel($user, $request->validated('notification_channel_id'));
+        if ($channel === false) {
+            return back()->withInput()->withErrors(['notification_channel_id' => __('games.channels.errors.invalid')]);
+        }
 
-        $room = $this->rooms->create($game, $user, (string) $request->validated('name'), (array) $request->validated('players'), $ruleSet);
+        $room = $this->rooms->create($game, $user, (string) $request->validated('name'), (array) $request->validated('players'), $ruleSet, $channel);
 
-        return redirect()->route('user.me.games.rooms.show', [$game, $room])->with('status', __('games.flash.created'));
+        return redirect()->route('user.me.utilities.rooms.show', [$game, $room])->with('status', __('games.flash.created'));
     }
 
     /**
@@ -98,17 +113,18 @@ class GameRoomsController extends Controller
     public function show(Request $request, Game $game, GameRoom $gameRoom, GameStatisticsService $statistics): View
     {
         $user = $this->authorizeOwner($request, $gameRoom);
-        $gameRoom->load(['ruleSet', 'ruleVersion.items']);
+        $gameRoom->load(['ruleSet', 'ruleVersion.items', 'notificationChannel']);
 
         return view('user.global.games.room', [
             'user' => $user,
             'game' => $game,
             'room' => $gameRoom,
+            'channels' => $this->notifications->forOwner($user)->where('is_active', true)->values(),
             'ruleItems' => $gameRoom->ruleVersion->items->where('is_active', true)->values(),
             'hasNewerRuleVersion' => $gameRoom->ruleSet->current_version_id !== null
                 && (int) $gameRoom->ruleSet->current_version_id !== (int) $gameRoom->game_rule_version_id,
             'latestRuleVersion' => $gameRoom->ruleSet->currentVersion?->version,
-            'breadcrumbs' => $this->breadcrumbs($game, ['label' => $gameRoom->name, 'url' => route('user.me.games.rooms.show', [$game, $gameRoom])]),
+            'breadcrumbs' => $this->breadcrumbs($game, ['label' => $gameRoom->name, 'url' => route('user.me.utilities.rooms.show', [$game, $gameRoom])]),
         ] + $statistics->dashboard($gameRoom));
     }
 
@@ -146,7 +162,8 @@ class GameRoomsController extends Controller
     }
 
     /**
-     * Finish the room.
+     * Finish the room, then send its final leaderboard to the room's notification channel (when it has one).
+     * A failed delivery never undoes the finish: the owner is told and can send the results again.
      *
      * @param Request $request Current request.
      * @param Game $game Game.
@@ -157,8 +174,76 @@ class GameRoomsController extends Controller
     {
         $this->authorizeOwner($request, $gameRoom);
         $this->rooms->finish($gameRoom);
+        $outcome = $this->notifications->notifyResults($gameRoom->refresh());
 
-        return back()->with('status', __('games.flash.finished'));
+        $response = back()->with('status', match ($outcome) {
+            GameNotificationService::SENT => __('games.flash.finished_and_notified'),
+            default => __('games.flash.finished'),
+        });
+
+        return $outcome === GameNotificationService::FAILED
+            ? $response->withErrors(['channel' => __('games.channels.errors.delivery_failed')])
+            : $response;
+    }
+
+    /**
+     * Change or clear the channel that receives the room's results.
+     *
+     * @param Request $request Current request.
+     * @param Game $game Game.
+     * @param GameRoom $gameRoom Room.
+     * @return RedirectResponse Back to the dashboard.
+     */
+    public function updateNotificationChannel(Request $request, Game $game, GameRoom $gameRoom): RedirectResponse
+    {
+        $user = $this->authorizeOwner($request, $gameRoom);
+        $value = $request->validate(['notification_channel_id' => ['nullable', 'integer', 'min:1']])['notification_channel_id'] ?? null;
+        $channel = $this->ownedActiveChannel($user, $value);
+        if ($channel === false) {
+            return back()->withErrors(['notification_channel_id' => __('games.channels.errors.invalid')]);
+        }
+        $this->rooms->setNotificationChannel($gameRoom, $channel);
+
+        return back()->with('status', __('games.flash.room_channel_updated'));
+    }
+
+    /**
+     * Send the final leaderboard of a finished room again.
+     *
+     * @param Request $request Current request.
+     * @param Game $game Game.
+     * @param GameRoom $gameRoom Room.
+     * @return RedirectResponse Back to the dashboard with the outcome.
+     */
+    public function sendResults(Request $request, Game $game, GameRoom $gameRoom): RedirectResponse
+    {
+        $this->authorizeOwner($request, $gameRoom);
+        if ($gameRoom->status !== GameRoomStatus::Finished) {
+            return back()->withErrors(['channel' => __('games.channels.errors.not_finished')]);
+        }
+
+        return match ($this->notifications->notifyResults($gameRoom)) {
+            GameNotificationService::SENT => back()->with('status', __('games.flash.results_sent')),
+            GameNotificationService::NO_CHANNEL => back()->withErrors(['channel' => __('games.channels.errors.no_channel')]),
+            default => back()->withErrors(['channel' => __('games.channels.errors.delivery_failed')]),
+        };
+    }
+
+    /**
+     * Resolve an optional channel id to one of the user's active channels.
+     *
+     * @param GlobalUser $user Owner.
+     * @param mixed $id Submitted channel id (null or blank for none).
+     * @return GameNotificationChannel|null|false The channel, null for none, false when it is not usable.
+     */
+    private function ownedActiveChannel(GlobalUser $user, mixed $id): GameNotificationChannel|null|false
+    {
+        if ($id === null || $id === '') {
+            return null;
+        }
+        $channel = GameNotificationChannel::query()->ownedBy($user)->where('is_active', true)->find((int) $id);
+
+        return $channel ?? false;
     }
 
     /**
@@ -235,8 +320,8 @@ class GameRoomsController extends Controller
     {
         return [
             ['label' => __('global.rooms.breadcrumb_personal'), 'url' => route('user.me.dashboard')],
-            ['label' => __('games.page_title'), 'url' => route('user.me.games')],
-            ['label' => $game->name, 'url' => route('user.me.games.show', $game)],
+            ['label' => __('games.page_title'), 'url' => route('user.me.utilities')],
+            ['label' => $game->name, 'url' => route('user.me.utilities.show', $game)],
             $last,
         ];
     }

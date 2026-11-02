@@ -5,9 +5,14 @@
   :breadcrumbs="$breadcrumbs"
 >
   <div class="space-y-6">
-    <section class="pb-6 border-b border-slate-200">
-      <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{{ __('games.page_title') }}</h1>
-      <p class="text-sm text-slate-500 mt-1">{{ __('games.page_subtitle') }}</p>
+    <section class="flex flex-col gap-4 pb-6 border-b border-slate-200 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{{ __('games.page_title') }}</h1>
+        <p class="text-sm text-slate-500 mt-1">{{ __('games.page_subtitle') }}</p>
+      </div>
+      <a href="{{ route('user.me.utilities.channels.index') }}" data-channels-link class="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">campaign</span>{{ __('games.channels.title') }}
+      </a>
     </section>
 
     @if($games->isEmpty())
@@ -18,7 +23,7 @@
     @else
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         @foreach($games as $game)
-          <a href="{{ route('user.me.games.show', $game) }}" data-game-card
+          <a href="{{ route('user.me.utilities.show', $game) }}" data-game-card
              class="group flex flex-col rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs transition-all hover:border-emerald-400 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
             <span class="flex h-12 w-12 items-center justify-center rounded-xl border border-emerald-100 bg-emerald-50 text-[#006948] transition-colors group-hover:bg-[#006948] group-hover:text-white">
               <span class="material-symbols-outlined text-[26px]" aria-hidden="true">{{ $game->icon ?: 'sports_esports' }}</span>

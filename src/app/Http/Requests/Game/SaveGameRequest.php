@@ -48,7 +48,8 @@ class SaveGameRequest extends FormRequest
         $game = $this->route('game');
 
         return [
-            'slug' => ['required', 'string', 'max:100', 'regex:/^[a-z0-9][a-z0-9-]*$/', Rule::unique('games', 'slug')->ignore($game instanceof Game ? $game->id : null)],
+            // "channels" is the notification channels page of /me/utilities, so no game may take that slug.
+            'slug' => ['required', 'string', 'max:100', 'regex:/^[a-z0-9][a-z0-9-]*$/', Rule::notIn(['channels']), Rule::unique('games', 'slug')->ignore($game instanceof Game ? $game->id : null)],
             'name' => ['required', 'string', 'max:150'],
             'description' => ['nullable', 'string', 'max:500'],
             // Material Symbols ligature name, e.g. sports_esports.

@@ -37,7 +37,7 @@ class GameRuleSetsController extends Controller
             'user' => $user,
             'game' => $game,
             'ruleSets' => $this->ruleSets->forOwner($game, $user),
-            'breadcrumbs' => $this->breadcrumbs($game, ['label' => __('games.rules.title'), 'url' => route('user.me.games.rule-sets.index', $game)]),
+            'breadcrumbs' => $this->breadcrumbs($game, ['label' => __('games.rules.title'), 'url' => route('user.me.utilities.rule-sets.index', $game)]),
         ]);
     }
 
@@ -58,7 +58,7 @@ class GameRuleSetsController extends Controller
             'ruleSet' => null,
             'items' => [['name' => __('games.rules.default_item'), 'points' => 1, 'is_active' => true]],
             'returnToCreate' => $request->boolean('return'),
-            'breadcrumbs' => $this->breadcrumbs($game, ['label' => __('games.rules.create_title'), 'url' => route('user.me.games.rule-sets.create', $game)]),
+            'breadcrumbs' => $this->breadcrumbs($game, ['label' => __('games.rules.create_title'), 'url' => route('user.me.utilities.rule-sets.create', $game)]),
         ]);
     }
 
@@ -80,7 +80,7 @@ class GameRuleSetsController extends Controller
             $request->items(),
         );
 
-        $target = $request->boolean('return') ? route('user.me.games.rooms.create', $game) : route('user.me.games.rule-sets.index', $game);
+        $target = $request->boolean('return') ? route('user.me.utilities.rooms.create', $game) : route('user.me.utilities.rule-sets.index', $game);
 
         return redirect($target)->with('status', __('games.flash.rule_set_created'));
     }
@@ -107,7 +107,7 @@ class GameRuleSetsController extends Controller
                 ->map(static fn ($item): array => ['name' => $item->name, 'points' => $item->points, 'is_active' => $item->is_active])
                 ->all() ?? [],
             'returnToCreate' => false,
-            'breadcrumbs' => $this->breadcrumbs($game, ['label' => $ruleSet->name, 'url' => route('user.me.games.rule-sets.edit', [$game, $ruleSet])]),
+            'breadcrumbs' => $this->breadcrumbs($game, ['label' => $ruleSet->name, 'url' => route('user.me.utilities.rule-sets.edit', [$game, $ruleSet])]),
         ]);
     }
 
@@ -128,7 +128,7 @@ class GameRuleSetsController extends Controller
             $request->items(),
         );
 
-        return redirect()->route('user.me.games.rule-sets.index', $game)
+        return redirect()->route('user.me.utilities.rule-sets.index', $game)
             ->with('status', __('games.flash.rule_set_versioned', ['version' => $version->version]));
     }
 
@@ -143,8 +143,8 @@ class GameRuleSetsController extends Controller
     {
         return [
             ['label' => __('global.rooms.breadcrumb_personal'), 'url' => route('user.me.dashboard')],
-            ['label' => __('games.page_title'), 'url' => route('user.me.games')],
-            ['label' => $game->name, 'url' => route('user.me.games.show', $game)],
+            ['label' => __('games.page_title'), 'url' => route('user.me.utilities')],
+            ['label' => $game->name, 'url' => route('user.me.utilities.show', $game)],
             $last,
         ];
     }

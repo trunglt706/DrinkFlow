@@ -6,6 +6,7 @@
       ? array_values($oldPlayers)
       : ($prefill['players'] ?? array_fill(0, $defaultPlayers, ''));
   $selectedRuleSet = (int) old('rule_set_id', $prefill['rule_set_id'] ?? $ruleSets->first()?->id);
+  $selectedChannel = (int) old('notification_channel_id', $prefill['channel_id'] ?? 0);
   $roomName = old('name', $prefill['name'] ?? '');
 @endphp
 <x-global.layout
@@ -34,7 +35,7 @@
       </div>
     @endif
 
-    <form method="POST" action="{{ route('user.me.games.rooms.store', $game) }}" class="space-y-5" data-room-create
+    <form method="POST" action="{{ route('user.me.utilities.rooms.store', $game) }}" class="space-y-5" data-room-create
           data-min="{{ $minPlayers }}" data-max="{{ $maxPlayers }}"
           data-i18n="{{ json_encode(['placeholder' => __('games.create.player_placeholder', ['number' => ':number'])], JSON_UNESCAPED_UNICODE) }}">
       @csrf
@@ -82,12 +83,12 @@
         <legend class="sr-only">{{ __('games.create.rule_set') }}</legend>
         <div class="flex items-center justify-between gap-3">
           <h2 class="text-sm font-semibold text-slate-800">{{ __('games.create.rule_set') }}</h2>
-          <a href="{{ route('user.me.games.rule-sets.create', ['game' => $game->slug, 'return' => 1]) }}" class="text-xs font-semibold text-[#006948] hover:underline">{{ __('games.create.create_rule_set') }}</a>
+          <a href="{{ route('user.me.utilities.rule-sets.create', ['game' => $game->slug, 'return' => 1]) }}" class="text-xs font-semibold text-[#006948] hover:underline">{{ __('games.create.create_rule_set') }}</a>
         </div>
         @if($ruleSets->isEmpty())
           <div class="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 p-5 text-center">
             <p class="text-sm text-slate-600">{{ __('games.create.no_rule_set') }}</p>
-            <a href="{{ route('user.me.games.rule-sets.create', ['game' => $game->slug, 'return' => 1]) }}" class="mt-3 inline-flex h-11 items-center gap-1.5 rounded-xl bg-[#006948] px-5 text-sm font-semibold text-white hover:bg-[#005137]">
+            <a href="{{ route('user.me.utilities.rule-sets.create', ['game' => $game->slug, 'return' => 1]) }}" class="mt-3 inline-flex h-11 items-center gap-1.5 rounded-xl bg-[#006948] px-5 text-sm font-semibold text-white hover:bg-[#005137]">
               <span class="material-symbols-outlined text-[18px]" aria-hidden="true">add</span>
               {{ __('games.create.create_rule_set') }}
             </a>
@@ -109,6 +110,30 @@
             @endforeach
           </div>
         @endif
+      </fieldset>
+
+      <fieldset class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs" data-channel-picker>
+        <legend class="sr-only">{{ __('games.create.channel') }}</legend>
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-sm font-semibold text-slate-800">{{ __('games.create.channel') }}</h2>
+          <a href="{{ route('user.me.utilities.channels.create', ['return' => $game->slug]) }}" class="text-xs font-semibold text-[#006948] hover:underline">{{ __('games.create.create_channel') }}</a>
+        </div>
+        <p class="mt-0.5 text-xs text-slate-500">{{ __('games.create.channel_hint') }}</p>
+        <div class="mt-3 space-y-2">
+          <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3.5 has-[:checked]:border-[#006948] has-[:checked]:bg-emerald-50/60">
+            <input type="radio" name="notification_channel_id" value="" @checked($selectedChannel === 0) class="h-5 w-5 text-[#006948] focus:ring-[#006948]">
+            <span class="text-sm font-semibold text-slate-700">{{ __('games.create.no_channel') }}</span>
+          </label>
+          @foreach($channels as $channel)
+            <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3.5 has-[:checked]:border-[#006948] has-[:checked]:bg-emerald-50/60">
+              <input type="radio" name="notification_channel_id" value="{{ $channel->id }}" @checked($selectedChannel === (int) $channel->id) class="h-5 w-5 text-[#006948] focus:ring-[#006948]">
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm font-semibold text-slate-900">{{ $channel->name }}</span>
+                <span class="mt-0.5 block text-xs text-slate-500">{{ __('games.channels.types.'.$channel->type) }}</span>
+              </span>
+            </label>
+          @endforeach
+        </div>
       </fieldset>
 
       <div class="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 text-sm text-emerald-900">

@@ -310,7 +310,7 @@
 
         <!-- Trò chơi (Games) -->
         @if($showMenu('games'))
-          <a class="{{ $tabClasses($activeTab === 'games') }}" href="{{ route('user.me.games') }}" data-nav-games>
+          <a class="{{ $tabClasses($activeTab === 'games') }}" href="{{ route('user.me.utilities') }}" data-nav-games>
             <span class="material-symbols-outlined text-[16px] sm:text-[17px]">sports_esports</span>
             <span>{{ __('games.page_title') }}</span>
           </a>

@@ -119,9 +119,22 @@ Route::middleware(['global.user'])->group(function () {
     Route::get('/me/guides', [\App\Http\Controllers\User\Global\GuideController::class, 'index'])->name('user.me.guides');
     Route::get('/me/guides/{slug}', [\App\Http\Controllers\User\Global\GuideController::class, 'show'])->name('user.me.guides.show');
 
-    // Mini games ("Trò chơi"): catalogue, the owner's rooms per game, room dashboard and scoring rule sets.
-    Route::get('/me/games', [\App\Http\Controllers\User\Global\GamesController::class, 'index'])->name('user.me.games');
-    Route::prefix('/me/games/{game:slug}')->name('user.me.games.')->scopeBindings()->group(function (): void {
+    // Utilities ("Tiện ích", formerly "Trò chơi"): game catalogue, the owner's rooms per game, room dashboard,
+    // scoring rule sets and the owner's notification channels. Old /me/games links redirect permanently.
+    Route::permanentRedirect('/me/games', '/me/utilities');
+    Route::permanentRedirect('/me/games/{path}', '/me/utilities/{path}')->where('path', '.*');
+    Route::get('/me/utilities', [\App\Http\Controllers\User\Global\GamesController::class, 'index'])->name('user.me.utilities');
+    // Registered before /me/utilities/{game:slug} so the path is never read as a game slug.
+    Route::prefix('/me/utilities/channels')->name('user.me.utilities.channels.')->group(function (): void {
+        Route::get('/', [\App\Http\Controllers\User\Global\GameNotificationChannelsController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\User\Global\GameNotificationChannelsController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\User\Global\GameNotificationChannelsController::class, 'store'])->middleware('throttle:20,1,game-channels')->name('store');
+        Route::get('/{channel}/edit', [\App\Http\Controllers\User\Global\GameNotificationChannelsController::class, 'edit'])->whereNumber('channel')->name('edit');
+        Route::put('/{channel}', [\App\Http\Controllers\User\Global\GameNotificationChannelsController::class, 'update'])->whereNumber('channel')->middleware('throttle:20,1,game-channels')->name('update');
+        Route::delete('/{channel}', [\App\Http\Controllers\User\Global\GameNotificationChannelsController::class, 'destroy'])->whereNumber('channel')->middleware('throttle:20,1,game-channels')->name('destroy');
+        Route::post('/{channel}/test', [\App\Http\Controllers\User\Global\GameNotificationChannelsController::class, 'test'])->whereNumber('channel')->middleware('throttle:5,1,game-channel-test')->name('test');
+    });
+    Route::prefix('/me/utilities/{game:slug}')->name('user.me.utilities.')->scopeBindings()->group(function (): void {
         Route::get('/', [\App\Http\Controllers\User\Global\GamesController::class, 'show'])->name('show');
         Route::get('/rooms/create', [\App\Http\Controllers\User\Global\GameRoomsController::class, 'create'])->name('rooms.create');
         Route::post('/rooms', [\App\Http\Controllers\User\Global\GameRoomsController::class, 'store'])->middleware('throttle:20,1')->name('rooms.store');
@@ -133,6 +146,8 @@ Route::middleware(['global.user'])->group(function () {
             Route::post('/rooms/{gameRoom}/rule-version', [\App\Http\Controllers\User\Global\GameRoomsController::class, 'applyRuleVersion'])->name('rooms.rule-version');
             Route::post('/rooms/{gameRoom}/public-link', [\App\Http\Controllers\User\Global\GameRoomsController::class, 'regenerateLink'])->name('rooms.public-link.regenerate');
             Route::delete('/rooms/{gameRoom}/public-link', [\App\Http\Controllers\User\Global\GameRoomsController::class, 'revokeLink'])->name('rooms.public-link.revoke');
+            Route::put('/rooms/{gameRoom}/notification-channel', [\App\Http\Controllers\User\Global\GameRoomsController::class, 'updateNotificationChannel'])->name('rooms.notification-channel.update');
+            Route::post('/rooms/{gameRoom}/results/notify', [\App\Http\Controllers\User\Global\GameRoomsController::class, 'sendResults'])->middleware('throttle:10,1,game-results-notify')->name('rooms.results.notify');
             Route::post('/rooms/{gameRoom}/players', [\App\Http\Controllers\User\Global\GamePlayersController::class, 'store'])->name('rooms.players.store');
             Route::patch('/rooms/{gameRoom}/players/{player}', [\App\Http\Controllers\User\Global\GamePlayersController::class, 'update'])->whereNumber('player')->name('rooms.players.update');
             Route::post('/rooms/{gameRoom}/results', [\App\Http\Controllers\User\Global\GameResultsController::class, 'store'])->middleware('json.only')->name('rooms.results.store');
