@@ -49,8 +49,14 @@ class CalculateMonthlySponsors extends Command
         foreach ($rooms->lazyById(100) as $room) {
             $sponsors += $statistics->rebuild($room, $month);
             $roomCount++;
-            if ($notify && $honors->notifyRoom($room, $month)) {
-                $announced++;
+            // One room's announcement failing must not stop the statistics or announcements of the other rooms.
+            try {
+                if ($notify && $honors->notifyRoom($room, $month)) {
+                    $announced++;
+                }
+            } catch (\Throwable $exception) {
+                report($exception);
+                $this->warn("Could not announce the top sponsors of room {$room->slug}.");
             }
         }
         $this->info("Updated {$month->format('Y-m')}: {$sponsors} sponsors across {$roomCount} rooms.");

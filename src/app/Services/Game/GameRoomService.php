@@ -61,6 +61,7 @@ class GameRoomService
             ->when($filter === self::FILTER_ACTIVE, fn ($query) => $query->where('status', '!=', GameRoomStatus::Finished->value))
             ->when($filter === self::FILTER_FINISHED, fn ($query) => $query->where('status', GameRoomStatus::Finished->value))
             ->withCount(['players' => fn ($query) => $query->where('is_active', true)])
+            ->with('notificationChannel:id,name,type,is_active')
             ->orderByDesc('last_activity_at')
             ->orderByDesc('id')
             ->paginate($perPage)

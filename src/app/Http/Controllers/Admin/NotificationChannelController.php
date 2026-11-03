@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\NotificationChannelRequest;
+use App\Http\Requests\TestNotificationChannelDraftRequest;
 use App\Models\NotificationChannel;
 use App\Models\Room;
 use App\Services\Audit\AuditService;
@@ -14,6 +15,7 @@ use App\Services\Notification\RoomNotificationChannelDispatcher;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 
 class NotificationChannelController extends Controller
@@ -157,7 +159,60 @@ class NotificationChannelController extends Controller
     }
 
     /**
-     * Handle the destroy operation.
+     * Send a test message with the values currently in the channel form, before the channel is saved.
+     *
+     * @param TestNotificationChannelDraftRequest $request Validated form values (authorized room admin).
+     * @param Room $room Room entity.
+     * @param RoomNotificationChannelService $service Channel service.
+     * @param RoomNotificationChannelDispatcher $dispatcher Channel dispatcher.
+     * @return JsonResponse Status response; 422 when the settings are incomplete or the provider refuses the message.
+     */
+    public function testDraft(TestNotificationChannelDraftRequest $request, Room $room, RoomNotificationChannelService $service, RoomNotificationChannelDispatcher $dispatcher): JsonResponse
+    {
+        $data = $request->validated();
+        $channel = null;
+        if (! empty($data['channel_id'])) {
+            $channel = $room->notificationChannels()->whereKey((int) $data['channel_id'])->first();
+            abort_if($channel === null, 404);
+        }
+
+        $rateLimitKey = 'channel-test-draft:'.$room->id.':'.($request->user('admin')?->id ?? $request->ip());
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
+            $seconds = RateLimiter::availableIn($rateLimitKey);
+
+            return response()->json([
+                'message' => __('admin.notification_channel_test_rate_limited', ['seconds' => $seconds]),
+                'retry_after' => $seconds,
+            ], 429);
+        }
+        RateLimiter::hit($rateLimitKey, 60);
+
+        try {
+            $config = $service->draftConfig($data, $channel);
+        } catch (\DomainException) {
+            return response()->json(['message' => __('admin.notification_channel_draft_incomplete')], 422);
+        }
+
+        try {
+            $dispatcher->testDraft((string) $data['type'], $config, (string) ($data['template'] ?? 'test_ping'), $room);
+        } catch (\InvalidArgumentException) {
+            return response()->json(['message' => __('admin.webhook_url_unsafe')], 422);
+        } catch (\Throwable $exception) {
+            // The provider's error may echo the request URL (a Telegram URL carries the bot token): log the class only.
+            Log::warning('Notification channel draft test failed.', [
+                'room_id' => $room->id,
+                'type' => $data['type'],
+                'exception' => $exception::class,
+            ]);
+
+            return response()->json(['message' => __('admin.notification_channel_test_failed')], 422);
+        }
+
+        return response()->json(['message' => __('admin.notification_channel_test_sent'), 'data' => ['type' => $data['type']]]);
+    }
+
+    /**
+     * Delete a channel of the room from the database.
      *
      * @param Room $room Room entity.
      * @param NotificationChannel $channel Notification channel.
@@ -168,7 +223,8 @@ class NotificationChannelController extends Controller
     public function destroy(Room $room, NotificationChannel $channel, RoomNotificationChannelService $service, AuditService $audit): JsonResponse
     {
         abort_unless($channel->room_id === $room->id, 404);
-        $service->disable($channel, $audit);
-        return response()->json(['data' => ['disabled' => true]]);
+        $service->delete($channel, $audit);
+
+        return response()->json(['data' => ['deleted' => true]]);
     }
 }

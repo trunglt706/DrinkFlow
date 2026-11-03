@@ -1,6 +1,6 @@
 import { renderSubmitLoading } from '../shared/submit-loading';
 
-/** Initialize room notification-channel create, test, and disable interactions. */
+/** Initialize room notification-channel create, test (saved or draft) and delete interactions. */
 export function initAdminNotifications() {
     const form = document.querySelector('#add-channel-form');
     const typeSelect = document.querySelector('#ch-type');
@@ -110,16 +110,54 @@ export function initAdminNotifications() {
     typeSelect?.addEventListener('change', (event) => switchPlatform(event.target.value));
     if (typeSelect) switchPlatform(typeSelect.value);
 
+    /**
+     * Read the driver settings currently typed in the channel form.
+     *
+     * @param {string} type Selected platform.
+     * @returns {Record<string, string>} Settings of that platform.
+     */
+    const formConfig = (type) => {
+        const value = (selector) => document.querySelector(selector)?.value.trim() || '';
+        if (type === 'telegram') return { bot_token: value('#ch-tg-token'), chat_id: value('#ch-tg-chat-id') };
+        if (type === 'slack') return { webhook_url: value('#ch-slack-url') };
+        if (type === 'chatwork') return { api_token: value('#ch-cw-token'), room_id: value('#ch-cw-room-id') };
+        return { webhook_url: value('#ch-wh-url'), secret_token: value('#ch-wh-secret') };
+    };
+
+    // "Test": send a sample message with the values in the form, without saving the channel.
+    const draftTestButton = document.querySelector('#channel-form-test');
+    draftTestButton?.addEventListener('click', async () => {
+        const type = typeSelect?.value || 'webhook';
+        const config = formConfig(type);
+        // Editing an existing channel: blank credentials fall back to the stored ones on the server.
+        if (editingChannelId === null && Object.entries(config).some(([key, value]) => key !== 'secret_token' && value === '')) {
+            showNotify(translations.notificationDraftIncomplete || 'Missing settings.', 'error');
+            return;
+        }
+        setLoading(draftTestButton, true);
+        try {
+            const response = await fetch(draftTestButton.dataset.testDraftUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, Accept: 'application/json' },
+                body: JSON.stringify({ type, name: document.querySelector('#ch-name')?.value.trim() || null, config, channel_id: editingChannelId }),
+            });
+            const data = await responseData(response);
+            if (!response.ok) {
+                const firstError = data.errors ? Object.values(data.errors).flat()[0] : null;
+                throw new Error(firstError || data.message || translations.notificationTestFailed || 'Could not send test ping.');
+            }
+            showNotify(data.message || translations.notificationTestSent || 'Test ping sent.');
+        } catch (error) {
+            showNotify(error.message || translations.notificationServerError || 'Server error.', 'error');
+        } finally {
+            setLoading(draftTestButton, false);
+        }
+    });
+
     form?.addEventListener('submit', async (event) => {
         event.preventDefault();
         const type = typeSelect?.value || 'webhook';
-        const config = type === 'telegram'
-            ? { bot_token: document.querySelector('#ch-tg-token')?.value.trim() || '', chat_id: document.querySelector('#ch-tg-chat-id')?.value.trim() || '' }
-            : type === 'slack'
-                ? { webhook_url: document.querySelector('#ch-slack-url')?.value.trim() || '' }
-                : type === 'chatwork'
-                    ? { api_token: document.querySelector('#ch-cw-token')?.value.trim() || '', room_id: document.querySelector('#ch-cw-room-id')?.value.trim() || '' }
-                    : { webhook_url: document.querySelector('#ch-wh-url')?.value.trim() || '', secret_token: document.querySelector('#ch-wh-secret')?.value.trim() || '' };
+        const config = formConfig(type);
         if (editingChannelId !== null) {
             Object.keys(config).forEach((key) => {
                 if (config[key] === '') delete config[key];
@@ -314,7 +352,7 @@ export function initAdminNotifications() {
             if (!response.ok) throw new Error(data.message || translations.notificationDeleteFailed || 'Could not delete channel.');
             closeDeleteModal();
             setLoading(trigger, true);
-            reloadAfterNotice(translations.notificationSaved || 'Saved successfully.');
+            reloadAfterNotice(translations.notificationDeleted || translations.notificationSaved || 'Deleted.');
         } catch (error) {
             showNotify(error.message || translations.notificationDeleteFailed || 'Could not delete channel.', 'error');
             setLoading(deleteConfirm, false);

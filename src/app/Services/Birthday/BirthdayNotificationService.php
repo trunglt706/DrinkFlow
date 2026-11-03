@@ -38,8 +38,13 @@ class BirthdayNotificationService
         $notified = 0;
         Room::query()->where('status', RoomStatus::Active->value)->orderBy('id')
             ->each(function (Room $room) use (&$notified): void {
-                if ($this->notifyRoom($room)) {
-                    $notified++;
+                // One room failing (bad data, push error…) must not stop the announcements of the other rooms.
+                try {
+                    if ($this->notifyRoom($room)) {
+                        $notified++;
+                    }
+                } catch (\Throwable $exception) {
+                    report($exception);
                 }
             });
 

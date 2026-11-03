@@ -51,8 +51,13 @@ class OccasionNotificationService
             ->orderBy('id')
             ->each(function (Room $room) use ($occasions, $force, &$sent): void {
                 foreach ($occasions as $occasion) {
-                    if ($this->notifyRoom($room, $occasion, $force)) {
-                        $sent++;
+                    // One room failing must not stop the greetings of the other rooms (or occasions).
+                    try {
+                        if ($this->notifyRoom($room, $occasion, $force)) {
+                            $sent++;
+                        }
+                    } catch (\Throwable $exception) {
+                        report($exception);
                     }
                 }
             });

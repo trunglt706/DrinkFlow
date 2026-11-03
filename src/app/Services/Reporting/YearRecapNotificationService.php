@@ -52,8 +52,13 @@ class YearRecapNotificationService
             ->when($roomSlug !== null, static fn ($query) => $query->where('slug', $roomSlug))
             ->orderBy('id')
             ->each(function (Room $room) use ($year, $force, &$sent): void {
-                if ($this->notifyRoom($room, $year, $force)) {
-                    $sent++;
+                // One room failing must not stop the recaps of the other rooms.
+                try {
+                    if ($this->notifyRoom($room, $year, $force)) {
+                        $sent++;
+                    }
+                } catch (\Throwable $exception) {
+                    report($exception);
                 }
             });
 

@@ -186,4 +186,105 @@ class AdminNotificationChannelTest extends TestCase
         $this->assertSame('🚀', $webhookData['icon']);
         $this->assertArrayHasKey('timestamp', $webhookData);
     }
+
+    /** Deleting a channel removes the row (it used to only disable it) and is audited. */
+    public function test_deleting_a_channel_removes_it_from_the_database(): void
+    {
+        $channel = $this->telegramChannel('Team Telegram', '123456:abcdef');
+        $otherRoom = Room::create(['name' => 'Sales', 'slug' => 'sales', 'status' => 'active']);
+
+        $this->actingAs($this->admin, 'admin')
+            ->deleteJson("/admin/{$otherRoom->id}/notification-channels/{$channel->id}")
+            ->assertStatus(403);
+        $this->assertDatabaseHas('notification_channels', ['id' => $channel->id]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->deleteJson("/admin/{$this->room->id}/notification-channels/{$channel->id}")
+            ->assertOk()->assertJsonPath('data.deleted', true);
+
+        $this->assertDatabaseMissing('notification_channels', ['id' => $channel->id]);
+        $this->assertDatabaseHas('audit_logs', ['event' => 'notification_channel.deleted', 'target_id' => $channel->id]);
+    }
+
+    /** "Test" in the form sends with the values typed in, without saving anything. */
+    public function test_admin_can_test_unsaved_form_values(): void
+    {
+        Http::fake(['https://api.telegram.org/*' => Http::response(['ok' => true], 200)]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->postJson("/admin/{$this->room->id}/notification-channels/test-draft", [
+                'type' => 'telegram',
+                'config' => ['bot_token' => '777:draft-token', 'chat_id' => '-100555'],
+            ])
+            ->assertOk()->assertJsonPath('message', __('admin.notification_channel_test_sent'));
+
+        Http::assertSent(fn ($request): bool => str_contains($request->url(), 'bot777:draft-token/sendMessage') && $request['chat_id'] === '-100555');
+        $this->assertDatabaseCount('notification_channels', 0);
+    }
+
+    /** Incomplete settings, unsafe URLs and provider refusals are reported without a server error. */
+    public function test_draft_test_rejects_incomplete_or_failing_settings(): void
+    {
+        Http::fake(['https://api.telegram.org/*' => Http::response(['ok' => false], 401)]);
+        $url = "/admin/{$this->room->id}/notification-channels/test-draft";
+
+        $this->actingAs($this->admin, 'admin')
+            ->postJson($url, ['type' => 'telegram', 'config' => ['bot_token' => '777:draft-token']])
+            ->assertStatus(422)->assertJsonPath('message', __('admin.notification_channel_draft_incomplete'));
+        $this->actingAs($this->admin, 'admin')
+            ->postJson($url, ['type' => 'webhook', 'config' => ['webhook_url' => 'http://127.0.0.1/hook']])
+            ->assertStatus(422)->assertJsonValidationErrors('config.webhook_url');
+        $this->actingAs($this->admin, 'admin')
+            ->postJson($url, ['type' => 'telegram', 'config' => ['bot_token' => '777:draft-token', 'chat_id' => '-1']])
+            ->assertStatus(422)->assertJsonPath('message', __('admin.notification_channel_test_failed'));
+    }
+
+    /** Editing: a blank credential in the form falls back to the stored one; another room's channel is refused. */
+    public function test_draft_test_of_an_edited_channel_reuses_stored_credentials(): void
+    {
+        Http::fake(['https://api.telegram.org/*' => Http::response(['ok' => true], 200)]);
+        $channel = $this->telegramChannel('Team Telegram', '123456:stored');
+        $otherRoom = Room::create(['name' => 'Sales', 'slug' => 'sales', 'status' => 'active']);
+        $foreign = app(RoomNotificationChannelService::class)->save($otherRoom->id, [
+            'type' => 'telegram', 'name' => 'Foreign', 'status' => 'enabled',
+            'config' => ['bot_token' => '999:foreign', 'chat_id' => '-1'],
+        ]);
+        $url = "/admin/{$this->room->id}/notification-channels/test-draft";
+
+        $this->actingAs($this->admin, 'admin')
+            ->postJson($url, ['type' => 'telegram', 'channel_id' => $channel->id, 'config' => ['bot_token' => '', 'chat_id' => '-100222']])
+            ->assertOk();
+        Http::assertSent(fn ($request): bool => str_contains($request->url(), 'bot123456:stored/sendMessage') && $request['chat_id'] === '-100222');
+
+        $this->actingAs($this->admin, 'admin')
+            ->postJson($url, ['type' => 'telegram', 'channel_id' => $foreign->id, 'config' => ['chat_id' => '-1']])
+            ->assertNotFound();
+        Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '999:foreign'));
+    }
+
+    /** One channel failing never prevents the other channels of the room from receiving the message. */
+    public function test_a_failing_channel_does_not_block_the_other_channels(): void
+    {
+        Http::fake([
+            'https://api.telegram.org/bot111:broken/*' => Http::response(['ok' => false], 500),
+            'https://api.telegram.org/bot222:works/*' => Http::response(['ok' => true], 200),
+        ]);
+        $this->telegramChannel('Broken', '111:broken');
+        // Undecryptable credentials must not stop the loop either.
+        \App\Models\NotificationChannel::query()->create(['room_id' => $this->room->id, 'type' => 'telegram', 'name' => 'Corrupt', 'status' => 'enabled', 'config_encrypted' => 'not-encrypted']);
+        $this->telegramChannel('Works', '222:works');
+
+        $attempts = app(RoomNotificationChannelDispatcher::class)->dispatch($this->room, ['event' => 'notification.test', 'title' => 'Hi', 'message' => 'Hello']);
+
+        $this->assertSame(1, $attempts);
+        Http::assertSent(fn ($request): bool => str_contains($request->url(), 'bot222:works/sendMessage'));
+    }
+
+    private function telegramChannel(string $name, string $token): \App\Models\NotificationChannel
+    {
+        return app(RoomNotificationChannelService::class)->save($this->room->id, [
+            'type' => 'telegram', 'name' => $name, 'status' => 'enabled',
+            'config' => ['bot_token' => $token, 'chat_id' => '-100987654'],
+        ]);
+    }
 }

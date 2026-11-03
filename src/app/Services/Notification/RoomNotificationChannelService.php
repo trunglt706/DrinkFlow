@@ -19,6 +19,18 @@ class RoomNotificationChannelService
     private const SECRET_KEYS = ['bot_token', 'api_token', 'secret_token', 'webhook_url'];
 
     /**
+     * Configuration keys each driver needs before it can deliver anything.
+     *
+     * @var array<string, list<string>>
+     */
+    public const REQUIRED_KEYS = [
+        'telegram' => ['bot_token', 'chat_id'],
+        'slack' => ['webhook_url'],
+        'chatwork' => ['api_token', 'room_id'],
+        'webhook' => ['webhook_url'],
+    ];
+
+    /**
      * Save or update a notification channel entity.
      *
      * @param int $roomId Room identifier.
@@ -71,16 +83,56 @@ class RoomNotificationChannelService
     }
 
     /**
-     * Disable a notification channel and write audit log.
+     * Delete a notification channel from the database and write an audit log.
+     *
+     * Sponsor draw delivery records keep their own snapshot of the channel type and name, so deleting the channel
+     * leaves their history readable; a pending resend simply finds no channel any more.
      *
      * @param NotificationChannel $channel Channel entity.
      * @param AuditService $audit Audit logger.
      * @return void
      */
-    public function disable(NotificationChannel $channel, AuditService $audit): void
+    public function delete(NotificationChannel $channel, AuditService $audit): void
     {
-        $channel->update(['status' => 'disabled']);
-        $audit->record('notification_channel.disabled', 'notification_channel', $channel->id, $channel->room_id, ['status' => 'enabled'], ['status' => 'disabled']);
+        DB::transaction(function () use ($channel, $audit): void {
+            $audit->record('notification_channel.deleted', 'notification_channel', $channel->id, $channel->room_id,
+                ['type' => $channel->type, 'name' => $channel->name, 'status' => $channel->status], []);
+            $channel->delete();
+        });
+    }
+
+    /**
+     * Build the configuration of a channel that is still being edited in the form, so it can be tested before saving.
+     *
+     * When the form edits an existing channel of the same type, a blank credential falls back to the stored one, the
+     * same way {@see save()} keeps it.
+     *
+     * @param array{type: string, config?: array<string, string|null>} $data Validated form data.
+     * @param NotificationChannel|null $channel Channel being edited, if any (must belong to the room).
+     * @return array<string, string> Configuration with every key the driver needs.
+     * @throws \DomainException When a key required by the driver is missing.
+     */
+    public function draftConfig(array $data, ?NotificationChannel $channel = null): array
+    {
+        $type = (string) $data['type'];
+        $config = array_filter(
+            array_map(static fn ($value): string => trim((string) $value), $data['config'] ?? []),
+            static fn (string $value): bool => $value !== '',
+        );
+        if ($channel !== null && $channel->type === $type) {
+            $encrypted = $channel->getRawOriginal('config_encrypted');
+            if (is_string($encrypted) && $encrypted !== '') {
+                $stored = json_decode((string) Crypt::decrypt($encrypted), true, 512, JSON_THROW_ON_ERROR);
+                $config = array_replace(is_array($stored) ? array_filter($stored, 'is_string') : [], $config);
+            }
+        }
+        $required = self::REQUIRED_KEYS[$type] ?? [];
+        $config = array_intersect_key($config, array_flip([...$required, ...($type === 'webhook' ? ['secret_token'] : [])]));
+        if (array_diff($required, array_keys($config)) !== []) {
+            throw new \DomainException('Notification channel draft is missing a required setting.');
+        }
+
+        return $config;
     }
 
     /**

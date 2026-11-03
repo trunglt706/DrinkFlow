@@ -152,6 +152,25 @@ class GameNotificationChannelsTest extends TestCase
         $this->assertSame(2, $this->telegramRequests());
     }
 
+    public function test_room_list_offers_resending_results_of_finished_rooms_with_a_channel(): void
+    {
+        Http::fake(['api.telegram.org/*' => Http::response(['ok' => true])]);
+        $owner = $this->user();
+        $playing = $this->startedRoom($owner, $this->channel($owner));
+        $listUrl = route('user.me.utilities.show', $this->game);
+        $resendUrl = route('user.me.utilities.rooms.results.notify', [$this->game, $playing]);
+
+        $this->actingAs($owner, 'web')->get($listUrl)->assertOk()->assertDontSee('data-list-resend-results', false);
+
+        $this->actingAs($owner, 'web')->post(route('user.me.utilities.rooms.finish', [$this->game, $playing]))->assertRedirect();
+        $this->actingAs($owner, 'web')->get($listUrl)->assertOk()
+            ->assertSee('data-list-resend-results', false)->assertSee($resendUrl, false)->assertSee('data-confirm-dialog', false);
+
+        $this->actingAs($owner, 'web')->from($listUrl)->post($resendUrl)
+            ->assertRedirect($listUrl)->assertSessionHas('status', __('games.flash.results_sent'));
+        $this->assertSame(2, $this->telegramRequests());
+    }
+
     public function test_results_are_sent_only_for_a_finished_room_with_an_enabled_channel(): void
     {
         Http::fake();

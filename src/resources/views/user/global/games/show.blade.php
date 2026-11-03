@@ -17,16 +17,17 @@
           <p class="text-sm text-slate-500 mt-0.5">{{ __('games.history.subtitle') }}</p>
         </div>
       </div>
-      <div class="flex flex-wrap gap-2">
-        <a href="{{ route('user.me.utilities.rule-sets.index', $game) }}" class="inline-flex h-11 flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+      {{-- Mobile: "Create room" on its own full-width row first, the two secondary links side by side below. --}}
+      <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+        <a href="{{ route('user.me.utilities.rule-sets.index', $game) }}" class="inline-flex h-11 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
           <span class="material-symbols-outlined text-[18px]" aria-hidden="true">rule</span>
           {{ __('games.history.rule_sets') }}
         </a>
-        <a href="{{ route('user.me.utilities.channels.index') }}" class="inline-flex h-11 flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+        <a href="{{ route('user.me.utilities.channels.index') }}" class="inline-flex h-11 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 sm:px-4 sm:text-sm">
           <span class="material-symbols-outlined text-[18px]" aria-hidden="true">campaign</span>
           {{ __('games.channels.title') }}
         </a>
-        <a href="{{ route('user.me.utilities.rooms.create', $game) }}" data-create-room class="inline-flex h-11 flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl bg-[#006948] px-5 text-sm font-semibold text-white shadow-xs hover:bg-[#005137]">
+        <a href="{{ route('user.me.utilities.rooms.create', $game) }}" data-create-room class="order-first col-span-2 inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-[#006948] px-5 text-sm font-semibold text-white shadow-xs hover:bg-[#005137] sm:order-none">
           <span class="material-symbols-outlined text-[18px]" aria-hidden="true">add</span>
           {{ __('games.history.create') }}
         </a>
@@ -78,9 +79,23 @@
                 </span>
               </span>
             </a>
-            <div class="flex gap-2">
+            <div class="grid grid-cols-2 gap-2 sm:flex">
               {{-- A finished room shows no link action: its status badge next to the name already says it is finished. --}}
-              @php $isFinishedRoom = $room->status === \App\Enums\GameRoomStatus::Finished; @endphp
+              @php
+                $isFinishedRoom = $room->status === \App\Enums\GameRoomStatus::Finished;
+                $canResend = $isFinishedRoom && $room->notificationChannel?->is_active;
+              @endphp
+              @if($canResend)
+                {{-- Send the final leaderboard to the room's notification channel again. --}}
+                <form method="POST" action="{{ route('user.me.utilities.rooms.results.notify', [$game, $room]) }}" class="col-span-2 sm:col-span-1" data-confirm="{{ __('games.history.resend_confirm', ['channel' => $room->notificationChannel->name]) }}">
+                  @csrf
+                  <button type="submit" data-list-resend-results title="{{ $room->notificationChannel->name }}"
+                          class="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:w-auto">
+                    <span class="material-symbols-outlined text-[17px]" aria-hidden="true">send</span>
+                    {{ __('games.room.resend_results') }}
+                  </button>
+                </form>
+              @endif
               @unless($isFinishedRoom)
                 @if($room->publicUrl())
                   <button type="button" data-copy-link="{{ $room->publicUrl() }}" class="inline-flex h-10 flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50">
@@ -101,7 +116,7 @@
                 <span class="material-symbols-outlined text-[17px]" aria-hidden="true">content_copy</span>
                 {{ __('games.history.clone') }}
               </a>
-              <a href="{{ route('user.me.utilities.rooms.show', [$game, $room]) }}" class="inline-flex h-10 flex-1 sm:flex-none items-center justify-center gap-1 rounded-xl bg-emerald-50 px-3 text-xs font-semibold text-[#006948] border border-emerald-100 hover:bg-emerald-100">
+              <a href="{{ route('user.me.utilities.rooms.show', [$game, $room]) }}" class="{{ $isFinishedRoom ? '' : 'col-span-2 sm:col-span-1' }} inline-flex h-10 flex-1 sm:flex-none items-center justify-center gap-1 rounded-xl bg-emerald-50 px-3 text-xs font-semibold text-[#006948] border border-emerald-100 hover:bg-emerald-100">
                 {{ __('games.history.open') }}
                 <span class="material-symbols-outlined text-[17px]" aria-hidden="true">arrow_forward</span>
               </a>
@@ -112,4 +127,6 @@
       <div>{{ $rooms->links() }}</div>
     @endif
   </div>
+
+  @include('user.global.games.partials.confirm-dialog')
 </x-global.layout>

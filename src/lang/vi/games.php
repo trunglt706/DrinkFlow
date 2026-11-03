@@ -36,6 +36,7 @@ return [
         'open' => 'Mở room',
         'clone' => 'Clone',
         'clone_hint' => 'Tạo room mới với cùng bộ luật và danh sách người chơi',
+        'resend_confirm' => 'Gửi lại bảng kết quả cuối của room này tới kênh ":channel"?',
     ],
 
     'create' => [

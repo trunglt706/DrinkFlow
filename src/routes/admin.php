@@ -238,6 +238,7 @@ Route::middleware(['auth:admin', 'admin.room', 'room.subscription'])
     Route::patch('/settings', [\App\Http\Controllers\Admin\RoomSettingsController::class, 'update'])->name('admin.settings.update');
     Route::get('/notification-channels', [\App\Http\Controllers\Admin\NotificationChannelController::class, 'index'])->name('admin.notification-channels.index');
     Route::post('/notification-channels', [\App\Http\Controllers\Admin\NotificationChannelController::class, 'store'])->name('admin.notification-channels.store');
+    Route::post('/notification-channels/test-draft', [\App\Http\Controllers\Admin\NotificationChannelController::class, 'testDraft'])->name('admin.notification-channels.test-draft');
     Route::get('/notification-channels/{channel}', [\App\Http\Controllers\Admin\NotificationChannelController::class, 'show'])->name('admin.notification-channels.show');
     Route::patch('/notification-channels/{channel}', [\App\Http\Controllers\Admin\NotificationChannelController::class, 'update'])->name('admin.notification-channels.update');
     Route::post('/notification-channels/{channel}/test', [\App\Http\Controllers\Admin\NotificationChannelController::class, 'test'])->name('admin.notification-channels.test');

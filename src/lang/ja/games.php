@@ -36,6 +36,7 @@ return [
         'open' => 'ルームを開く',
         'clone' => '複製',
         'clone_hint' => '同じルールとプレイヤーで新しいルームを作成',
+        'resend_confirm' => 'このルームの最終結果を「:channel」に再送しますか？',
     ],
 
     'create' => [

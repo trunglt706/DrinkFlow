@@ -36,6 +36,7 @@ return [
         'open' => 'Open room',
         'clone' => 'Clone',
         'clone_hint' => 'Create a new room with the same rule set and players',
+        'resend_confirm' => 'Send this room\'s final leaderboard to ":channel" again?',
     ],
 
     'create' => [

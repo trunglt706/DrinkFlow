@@ -18,9 +18,11 @@
          data-notification-save-failed="{{ __('admin.notification_channel_save_failed') }}"
          data-notification-test-sent="{{ __('admin.notification_channel_test_sent') }}"
          data-notification-test-failed="{{ __('admin.notification_channel_test_failed') }}"
+         data-notification-draft-incomplete="{{ __('admin.notification_channel_draft_incomplete') }}"
          data-notification-server-error="{{ __('admin.notification_channel_server_error') }}"
          data-notification-delete-confirm="{{ __('admin.notification_channel_delete_confirm') }}"
          data-notification-delete-failed="{{ __('admin.notification_channel_delete_failed') }}"
+         data-notification-deleted="{{ __('admin.notification_channel_deleted') }}"
          data-notification-edit="{{ __('admin.edit') }}"
          data-notification-connect-new="{{ __('admin.connect_new_bot') }}"
          data-notification-save-webhook="{{ __('admin.save_webhook') }}"
@@ -186,12 +188,17 @@
                         </div>
                     </div>
 
-                    <div class="pt-3">
-                        <button id="channel-form-submit" type="submit" class="w-full h-9 bg-primary hover:bg-primary/90 text-on-primary rounded font-bold transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-xs">
+                    <div class="pt-3 flex gap-2">
+                        <button id="channel-form-test" type="button" data-test-draft-url="{{ route('admin.notification-channels.test-draft', $room) }}" title="{{ __('admin.notification_channel_test_draft_hint') }}" class="h-9 px-3 shrink-0 bg-primary/10 hover:bg-primary/20 text-primary rounded font-bold transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5">
+                            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">science</span>
+                            <span>{{ __('admin.notification_channel_test_draft') }}</span>
+                        </button>
+                        <button id="channel-form-submit" type="submit" class="flex-1 min-w-0 h-9 bg-primary hover:bg-primary/90 text-on-primary rounded font-bold transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-xs">
                             <span class="material-symbols-outlined text-[16px]">save</span>
                             <span>{{ __('admin.save_webhook') }}</span>
                         </button>
                     </div>
+                    <p class="text-[11px] text-outline">{{ __('admin.notification_channel_test_draft_hint') }}</p>
                 </form>
             </div>
 

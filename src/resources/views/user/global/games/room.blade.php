@@ -17,22 +17,23 @@
     @include('user.global.games.partials.flash')
 
     {{-- Header: name, status, public link and lifecycle actions --}}
-    <section class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-6">
+    <section class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs sm:p-6">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div class="min-w-0">
           <div class="flex flex-wrap items-center gap-2">
-            <h1 class="text-2xl font-bold tracking-tight text-slate-900 break-words">{{ $room->name }}</h1>
+            <h1 class="text-xl font-bold tracking-tight text-slate-900 break-words sm:text-2xl">{{ $room->name }}</h1>
             <x-game.status-badge :status="$room->status" data-room-status />
           </div>
           <p class="mt-1 text-xs text-slate-500">
             {{ __('games.room.rule_version', ['name' => $room->ruleSet->name, 'version' => $room->ruleVersion->version]) }}
           </p>
         </div>
-        <div class="flex flex-wrap gap-2">
+        {{-- Mobile: the lifecycle actions share one row of equal columns. --}}
+        <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           @if($isWaiting)
             <form method="POST" action="{{ route('user.me.utilities.rooms.start', $routeArgs) }}" data-confirm="{{ __('games.room.start_confirm') }}" class="flex-1 sm:flex-none">
               @csrf
-              <button type="submit" data-start-room class="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-[#006948] px-5 text-sm font-semibold text-white hover:bg-[#005137]">
+              <button type="submit" data-start-room class="inline-flex h-11 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-[#006948] px-3 text-sm sm:px-5 font-semibold text-white hover:bg-[#005137]">
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true">play_arrow</span>{{ __('games.room.start') }}
               </button>
             </form>
@@ -41,7 +42,7 @@
             <form method="POST" action="{{ route('user.me.utilities.rooms.rounds.store', $routeArgs) }}" data-confirm="{{ __('games.room.new_round_confirm') }}" class="flex-1 sm:flex-none">
               @csrf
               <input type="hidden" name="current_round" value="{{ $summary['current_round'] }}">
-              <button type="submit" class="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              <button type="submit" class="inline-flex h-11 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 text-sm sm:px-4 font-semibold text-slate-700 hover:bg-slate-50">
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true">add_circle</span>{{ __('games.room.new_round') }}
               </button>
             </form>
@@ -49,7 +50,7 @@
           @unless($isFinished)
             <form method="POST" action="{{ route('user.me.utilities.rooms.finish', $routeArgs) }}" data-confirm="{{ __('games.room.finish_confirm') }}" class="flex-1 sm:flex-none">
               @csrf
-              <button type="submit" class="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-700 hover:bg-rose-50">
+              <button type="submit" class="inline-flex h-11 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-rose-200 bg-white px-3 text-sm sm:px-4 font-semibold text-rose-700 hover:bg-rose-50">
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true">flag</span>{{ __('games.room.finish') }}
               </button>
             </form>
@@ -58,7 +59,7 @@
       </div>
 
       {{-- Public link --}}
-      <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+      <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 sm:mt-5 sm:p-4">
         <div class="flex items-center gap-2 text-sm font-semibold text-slate-800">
           <span class="material-symbols-outlined text-[18px] text-[#006948]" aria-hidden="true">public</span>{{ __('games.room.public_link') }}
         </div>
@@ -90,10 +91,10 @@
           </p>
         @endif
         @unless($isFinished)
-        <div class="mt-3 flex flex-wrap gap-2">
+        <div class="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           <form method="POST" action="{{ route('user.me.utilities.rooms.public-link.regenerate', $routeArgs) }}" @if($publicUrl) data-confirm="{{ __('games.room.regenerate_confirm') }}" @endif>
             @csrf
-            <button type="submit" class="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+            <button type="submit" class="inline-flex h-9 w-full items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 sm:w-auto hover:bg-slate-50">
               <span class="material-symbols-outlined text-[16px]" aria-hidden="true">autorenew</span>{{ __('games.room.regenerate_link') }}
             </button>
           </form>
@@ -101,7 +102,7 @@
             <form method="POST" action="{{ route('user.me.utilities.rooms.public-link.revoke', $routeArgs) }}" data-confirm="{{ __('games.room.revoke_confirm') }}">
               @csrf
               @method('DELETE')
-              <button type="submit" class="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50">
+              <button type="submit" class="inline-flex h-9 w-full items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-rose-700 sm:w-auto hover:bg-rose-50">
                 <span class="material-symbols-outlined text-[16px]" aria-hidden="true">link_off</span>{{ __('games.room.revoke_link') }}
               </button>
             </form>
@@ -112,7 +113,7 @@
 
       {{-- Notification channel: receives the final leaderboard when the room finishes; can be sent again. --}}
       @php $roomChannel = $room->notificationChannel; @endphp
-      <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4" data-room-channel>
+      <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 sm:p-4" data-room-channel>
         <div class="flex items-center gap-2 text-sm font-semibold text-slate-800">
           <span class="material-symbols-outlined text-[18px] text-[#006948]" aria-hidden="true">campaign</span>{{ __('games.room.channel') }}
         </div>
@@ -189,17 +190,17 @@
 
     {{-- Summary + quick action --}}
     <section class="grid grid-cols-3 gap-3 sm:gap-4">
-      <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
-        <span class="block text-xs font-medium text-slate-500">{{ __('games.room.rounds') }}</span>
-        <span class="mt-1 block text-2xl font-bold tabular-nums text-slate-900" data-summary-rounds>{{ $summary['rounds'] }}</span>
+      <div class="min-w-0 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-xs sm:p-4">
+        <span class="block truncate text-[11px] font-medium text-slate-500 sm:text-xs">{{ __('games.room.rounds') }}</span>
+        <span class="mt-1 block text-xl font-bold tabular-nums text-slate-900 sm:text-2xl" data-summary-rounds>{{ $summary['rounds'] }}</span>
       </div>
-      <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
-        <span class="block text-xs font-medium text-slate-500">{{ __('games.room.results') }}</span>
-        <span class="mt-1 block text-2xl font-bold tabular-nums text-slate-900" data-summary-results>{{ $summary['results'] }}</span>
+      <div class="min-w-0 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-xs sm:p-4">
+        <span class="block truncate text-[11px] font-medium text-slate-500 sm:text-xs">{{ __('games.room.results') }}</span>
+        <span class="mt-1 block text-xl font-bold tabular-nums text-slate-900 sm:text-2xl" data-summary-results>{{ $summary['results'] }}</span>
       </div>
-      <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
-        <span class="block text-xs font-medium text-slate-500">{{ __('games.room.current_round') }}</span>
-        <span class="mt-1 block text-2xl font-bold tabular-nums text-slate-900">{{ $summary['current_round'] ?? '—' }}</span>
+      <div class="min-w-0 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-xs sm:p-4">
+        <span class="block truncate text-[11px] font-medium text-slate-500 sm:text-xs">{{ __('games.room.current_round') }}</span>
+        <span class="mt-1 block text-xl font-bold tabular-nums text-slate-900 sm:text-2xl">{{ $summary['current_round'] ?? '—' }}</span>
       </div>
     </section>
 

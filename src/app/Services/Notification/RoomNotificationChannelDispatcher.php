@@ -83,6 +83,22 @@ class RoomNotificationChannelDispatcher
     }
 
     /**
+     * Send a test payload with a configuration that is not saved yet (the values currently in the channel form).
+     *
+     * @param string $type Driver type.
+     * @param array<string, string> $config Draft configuration (see RoomNotificationChannelService::draftConfig()).
+     * @param string $template Template name.
+     * @param Room|null $room Room whose name and links appear in the sample.
+     * @return void
+     * @throws \InvalidArgumentException When the destination is not a safe public HTTPS endpoint.
+     * @throws \Throwable When the provider rejects the message.
+     */
+    public function testDraft(string $type, array $config, string $template = 'test_ping', ?Room $room = null): void
+    {
+        $this->send($type, $config, $this->buildTestPayload($template, $room));
+    }
+
+    /**
      * Build realistic test payload for a given notification template.
      *
      * @param string $template Template identifier.

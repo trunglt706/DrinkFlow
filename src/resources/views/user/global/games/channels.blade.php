@@ -40,20 +40,20 @@
                 </p>
               </div>
             </div>
-            <div class="flex flex-wrap gap-2">
+            <div class="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
               <form method="POST" action="{{ route('user.me.utilities.channels.test', $channel) }}">
                 @csrf
-                <button type="submit" @disabled(! $channel->is_active) class="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+                <button type="submit" @disabled(! $channel->is_active) class="inline-flex h-9 w-full items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 px-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-3">
                   <span class="material-symbols-outlined text-[16px]" aria-hidden="true">send</span>{{ __('games.channels.test') }}
                 </button>
               </form>
-              <a href="{{ route('user.me.utilities.channels.edit', $channel) }}" class="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+              <a href="{{ route('user.me.utilities.channels.edit', $channel) }}" class="inline-flex h-9 w-full items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 px-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:w-auto sm:px-3">
                 <span class="material-symbols-outlined text-[16px]" aria-hidden="true">edit</span>{{ __('games.channels.edit') }}
               </a>
               <form method="POST" action="{{ route('user.me.utilities.channels.destroy', $channel) }}" data-confirm="{{ __('games.channels.delete_confirm') }}">
                 @csrf
                 @method('DELETE')
-                <button type="submit" class="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50">
+                <button type="submit" class="inline-flex h-9 w-full items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 px-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 sm:w-auto sm:px-3">
                   <span class="material-symbols-outlined text-[16px]" aria-hidden="true">delete</span>{{ __('games.channels.delete') }}
                 </button>
               </form>
