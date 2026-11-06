@@ -14,6 +14,7 @@ import { initDesktopNotifications } from './global/desktop-notification';
 import { initGuideLightbox } from './shared/image-lightbox';
 import { initProfileBioEditor } from './global/profile-bio';
 import { initGames } from './global/games';
+import { initQrLogin } from './global/qr-login';
 
 document.addEventListener('DOMContentLoaded', () => {
     initToastNotifications();
@@ -30,4 +31,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initGuideLightbox();
     initProfileBioEditor();
     initGames();
+    initQrLogin();
 });

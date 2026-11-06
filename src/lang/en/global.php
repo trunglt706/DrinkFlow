@@ -770,4 +770,19 @@ return [
         'cancel' => 'Cancel',
         'close' => 'Close',
     ],
+    // QR sign-in on a phone, shown on /me/devices.
+    'qr_login' => [
+        'title' => 'Sign in on your phone with a QR code',
+        'description' => 'Open the camera on your phone and scan the code to sign in to this account right away, without signing in to Google on the phone. The code changes every :seconds seconds and works only once.',
+        'show' => 'Show QR code',
+        'hide' => 'Hide QR code',
+        'qr_label' => 'QR code to sign in on a phone',
+        'countdown' => 'New code in :seconds seconds',
+        'loading' => 'Creating a code…',
+        'stopped' => 'Code generation paused for your security.',
+        'restart' => 'Create a new code',
+        'error' => 'Could not create the QR code, please try again.',
+        'warning' => 'Do not take a picture of this code or send it to anyone: whoever scans it signs in to your account.',
+        'invalid' => 'This QR code has expired or was already used. Scan a new code on your computer.',
+    ],
 ];

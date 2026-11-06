@@ -281,6 +281,16 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(15)->by($ip);
         });
 
+        // QR sign-in: the /me/devices page asks for a new code every 10 seconds while the QR panel is open.
+        RateLimiter::for('user-qr-issue', function (Request $request) {
+            return Limit::perMinute(12)->by('user:'.($request->user('web')?->getAuthIdentifier() ?? $request->ip()));
+        });
+
+        // Opening a QR link (guessing codes is pointless with 48 random characters, but keep scans bounded).
+        RateLimiter::for('user-auth-qr', function (Request $request) {
+            return Limit::perMinute(10)->by($request->ip() ?: '127.0.0.1');
+        });
+
         RateLimiter::for('user-auth-logout', function (Request $request) {
             $ip = $request->ip() ?: '127.0.0.1';
 

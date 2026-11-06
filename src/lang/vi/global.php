@@ -770,4 +770,19 @@ return [
         'cancel' => 'Hủy',
         'close' => 'Đóng',
     ],
+    // QR sign-in on a phone, shown on /me/devices.
+    'qr_login' => [
+        'title' => 'Đăng nhập trên điện thoại bằng mã QR',
+        'description' => 'Mở camera trên điện thoại và quét mã để đăng nhập ngay vào tài khoản này, không cần đăng nhập Google trên điện thoại. Mã tự đổi sau mỗi :seconds giây và chỉ dùng được một lần.',
+        'show' => 'Hiện mã QR',
+        'hide' => 'Ẩn mã QR',
+        'qr_label' => 'Mã QR đăng nhập trên điện thoại',
+        'countdown' => 'Mã mới sau :seconds giây',
+        'loading' => 'Đang tạo mã…',
+        'stopped' => 'Đã tạm dừng tạo mã để bảo mật.',
+        'restart' => 'Tạo mã mới',
+        'error' => 'Không tạo được mã QR, vui lòng thử lại.',
+        'warning' => 'Không chụp ảnh hay gửi mã này cho người khác: ai quét được mã sẽ đăng nhập vào tài khoản của bạn.',
+        'invalid' => 'Mã QR đã hết hạn hoặc đã được sử dụng. Hãy quét mã mới trên máy tính.',
+    ],
 ];

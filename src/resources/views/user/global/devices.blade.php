@@ -52,6 +52,44 @@
         </div>
     </div>
 
+    {{-- QR sign-in on a phone: the code is fetched (and replaced every few seconds) only while the panel is open. --}}
+    <section class="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs" data-qr-login
+        data-endpoint="{{ route('user.me.devices.qr-login') }}"
+        data-i18n="{{ json_encode([
+            'show' => __('global.qr_login.show'),
+            'hide' => __('global.qr_login.hide'),
+            'countdown' => __('global.qr_login.countdown', ['seconds' => '__SECONDS__']),
+            'loading' => __('global.qr_login.loading'),
+            'stopped' => __('global.qr_login.stopped'),
+            'error' => __('global.qr_login.error'),
+        ], JSON_UNESCAPED_UNICODE) }}">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div class="flex items-start gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-lg bg-emerald-50 text-[#006948] flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined" aria-hidden="true">qr_code_2</span>
+                </div>
+                <div class="min-w-0">
+                    <h2 class="text-sm font-semibold text-slate-900">{{ __('global.qr_login.title') }}</h2>
+                    <p class="mt-1 text-xs text-slate-500 leading-relaxed">{{ __('global.qr_login.description', ['seconds' => \App\Services\Auth\QrLoginService::ROTATE_SECONDS]) }}</p>
+                </div>
+            </div>
+            <button type="button" data-qr-login-toggle aria-expanded="false" aria-controls="qr-login-panel"
+                class="shrink-0 px-3 py-2 rounded-lg bg-[#006948] hover:bg-[#005239] text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 cursor-pointer">
+                <span class="material-symbols-outlined text-[16px]" aria-hidden="true">qr_code_scanner</span>
+                <span data-qr-login-toggle-label>{{ __('global.qr_login.show') }}</span>
+            </button>
+        </div>
+
+        <div id="qr-login-panel" class="hidden mt-4 pt-4 border-t border-slate-100 flex-col items-center gap-3 text-center" data-qr-login-panel>
+            <canvas class="rounded-lg border border-slate-200 bg-white" width="216" height="216" role="img" aria-label="{{ __('global.qr_login.qr_label') }}" data-qr-login-canvas></canvas>
+            <p class="text-xs font-medium text-slate-600" aria-live="polite" data-qr-login-status>{{ __('global.qr_login.loading') }}</p>
+            <button type="button" class="hidden px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold cursor-pointer" data-qr-login-restart>
+                {{ __('global.qr_login.restart') }}
+            </button>
+            <p class="max-w-md text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{{ __('global.qr_login.warning') }}</p>
+        </div>
+    </section>
+
     <!-- Current device and other sessions -->
     <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="bg-white border border-emerald-200 rounded-xl p-5 shadow-2xs flex flex-col justify-between gap-4">

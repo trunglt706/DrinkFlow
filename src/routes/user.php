@@ -8,6 +8,10 @@ Route::get('/auth/google', [\App\Http\Controllers\Auth\GoogleAuthController::cla
 Route::get('/auth/google/callback', [\App\Http\Controllers\Auth\GoogleAuthController::class, 'callback'])
     ->middleware('throttle:user-auth-google')
     ->name('auth.google.callback');
+// One-time QR code shown on /me/devices: scanning it signs the phone in to the same account.
+Route::get('/auth/qr/{token}', \App\Http\Controllers\Auth\QrLoginController::class)
+    ->middleware('throttle:user-auth-qr')
+    ->name('auth.qr-login');
 Route::post('/logout', function (\Illuminate\Http\Request $request) {
     \Illuminate\Support\Facades\Auth::guard('web')->logout();
     $request->session()->invalidate();
@@ -105,6 +109,9 @@ Route::middleware(['global.user'])->group(function () {
     Route::get('/me/notifications', [\App\Http\Controllers\User\Global\NotificationController::class, 'index'])->name('user.me.notifications');
     Route::post('/me/notifications/read-all', [\App\Http\Controllers\User\Global\NotificationController::class, 'markAllRead'])->name('user.me.notifications.read-all');
     Route::get('/me/devices', [\App\Http\Controllers\User\Global\ProfileController::class, 'devices'])->name('user.me.devices');
+    Route::post('/me/devices/qr-login', [\App\Http\Controllers\User\Global\QrLoginController::class, 'store'])
+        ->middleware('throttle:user-qr-issue')
+        ->name('user.me.devices.qr-login');
     Route::get('/blocked', [\App\Http\Controllers\User\Global\BlockedAccountController::class, 'show'])->name('user.blocked');
     Route::post('/blocked/appeal', [\App\Http\Controllers\User\Global\BlockedAccountController::class, 'appeal'])->name('user.blocked.appeal');
     Route::post('/me/devices/logout/{session_id}', [\App\Http\Controllers\User\Global\ProfileController::class, 'logoutDevice'])->name('user.me.devices.logout');
