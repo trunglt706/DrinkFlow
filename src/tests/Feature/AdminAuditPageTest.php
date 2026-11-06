@@ -67,6 +67,48 @@ class AdminAuditPageTest extends TestCase
     }
 
     /**
+     * Logs written in the same second must still split into stable, non-overlapping pages
+     * (newest id first), otherwise rows repeat or disappear between pages.
+     *
+     * @return void
+     */
+    public function test_audit_pagination_is_stable_when_logs_share_the_same_timestamp(): void
+    {
+        $admin = Admin::create([
+            'name' => 'Audit Pager',
+            'email' => 'audit-pager@example.test',
+            'password' => 'secret-password',
+            'status' => 'active',
+        ]);
+        $room = Room::create(['name' => 'Pager', 'slug' => 'pager', 'status' => 'active']);
+        $admin->rooms()->attach($room);
+
+        $sameSecond = now()->startOfSecond();
+        $perPage = \App\Constants\Pagination::ADMIN_PER_PAGE;
+        $ids = [];
+        for ($i = 0; $i < $perPage + 5; $i++) {
+            $ids[] = AuditLog::create([
+                'room_id' => $room->id,
+                'actor_type' => 'Admin',
+                'actor_id' => $admin->id,
+                'event' => 'campaign.create',
+                'target_type' => 'Campaign',
+                'target_id' => $i + 1,
+                'created_at' => $sameSecond,
+            ])->id;
+        }
+        rsort($ids);
+
+        $this->actingAs($admin, 'admin');
+        $pageOne = $this->get(route('admin.audit.page', $room->slug))->assertOk()->viewData('logs');
+        $pageTwo = $this->get(route('admin.audit.page', ['room' => $room->slug, 'page' => 2]))->assertOk()->viewData('logs');
+
+        $this->assertSame(array_slice($ids, 0, $perPage), $pageOne->pluck('id')->all());
+        $this->assertSame(array_slice($ids, $perPage), $pageTwo->pluck('id')->all());
+        $this->assertStringContainsString('page=2', (string) $pageOne->nextPageUrl());
+    }
+
+    /**
      * Test audit event keys such as debt.payment_approved are properly translated.
      *
      * @return void

@@ -24,7 +24,7 @@ class AuditController extends Controller
     public function index(Request $request): JsonResponse
     {
         $room = $request->attributes->get('room');
-        $query = AuditLog::query()->where('room_id', $room->id)->latest('created_at');
+        $query = AuditLog::query()->where('room_id', $room->id)->latest('created_at')->latest('id');
 
         if ($request->filled('event')) {
             $query->where('event', $request->string('event')->toString());
@@ -59,7 +59,7 @@ class AuditController extends Controller
     {
         $query = AuditLog::query()
             ->where('room_id', $room->id)
-            ->latest('created_at');
+            ->latest('created_at')->latest('id');
 
         if ($request->filled('event')) {
             $query->where('event', $request->string('event')->toString());

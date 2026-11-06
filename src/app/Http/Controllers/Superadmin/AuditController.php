@@ -18,7 +18,7 @@ class AuditController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = AuditLog::query()->with('room:id,name,slug')->latest('created_at');
+        $query = AuditLog::query()->with('room:id,name,slug')->latest('created_at')->latest('id');
         foreach (['actor_type', 'event', 'target_type', 'room_id'] as $field)
             if ($request->filled($field))
                 $query->where($field, $request->input($field));
