@@ -14,13 +14,6 @@ return [
 
     // Shared controls of the occasion pages.
     'ui' => [
-        'slides_label' => 'メッセージ',
-        'slide_label' => 'メッセージ :current / :total',
-        'prev' => '前のメッセージ',
-        'next' => '次のメッセージ',
-        'go_to' => 'メッセージ :number を表示',
-        'pause' => '一時停止',
-        'play' => '再生',
         'back_to_room' => 'ルームに戻る',
         'back_to_admin' => 'イベント管理に戻る',
         'preview_badge' => 'プレビューモード',
@@ -88,7 +81,7 @@ return [
         'save_error' => '保存できませんでした。もう一度お試しください。',
         'settings_saved' => 'BGM と効果音の設定を保存しました。',
         'wishes_title' => 'イベントページのメッセージ',
-        'wishes_description' => 'メッセージは1つずつスライドで表示され、2秒ごとに切り替わります。初期設定ではサンプルのメッセージ（各メンバーの言語）を表示します。独自のリストを保存すると、全メンバーに入力したとおりのメッセージが表示されます。最大 :max 件、1件あたり :length 文字まで。',
+        'wishes_description' => 'ページを開くたびに、リストからランダムに選ばれた1件のメッセージが表示されます。初期設定ではサンプルのメッセージ（各メンバーの言語）を表示します。独自のリストを保存すると、全メンバーに入力したとおりのメッセージが表示されます。最大 :max 件、1件あたり :length 文字まで。',
         'wishes' => 'メッセージ一覧',
         'wish' => 'メッセージ',
         'wish_number' => 'メッセージ :number',

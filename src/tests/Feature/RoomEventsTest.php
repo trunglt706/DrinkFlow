@@ -90,7 +90,7 @@ class RoomEventsTest extends TestCase
         $this->assertSame('2030-02-02', LunarCalendar::lunarNewYear(2030)->toDateString());
     }
 
-    public function test_every_occasion_page_opens_on_its_day_with_one_slide_per_wish(): void
+    public function test_every_occasion_page_opens_on_its_day_with_one_random_wish(): void
     {
         $viewer = $this->member('Viewer Lan');
         $days = [
@@ -110,15 +110,11 @@ class RoomEventsTest extends TestCase
                 ->assertSee('<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">', false)
                 ->assertSee('data-stage-button', false)
                 ->assertSee(__('occasions.'.$occasion->value.'.tap_hint'))
-                // Each wish stays long enough to be read: 5 to 10 seconds depending on its length.
-                ->assertSee('Math.min(10000, Math.max(5000, (slide?.textContent', false)
+                ->assertDontSee('data-slide', false)
                 ->getContent();
 
             $this->assertStringEndsWith('/rooms/flower-room'.$path, $this->occasionUrl($occasion));
-            $this->assertSame(count($wishes), substr_count($html, 'data-slide>'), $occasion->value);
-            foreach ($wishes as $wish) {
-                $this->assertStringContainsString(e($wish), $html);
-            }
+            $this->assertShowsOneWishOf($html, $wishes, $occasion->value);
         }
     }
 
@@ -471,20 +467,19 @@ class RoomEventsTest extends TestCase
         $samples = (array) __('occasions.womens_day.wishes');
 
         // Defaults: the sample wishes, also pre-filled in the admin editor.
-        $this->actingAs($viewer, 'web')->get($page)->assertOk()->assertSee($samples[0]);
+        $this->assertShowsOneWishOf($this->actingAs($viewer, 'web')->get($page)->assertOk()->getContent(), $samples);
         $this->actingAs($admin, 'admin')->get(route('admin.events.index', $this->room->slug))
             ->assertOk()->assertSee('data-wishes-panel="womens_day"', false)->assertSee(__('occasions.admin.wishes_using_default'))->assertSee($samples[0]);
 
         // The room's own list (blank lines dropped, order kept).
         $this->actingAs($admin, 'admin')->putJson($save, ['type' => 'womens_day', 'wishes' => ['  Chúc chị em luôn vui  ', '', 'Chúc cả phòng 20/10 rực rỡ']])
             ->assertOk()->assertJsonPath('custom', true)->assertJsonPath('wishes', ['Chúc chị em luôn vui', 'Chúc cả phòng 20/10 rực rỡ']);
-        $html = $this->actingAs($viewer, 'web')->get($page)->assertOk()
-            ->assertSeeInOrder(['Chúc chị em luôn vui', 'Chúc cả phòng 20/10 rực rỡ'])->assertDontSee($samples[0])->getContent();
-        $this->assertSame(2, substr_count($html, 'data-slide>'));
+        $custom = ['Chúc chị em luôn vui', 'Chúc cả phòng 20/10 rực rỡ'];
+        $this->assertShowsOneWishOf($this->actingAs($viewer, 'web')->get($page)->assertOk()->getContent(), $custom);
 
         // Saving the music keeps the wishes.
         $this->actingAs($admin, 'admin')->putJson(route('admin.events.settings', $this->room->slug), ['type' => 'womens_day', 'music_mode' => 'off'])->assertOk();
-        $this->actingAs($viewer, 'web')->get($page)->assertSee('Chúc chị em luôn vui');
+        $this->assertShowsOneWishOf($this->actingAs($viewer, 'web')->get($page)->getContent(), $custom);
 
         // Birthday wishes: ":name" becomes the celebrants' names.
         $this->actingAs($admin, 'admin')->putJson($save, ['type' => 'birthday', 'wishes' => ['Chúc mừng sinh nhật :name nhé!']])->assertOk();
@@ -494,7 +489,7 @@ class RoomEventsTest extends TestCase
         $this->actingAs($admin, 'admin')->put($save, ['type' => 'womens_day', 'use_default' => '1'])
             ->assertRedirect()->assertSessionHas('status', __('occasions.admin.wishes_reset'));
         $this->assertNull(\App\Models\RoomEventSetting::query()->where('room_id', $this->room->id)->where('event_type', 'womens_day')->value('wishes'));
-        $this->actingAs($viewer, 'web')->get($page)->assertSee($samples[0])->assertDontSee('Chúc chị em luôn vui');
+        $this->assertShowsOneWishOf($this->actingAs($viewer, 'web')->get($page)->assertDontSee('Chúc chị em luôn vui')->getContent(), $samples);
     }
 
     public function test_wishes_are_validated(): void
@@ -512,6 +507,19 @@ class RoomEventsTest extends TestCase
             $this->actingAs($admin, 'admin')->putJson($save, $data)->assertStatus(422)->assertJsonValidationErrors($field);
         }
         $this->assertDatabaseCount('room_event_settings', 0);
+    }
+
+    /**
+     * The page shows exactly one wish, and it is one of the given list.
+     *
+     * @param string $html Rendered page.
+     * @param array<int, string> $wishes Wishes the shown one is picked from.
+     * @param string $message Assertion context.
+     */
+    private function assertShowsOneWishOf(string $html, array $wishes, string $message = ''): void
+    {
+        $this->assertSame(1, preg_match_all('/data-wish>(.*?)<\/p>/s', $html, $matches), $message);
+        $this->assertContains(html_entity_decode(trim($matches[1][0]), ENT_QUOTES), $wishes, $message);
     }
 
     /**

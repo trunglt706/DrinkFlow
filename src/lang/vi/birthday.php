@@ -22,7 +22,6 @@ return [
     'close_card' => 'Đóng',
     'self_note' => 'Cả phòng đang gửi lời chúc đến bạn đấy!',
     'wish_title' => 'Lời chúc',
-    'next_wish' => 'Lời chúc khác',
     'blow_hint' => 'Chạm vào chiếc bánh để thổi nến',
     'blown' => 'Điều ước đã được gửi đi! ✨',
     'candles_label' => 'Thổi nến trên bánh sinh nhật',

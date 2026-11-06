@@ -14,13 +14,6 @@ return [
 
     // Shared controls of the occasion pages.
     'ui' => [
-        'slides_label' => 'Lời chúc',
-        'slide_label' => 'Lời chúc :current / :total',
-        'prev' => 'Lời chúc trước',
-        'next' => 'Lời chúc tiếp theo',
-        'go_to' => 'Xem lời chúc :number',
-        'pause' => 'Tạm dừng',
-        'play' => 'Tiếp tục',
         'back_to_room' => 'Quay lại phòng',
         'back_to_admin' => 'Quay lại quản lý sự kiện',
         'preview_badge' => 'Chế độ xem trước',
@@ -88,7 +81,7 @@ return [
         'save_error' => 'Không lưu được, vui lòng thử lại.',
         'settings_saved' => 'Đã lưu cấu hình nhạc và âm thanh.',
         'wishes_title' => 'Lời chúc trên trang sự kiện',
-        'wishes_description' => 'Mỗi lời chúc là một slide, tự chuyển sau 2 giây. Mặc định trang dùng lời chúc mẫu (hiển thị theo ngôn ngữ của từng thành viên); khi lưu danh sách riêng, mọi thành viên sẽ thấy đúng các lời chúc bạn nhập. Tối đa :max lời chúc, mỗi lời tối đa :length ký tự.',
+        'wishes_description' => 'Mỗi lần mở trang, thành viên thấy một lời chúc được chọn ngẫu nhiên trong danh sách. Mặc định trang dùng lời chúc mẫu (hiển thị theo ngôn ngữ của từng thành viên); khi lưu danh sách riêng, mọi thành viên sẽ thấy đúng các lời chúc bạn nhập. Tối đa :max lời chúc, mỗi lời tối đa :length ký tự.',
         'wishes' => 'Danh sách lời chúc',
         'wish' => 'Lời chúc',
         'wish_number' => 'Lời chúc :number',

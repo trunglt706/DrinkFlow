@@ -16,8 +16,9 @@
         };
     };
     $isSelf = $viewerCode !== '' && in_array($viewerCode, array_column($celebrants, 'user_code'), true);
-    // The room's own wishes (admin events page) or the default ones; `:name` becomes the celebrants' names.
-    $wishes = array_map(static fn (string $wish): string => str_replace(':name', $name, $wish), $wishes);
+    // One wish picked at random from the room's own wishes (admin events page) or the default ones;
+    // `:name` becomes the celebrants' names.
+    $wish = $wishes === [] ? '' : str_replace(':name', $name, (string) \Illuminate\Support\Arr::random($wishes));
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -93,7 +94,6 @@
     .card{width:min(100%,560px);padding:24px 26px;border-radius:22px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(10px);box-shadow:0 20px 60px -20px rgba(0,0,0,.5)}
     .card h2{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:10px}
     .wish{font-size:clamp(16px,2.6vw,19px);line-height:1.6;font-weight:500;min-height:3.2em;transition:opacity .9s cubic-bezier(.4,0,.2,1),transform 1s cubic-bezier(.22,1,.36,1)}
-    .wish.is-fading{opacity:0;transform:translateY(-8px)}
     /* Desktop: the page fits one screen (sizes follow the window height); longer content just scrolls. */
     @media (min-width:901px){
       main{gap:clamp(8px,1.6vh,18px);padding:clamp(20px,3.5vh,40px) 20px clamp(16px,3vh,32px)}
@@ -110,7 +110,6 @@
     .actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:16px}
     .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:999px;border:0;font:600 14px 'Be Vietnam Pro',sans-serif;cursor:pointer;text-decoration:none;transition:transform .15s,filter .15s}
     .btn:hover{transform:translateY(-1px);filter:brightness(1.08)}
-    .btn-primary{background:linear-gradient(90deg,var(--rose),var(--pink));color:#fff;box-shadow:0 10px 24px -10px rgba(255,61,110,.8)}
     .btn-ghost{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.3)}
     .signature{font-family:'Dancing Script',cursive;font-size:24px;color:rgba(255,255,255,.9)}
     .back{position:fixed;top:16px;left:16px;z-index:20;font-size:13px}
@@ -158,7 +157,7 @@
   @endif
   <x-occasion.audio :audio="$audio" melody="birthday" />
 
-  <main data-birthday-page data-i18n="{{ json_encode(['wishes' => array_values($wishes), 'blown' => __('birthday.blown')], JSON_UNESCAPED_UNICODE) }}">
+  <main data-birthday-page data-i18n="{{ json_encode(['blown' => __('birthday.blown')], JSON_UNESCAPED_UNICODE) }}">
     <span class="eyebrow">🎉 {{ __('birthday.eyebrow', ['room' => $room->name]) }}</span>
 
     <div>
@@ -222,13 +221,12 @@
 
     <section class="card" aria-live="polite">
       <h2>{{ __('birthday.wish_title') }}</h2>
-      <p class="wish" data-wish>{{ $wishes[0] ?? '' }}</p>
-      <div class="actions">
-        <button type="button" class="btn btn-primary" data-next-wish>✨ {{ __('birthday.next_wish') }}</button>
-        @if ($wall !== null)
+      <p class="wish" data-wish>{{ $wish }}</p>
+      @if ($wall !== null)
+        <div class="actions">
           <a class="btn btn-ghost" href="#event-wish-wall" data-wall-link>💬 {{ __('occasions.wall.open') }}</a>
-        @endif
-      </div>
+        </div>
+      @endif
     </section>
 
     <p class="signature">{{ __('birthday.signature', ['room' => $room->name]) }}</p>
@@ -349,32 +347,6 @@
         setTimeout(() => toast.classList.remove('is-visible'), 2600);
         setTimeout(() => document.querySelector('[data-wish]').closest('.card').scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' }), 2000);
       });
-
-      // Cycle through the wishes: by itself once a wish had time to be read (5 to 10 seconds, by its length), or on
-      // demand (which restarts the wait).
-      const wishes = Array.isArray(i18n.wishes) ? i18n.wishes : [];
-      const wish = document.querySelector('[data-wish]');
-      let current = 0;
-      let wishTimer = null;
-      const nextWishButton = document.querySelector('[data-next-wish]');
-      const showNextWish = () => {
-        if (wishes.length < 2) return;
-        current = (current + 1) % wishes.length;
-        wish.classList.add('is-fading');
-        setTimeout(() => { wish.textContent = wishes[current]; wish.classList.remove('is-fading'); restartWishTimer(); }, 900);
-        const rect = nextWishButton.getBoundingClientRect();
-        burst(60, rect.left + rect.width / 2, rect.top);
-      };
-      const restartWishTimer = () => {
-        clearTimeout(wishTimer);
-        const readMs = Math.min(10000, Math.max(5000, (wish.textContent || '').trim().length * 55));
-        wishTimer = setTimeout(() => { if (document.hidden) restartWishTimer(); else showNextWish(); }, readMs);
-      };
-      nextWishButton.addEventListener('click', () => {
-        showNextWish();
-        restartWishTimer();
-      });
-      restartWishTimer();
     })();
   </script>
 </body>

@@ -22,7 +22,6 @@ return [
     'close_card' => 'Close',
     'self_note' => 'The whole room is sending you their wishes!',
     'wish_title' => 'Our wish',
-    'next_wish' => 'Another wish',
     'blow_hint' => 'Tap the cake to blow out the candles',
     'blown' => 'Your wish is on its way! ✨',
     'candles_label' => 'Blow out the birthday candles',

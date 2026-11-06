@@ -14,13 +14,6 @@ return [
 
     // Shared controls of the occasion pages.
     'ui' => [
-        'slides_label' => 'Wishes',
-        'slide_label' => 'Wish :current of :total',
-        'prev' => 'Previous wish',
-        'next' => 'Next wish',
-        'go_to' => 'Show wish :number',
-        'pause' => 'Pause',
-        'play' => 'Play',
         'back_to_room' => 'Back to room',
         'back_to_admin' => 'Back to event management',
         'preview_badge' => 'Preview mode',
@@ -88,7 +81,7 @@ return [
         'save_error' => 'Could not save, please try again.',
         'settings_saved' => 'Music and sound settings saved.',
         'wishes_title' => 'Wishes on the event pages',
-        'wishes_description' => 'Each wish is one slide, moving on every 2 seconds. By default the page shows the sample wishes (in each member\'s language); once you save your own list, every member sees exactly the wishes you entered. Up to :max wishes, :length characters each.',
+        'wishes_description' => 'Each time the page opens, members see one wish picked at random from the list. By default the page shows the sample wishes (in each member\'s language); once you save your own list, every member sees exactly the wishes you entered. Up to :max wishes, :length characters each.',
         'wishes' => 'Wishes',
         'wish' => 'Wish',
         'wish_number' => 'Wish :number',

@@ -1,6 +1,6 @@
 {{-- Shared frame of the stand-alone occasion pages (no site header / footer): only the centerpiece and its hint are
      shown at first; clicking it plays the page's reveal animation ("is-open"), bursts particles, then shows the
-     heading and the wishes, one per slide, moving to the next slide once it had time to be read (5 to 10 seconds).
+     heading and one wish picked at random from the occasion's wishes (a new pick on every visit).
      Each page passes its centerpiece SVG (slot), its own CSS (`styles` slot), its palette (`theme`: CSS custom
      properties), its particles and sound effects played on open (`effects`, `sounds`: [[effect, delay ms], ...]),
      the room's music settings (`audio`) and the wishes wall (`wall`, null to leave it out). Texts come from
@@ -11,7 +11,7 @@
     $key = 'occasions.'.$occasion->value;
     // The room's own wishes (admin events page), otherwise the default sample wishes of the occasion.
     $wishes = array_values($wishes ?? (array) __($key.'.wishes'));
-    $total = count($wishes);
+    $wish = $wishes === [] ? '' : \Illuminate\Support\Arr::random($wishes);
     $params = ['room' => $room->name, 'year' => $year];
 @endphp
 <!DOCTYPE html>
@@ -61,28 +61,12 @@
       animation:oc-shimmer 7s linear infinite}
     .sub{margin-top:6px;font-size:clamp(15px,2.2vw,17px);color:rgba(255,255,255,.82)}
     /* Opaque-ish card instead of backdrop-filter: particles fall behind it, which would re-blur the backdrop every frame. */
-    .carousel{position:relative;margin-top:26px;padding:30px 28px 22px;border-radius:26px;background:linear-gradient(145deg,var(--card-1),var(--card-2));border:1px solid var(--line);
+    .wish-card{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:26px;padding:30px 28px 26px;border-radius:26px;background:linear-gradient(145deg,var(--card-1),var(--card-2));border:1px solid var(--line);
       box-shadow:0 30px 70px -30px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.18);overflow:hidden}
-    .carousel::before{content:'';position:absolute;inset:-40% -20% auto auto;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,var(--glow-1),transparent 70%);pointer-events:none}
-    .slides{display:grid;list-style:none;position:relative}
-    .slide{grid-area:1/1;display:flex;flex-direction:column;align-items:center;gap:12px;opacity:0;visibility:hidden;transform:translateY(10px);
-      transition:opacity 1.1s cubic-bezier(.4,0,.2,1),transform 1.2s cubic-bezier(.22,1,.36,1),visibility 0s 1.2s}
-    .slide.is-active{opacity:1;visibility:visible;transform:none;transition-delay:.25s}
-    .slide.is-leaving{opacity:0;visibility:visible;transform:translateY(-10px)}
+    .wish-card::before{content:'';position:absolute;inset:-40% -20% auto auto;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,var(--glow-1),transparent 70%);pointer-events:none}
     .quote{font-family:'Playfair Display',Georgia,serif;font-size:60px;line-height:1;height:30px;color:var(--accent-2);opacity:.85}
-    .wish{font-family:'Playfair Display',Georgia,serif;font-style:italic;font-weight:500;font-size:clamp(18px,2.8vw,23px);line-height:1.55;min-height:4.65em;display:flex;align-items:center;text-wrap:balance}
-    .count{font-size:12px;font-weight:600;letter-spacing:.2em;color:rgba(255,255,255,.55)}
-    .progress{position:relative;height:3px;margin-top:18px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden}
-    .progress span{position:absolute;inset:0;transform-origin:0 50%;transform:scaleX(0);background:linear-gradient(90deg,var(--accent),var(--accent-2))}
-    .progress span.is-running{animation:oc-progress var(--slide-ms,6000ms) linear forwards}
-    .carousel.is-paused .progress span{animation-play-state:paused}
-    .controls{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:16px}
-    .icon-btn{width:38px;height:38px;display:grid;place-items:center;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--text);font-size:15px;cursor:pointer;transition:background .2s,transform .2s}
-    .icon-btn:hover{background:rgba(255,255,255,.18);transform:scale(1.06)}
-    .icon-btn:focus-visible,.dot:focus-visible,.btn:focus-visible{outline:2px solid var(--accent-2);outline-offset:3px}
-    .dots{display:flex;gap:7px;padding:0 6px}
-    .dot{width:9px;height:9px;padding:0;border:0;border-radius:999px;background:rgba(255,255,255,.3);cursor:pointer;transition:width .35s,background .35s}
-    .dot[aria-current="true"]{width:26px;background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+    .wish{position:relative;font-family:'Playfair Display',Georgia,serif;font-style:italic;font-weight:500;font-size:clamp(18px,2.8vw,23px);line-height:1.55;min-height:4.65em;display:flex;align-items:center;text-wrap:balance}
+    .btn:focus-visible{outline:2px solid var(--accent-2);outline-offset:3px}
     .footer{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:22px}
     .signature{font-family:'Dancing Script',cursive;font-size:26px;color:rgba(255,255,255,.92)}
     .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--text);font:600 14px 'Be Vietnam Pro',sans-serif;cursor:pointer;transition:background .2s,transform .2s}
@@ -93,7 +77,6 @@
     @keyframes oc-float{from{transform:translateY(0)}to{transform:translateY(-120vh)}}
     @keyframes oc-rise{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
     @keyframes oc-shimmer{to{background-position:300% 0}}
-    @keyframes oc-progress{to{transform:scaleX(1)}}
     @keyframes oc-twinkle{0%,100%{transform:scale(.2);opacity:0}50%{transform:scale(1) rotate(45deg);opacity:1}}
     .spark{transform-box:view-box;transform-origin:0 0;fill:#ffe9b0;animation:oc-twinkle 2.4s ease-in-out infinite;animation-delay:var(--d)}
 
@@ -101,9 +84,8 @@
     @media (min-width:901px){
       main{padding:56px 20px 24px}
       h1{margin-top:10px;font-size:clamp(44px,min(8vw,9vh),84px)}
-      .carousel{margin-top:clamp(12px,2.5vh,26px);padding:clamp(18px,3vh,30px) 28px clamp(14px,2vh,22px)}
+      .wish-card{margin-top:clamp(12px,2.5vh,26px);padding:clamp(18px,3vh,30px) 28px clamp(16px,2.4vh,26px)}
       .wish{font-size:clamp(17px,min(2.8vw,2.7vh),23px)}
-      .controls{margin-top:clamp(10px,1.6vh,16px)}
       .footer{flex-direction:row;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:clamp(12px,2.2vh,22px)}
       .footer .signature{flex-basis:100%;text-align:center}
       .is-open .stage-btn svg{height:min(56vh,480px)}
@@ -113,13 +95,12 @@
       .sub{margin-top:2px}
       .quote{font-size:44px;height:22px}
       .wish{min-height:3.2em}
-      .progress{margin-top:12px}
     }
     @media (max-width:900px){
       main{flex-direction:column;justify-content:center;padding-top:76px}
       main.is-revealed{justify-content:flex-start}
       .is-open .stage-btn svg{height:min(34vh,300px)}
-      .carousel{padding:24px 18px 18px;margin-top:20px}
+      .wish-card{padding:24px 18px 20px;margin-top:20px}
     }
     @media (prefers-reduced-motion:reduce){
       *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;animation-delay:0s!important;transition-duration:.01ms!important}
@@ -141,8 +122,7 @@
   <x-occasion.audio :audio="$audio" :melody="$occasion->value" />
 
   <main data-occasion-page="{{ $occasion->value }}"
-    data-effects="{{ json_encode($effects, JSON_UNESCAPED_UNICODE) }}"
-    data-i18n="{{ json_encode(['pause' => __('occasions.ui.pause'), 'play' => __('occasions.ui.play')], JSON_UNESCAPED_UNICODE) }}">
+    data-effects="{{ json_encode($effects, JSON_UNESCAPED_UNICODE) }}">
     <div class="stage" data-stage>
       <button type="button" class="stage-btn" data-stage-button aria-label="{{ __($key.'.reveal_label') }}" aria-expanded="false" aria-controls="oc-message">
         {{ $slot }}
@@ -155,29 +135,12 @@
       <h1>{{ __($key.'.heading', $params) }}</h1>
       <p class="sub">{{ __($key.'.subheading', $params) }}</p>
 
-      <div class="carousel" role="region" aria-roledescription="carousel" aria-label="{{ __('occasions.ui.slides_label') }}" data-carousel>
-        <ul class="slides" aria-live="off" data-slides>
-          @foreach ($wishes as $wish)
-            <li class="slide {{ $loop->first ? 'is-active' : '' }}" role="group" aria-roledescription="slide"
-              aria-label="{{ __('occasions.ui.slide_label', ['current' => $loop->iteration, 'total' => $total]) }}" data-slide>
-              <span class="quote" aria-hidden="true">“</span>
-              <p class="wish">{{ $wish }}</p>
-              <span class="count" aria-hidden="true">{{ sprintf('%02d / %02d', $loop->iteration, $total) }}</span>
-            </li>
-          @endforeach
-        </ul>
-        <div class="progress" aria-hidden="true"><span data-progress></span></div>
-        <div class="controls">
-          <button type="button" class="icon-btn" data-prev aria-label="{{ __('occasions.ui.prev') }}">‹</button>
-          <div class="dots">
-            @foreach ($wishes as $wish)
-              <button type="button" class="dot" data-dot="{{ $loop->index }}" aria-label="{{ __('occasions.ui.go_to', ['number' => $loop->iteration]) }}" aria-current="{{ $loop->first ? 'true' : 'false' }}"></button>
-            @endforeach
-          </div>
-          <button type="button" class="icon-btn" data-next aria-label="{{ __('occasions.ui.next') }}">›</button>
-          <button type="button" class="icon-btn" data-toggle aria-label="{{ __('occasions.ui.pause') }}" aria-pressed="false">❚❚</button>
-        </div>
-      </div>
+      @if ($wish !== '')
+        <figure class="wish-card" data-wish-card>
+          <span class="quote" aria-hidden="true">“</span>
+          <p class="wish" data-wish>{{ $wish }}</p>
+        </figure>
+      @endif
 
       <div class="footer">
         <p class="signature">{{ __($key.'.signature', $params) }}</p>
@@ -194,11 +157,8 @@
 
   <script>
     (() => {
-      // Time on each wish: long enough to read it (about 55 ms per character), between 5 and 10 seconds.
-      const slideMs = (slide) => Math.min(10000, Math.max(5000, (slide?.textContent || '').trim().length * 55));
       const page = document.querySelector('[data-occasion-page]');
       const parse = (value) => { try { return JSON.parse(value || '{}'); } catch { return {}; } };
-      const i18n = parse(page.dataset.i18n);
       const fx = Object.assign({ rain: ['petal'], rainColors: ['#ff4f7b', '#ffb3c6'], rainEvery: 380, rainBeforeOpen: false, burst: ['petal'], burstColors: ['#ff4f7b', '#f7c873', '#ffffff'], fireworks: false, sounds: [] }, parse(page.dataset.effects));
       const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const random = (min, max) => Math.random() * (max - min) + min;
@@ -283,58 +243,6 @@
       };
       if (!reduceMotion) requestAnimationFrame(tick);
 
-      // Slideshow of wishes: next slide once the current one had time to be read, paused on mouse hover, with prev / next / dots / pause.
-      const carousel = page.querySelector('[data-carousel]');
-      const slides = [...page.querySelectorAll('[data-slide]')];
-      const dots = [...page.querySelectorAll('[data-dot]')];
-      const progress = page.querySelector('[data-progress]');
-      const toggle = page.querySelector('[data-toggle]');
-      let current = 0;
-      let timer = null;
-      let started = false;
-      let userPaused = false;
-      let hoverPaused = false;
-      const show = (index) => {
-        const next = (index + slides.length) % slides.length;
-        if (next !== current) {
-          const leaving = slides[current];
-          leaving.classList.remove('is-active');
-          leaving.classList.add('is-leaving');
-          setTimeout(() => leaving.classList.remove('is-leaving'), 1200);
-        }
-        current = next;
-        slides[current].classList.remove('is-leaving');
-        slides[current].classList.add('is-active');
-        dots.forEach((dot, i) => dot.setAttribute('aria-current', i === current ? 'true' : 'false'));
-        schedule();
-      };
-      const schedule = () => {
-        clearTimeout(timer);
-        progress.classList.remove('is-running');
-        const paused = userPaused || hoverPaused;
-        carousel.classList.toggle('is-paused', paused);
-        if (!started || paused || slides.length < 2) return;
-        const duration = slideMs(slides[current]);
-        carousel.style.setProperty('--slide-ms', `${duration}ms`);
-        void progress.offsetWidth;
-        progress.classList.add('is-running');
-        timer = setTimeout(() => show(document.hidden ? current : current + 1), duration);
-      };
-      page.querySelector('[data-prev]').addEventListener('click', () => show(current - 1));
-      page.querySelector('[data-next]').addEventListener('click', () => show(current + 1));
-      dots.forEach((dot, i) => dot.addEventListener('click', () => show(i)));
-      toggle.addEventListener('click', () => {
-        userPaused = !userPaused;
-        toggle.setAttribute('aria-pressed', userPaused ? 'true' : 'false');
-        toggle.setAttribute('aria-label', userPaused ? (i18n.play || '') : (i18n.pause || ''));
-        toggle.textContent = userPaused ? '▶' : '❚❚';
-        schedule();
-      });
-      // Only a mouse pauses on hover: a tap on a touch screen never sends the matching "leave".
-      carousel.addEventListener('pointerenter', (event) => { if (event.pointerType === 'mouse') { hoverPaused = true; schedule(); } });
-      carousel.addEventListener('pointerleave', (event) => { if (event.pointerType === 'mouse') { hoverPaused = false; schedule(); } });
-      document.addEventListener('visibilitychange', schedule);
-
       // Smoothly move the centerpiece to its new place / size when the layout changes (FLIP).
       const withFlip = (change) => {
         const before = stage.getBoundingClientRect();
@@ -347,7 +255,7 @@
         stage.animate([{ transform: `translate(${dx}px, ${dy}px) scale(${scale})` }, { transform: 'none' }], { duration: 900, easing: 'cubic-bezier(.2,.8,.2,1)' });
       };
 
-      // Open: the page's reveal animation plays, particles burst out, then the wishes appear and start sliding.
+      // Open: the page's reveal animation plays, particles burst out, then the heading and the wish appear.
       const timeouts = [];
       const open = () => {
         if (page.classList.contains('is-open')) return;
@@ -367,18 +275,15 @@
           withFlip(() => page.classList.add('is-revealed'));
           message.setAttribute('aria-hidden', 'false');
         }, reduceMotion ? 0 : 1300));
-        timeouts.push(setTimeout(() => { started = true; show(0); }, reduceMotion ? 0 : 2200));
       };
       const replay = () => {
         timeouts.splice(0).forEach(clearTimeout);
-        started = false;
         raining = fx.rainBeforeOpen;
         fireworks = false;
         withFlip(() => page.classList.remove('is-revealed', 'is-open'));
         message.setAttribute('aria-hidden', 'true');
         stageButton.setAttribute('aria-expanded', 'false');
         stageButton.disabled = false;
-        show(0);
         stageButton.focus();
         scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
       };
